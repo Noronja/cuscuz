@@ -2792,9 +2792,13 @@ async function fetchHardworqStatus() {
     const res = await fetch('/api/questions/hardworq/status');
     const s = await res.json();
     el.innerHTML = '<b style="color:var(--teal)">Turma: ' + esc(String(s.idTurma)) + '</b>'
-      + ' · cookie de sessão: ' + (s.cookieConfigured
-        ? '<b style="color:var(--green)">configurado no servidor</b>'
-        : '<b style="color:var(--amber)">ausente — defina HARDWORQ_COOKIE no .env</b>')
+      + ' · autenticação: ' + (s.authMode === 'login'
+        ? (s.userTokenActive
+          ? '<b style="color:var(--green)">logado por email/senha' + (s.tokenPersisted ? ' (sessão contínua)' : '') + '</b>' + (s.lastLoginAt ? ' · token de ' + new Date(s.lastLoginAt).toLocaleString('pt-BR') : '')
+          : '<b style="color:var(--amber)">credenciais no servidor — aguardando login…</b>')
+        : (s.authMode === 'cookie'
+          ? '<b style="color:var(--amber)">cookie legado</b>'
+          : '<b style="color:var(--rose)">sem credenciais — defina HARDWORQ_EMAIL/HARDWORQ_SENHA no .env</b>'))
       + ' · banco local: <b>' + s.bankCount + '</b> questões (' + s.hardworqCount + ' do Hardworq)'
       + (s.lastSyncAt ? ' · última sync: ' + new Date(s.lastSyncAt).toLocaleString('pt-BR') : '');
   } catch (e) {
@@ -2813,7 +2817,7 @@ async function openHardworqSync() {
     + '<div class="chips" id="hwq-anos">' + HWQ_ANOS.map(a => hwqChip(a, true)).join('') + '</div>'
     + '<div class="form-row" style="margin-top:14px"><div><span class="sim-label">Quantidade máxima</span>'
     + '<select id="hwq-qtd" class="sim-select"><option>10</option><option selected>20</option><option>30</option><option>50</option><option>100</option></select></div></div>'
-    + '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5">O gabarito vem junto no feed da API. Duplicadas são ignoradas e questões já existentes são atualizadas. A sessão (cookie) é configurada no servidor via <b>HARDWORQ_COOKIE</b> no .env.</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5">O gabarito vem junto no feed da API. Duplicadas são ignoradas e questões já existentes são atualizadas. O servidor faz login sozinho com <b>HARDWORQ_EMAIL</b>/<b>HARDWORQ_SENHA</b> no .env e renova o token automaticamente.</div>'
     + '<div id="hwq-result" style="display:none;margin-top:12px"></div>'
     + '<div class="form-actions"><button class="btn-outline" onclick="closeModals()">Fechar</button>'
     + '<button id="hwq-sync-btn" class="btn-primary" onclick="runHardworqSync()"><i class="ph ph-cloud-arrow-down"></i> Buscar e importar</button></div>');
@@ -2856,7 +2860,7 @@ async function runHardworqSync() {
       if (out) {
         out.style.display = 'block';
         out.innerHTML = '<div style="padding:12px 14px;border-radius:10px;background:rgba(251,113,133,.08);border:1px solid var(--rose-border);color:var(--rose);font-size:13px;line-height:1.6"><b>⚠️ ' + msg + '</b>'
-          + (d.authFailed ? '<br><span style="font-size:11px">Abra o Hardworq no navegador logado, copie o cookie <b>session-id</b> (F12 → Application → Cookies) e cole em HARDWORQ_COOKIE no .env do servidor.</span>' : '')
+          + (d.authFailed ? '<br><span style="font-size:11px">O login no Hardworq falhou. Confira <b>HARDWORQ_EMAIL</b> e <b>HARDWORQ_SENHA</b> no .env do servidor (as credenciais da conta Hardworq).</span>' : '')
           + '</div>';
       }
       toast('Falha na sincronização Hardworq', 'error');

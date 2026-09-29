@@ -513,38 +513,79 @@ const HWQ = {
   apiBase: process.env.HARDWORQ_API_BASE || 'https://extensivo.hardworkmedicina.api.br',
   hwqBase: process.env.HARDWORQ_HWQ_BASE || 'https://hardworq.hardworkmedicina.api.br',
   idTurma: process.env.HARDWORQ_ID_TURMA || '1273',
+  // Login por credenciais (método atual — o cookie de sessão foi descontinuado pela API)
+  email: process.env.HARDWORQ_EMAIL || '',
+  senha: process.env.HARDWORQ_SENHA || '',
+  // Chaves de app do próprio Hardworq (públicas, embutidas no bundle do app — uma por API)
+  appKeyExt: process.env.HARDWORQ_APP_KEY_EXT || 'YzJjNTZkYjMtMGQwNS00NGJiLTk5YzUtZjJhN2E4ODlmNjdl',
+  appKeyHwq: process.env.HARDWORQ_APP_KEY_HWQ || 'mcJZrH5yb7qhpST3k4vMqUL76t78ttpGeHj0U20V6khQWuWLPkIHJlOukj9p8U1E',
+  // Legado: cookie de sessão ainda aceito como fallback
   cookie: process.env.HARDWORQ_COOKIE || '',
   autoSync: /^(1|true|on)$/i.test(process.env.HARDWORQ_AUTO_SYNC || ''),
   syncIntervalHours: Math.max(1, parseInt(process.env.HARDWORQ_SYNC_INTERVAL_H, 10) || 6),
   maxBankSize: Math.max(50, parseInt(process.env.HARDWORQ_MAX_BANK, 10) || 400)
 };
-const HWQ_STATE = { lastSyncAt: null, lastSyncOk: null, lastSyncResult: null };
+const HWQ_STATE = { userToken: null, lastLoginAt: null, lastLoginOk: null, lastSyncAt: null, lastSyncOk: null, lastSyncResult: null };
+
+// Login contínuo: o token do aluno é persistido em disco e sobrevive a restarts.
+// Só refaz o login de verdade quando a API recusar o token (auth:false) — relogin automático.
+const HWQ_TOKEN_FILE = path.join(__dirname, 'data', 'hwq-token.json');
+
+function saveHwqToken(token) {
+  try {
+    const dir = path.dirname(HWQ_TOKEN_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(HWQ_TOKEN_FILE, JSON.stringify({ token, savedAt: new Date().toISOString() }, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('⚠️ [Hardworq] Não foi possível salvar o token em disco:', err.message);
+  }
+}
+
+function loadHwqToken() {
+  try {
+    if (!fs.existsSync(HWQ_TOKEN_FILE)) return;
+    const j = JSON.parse(fs.readFileSync(HWQ_TOKEN_FILE, 'utf8'));
+    if (j && j.token) {
+      HWQ_STATE.userToken = String(j.token);
+      HWQ_STATE.lastLoginOk = true; // otimista: se estiver vencido, o relogin automático cuida
+      HWQ_STATE.lastLoginAt = j.savedAt || null;
+      console.log('🔑 [Hardworq] Token reutilizado do disco — sessão contínua.');
+    }
+  } catch (_) { /* token corrompido: segue sem token, relogin cuida */ }
+}
+loadHwqToken();
 
 const HWQ_AREAS_DEFAULT = ['Clínica Médica', 'Cirurgia Geral', 'Pediatria', 'Ginecologia e Obstetrícia', 'Medicina Preventiva'];
 const HWQ_ANOS_DEFAULT = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
 const HWQ_GRUPOS_DEFAULT = ['R1', 'REVALIDA'];
 
-function hwqHeaders(extra = {}) {
+// Chave de app por base: o app Hardworq usa uma Bearer fixa embutida no bundle, uma por API
+function hwqAppKey(url) {
+  return String(url).startsWith(HWQ.hwqBase) ? HWQ.appKeyHwq : HWQ.appKeyExt;
+}
+
+function hwqHeaders(url, { withUserToken = true } = {}) {
   const headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json, text/plain, */*',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
     'Origin': HWQ.apiBase,
     'Referer': HWQ.apiBase + '/',
-    ...extra
+    'Authorization': 'Bearer ' + hwqAppKey(url)
   };
-  if (HWQ.cookie) headers['Cookie'] = HWQ.cookie;
+  if (withUserToken && HWQ_STATE.userToken) headers['UserToken'] = HWQ_STATE.userToken;
+  if (HWQ.cookie) headers['Cookie'] = HWQ.cookie; // legado
   return headers;
 }
 
-// Chamada genérica às APIs do Hardworq; normaliza erro de sessão (auth:false / "Invalid User")
-async function hwqRequest(url, { method = 'GET', body = null, timeoutMs = 20000 } = {}) {
+// Chamada HTTP crua (sem relogin); normaliza erro de sessão (auth:false / "Invalid User")
+async function hwqFetch(url, { method = 'GET', body = null, timeoutMs = 20000, withUserToken = true } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       method,
-      headers: hwqHeaders(),
+      headers: hwqHeaders(url, { withUserToken }),
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal
     });
@@ -559,6 +600,39 @@ async function hwqRequest(url, { method = 'GET', body = null, timeoutMs = 20000 
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Login email/senha: PUT /login retorna obj.token, que vira o header UserToken das chamadas seguintes
+async function hwqLogin({ force = false } = {}) {
+  if (!HWQ.email || !HWQ.senha) return { ok: false, error: 'HARDWORQ_EMAIL/HARDWORQ_SENHA não configurados no .env do servidor.' };
+  if (!force && HWQ_STATE.userToken && HWQ_STATE.lastLoginOk) return { ok: true, token: HWQ_STATE.userToken, cached: true };
+  const r = await hwqFetch(`${HWQ.hwqBase}/login`, {
+    method: 'PUT',
+    body: { email: HWQ.email, senha: HWQ.senha, platform: '', uuid: '' },
+    withUserToken: false
+  });
+  HWQ_STATE.lastLoginAt = new Date().toISOString();
+  const token = r.data && r.data.obj && r.data.obj.token ? String(r.data.obj.token) : '';
+  const ok = !!(r.ok && token);
+  HWQ_STATE.lastLoginOk = ok;
+  HWQ_STATE.userToken = token || null;
+  if (ok) {
+    saveHwqToken(token);
+    console.log('🔑 [Hardworq] Login ok — token em cache (memória + disco).');
+  } else {
+    try { fs.rmSync(HWQ_TOKEN_FILE, { force: true }); } catch (_) {}
+    console.warn('⚠️ [Hardworq] Login falhou:', (r.data && r.data.msg) || r.error || `HTTP ${r.status}`);
+  }
+  return { ok, token, msg: (r.data && r.data.msg) || r.error || '' };
+}
+
+// Chamada com relogin automático: se a sessão cair (auth:false), refaz login e tenta 1× de novo
+async function hwqRequest(url, opts = {}) {
+  const first = await hwqFetch(url, opts);
+  if (!first.authFailed) return first;
+  const login = await hwqLogin({ force: true });
+  if (!login.ok) return first;
+  return hwqFetch(url, opts);
 }
 
 // Busca questões no banco do Hardworq (doc §2)
@@ -580,7 +654,7 @@ async function hwqSearchQuestions(opts = {}) {
   return { ok: r.ok && list.length > 0, status: r.status, authFailed: r.authFailed, error: r.error, msg: (r.data && r.data.msg) || '', questions: list };
 }
 
-// Registra a resposta do aluno na API (doc §9) — exige sessão/cookie válido
+// Registra a resposta do aluno na API (doc §9) — exige UserToken válido (login email/senha)
 async function hwqAnswerQuestion({ remoteId, alternativeId, idTurma } = {}) {
   if (!remoteId || !alternativeId) return { ok: false, status: 0, authFailed: false, error: 'remoteId e alternativeId são obrigatórios' };
   const url = `${HWQ.apiBase}/banco/questoes/${encodeURIComponent(idTurma || HWQ.idTurma)}/${encodeURIComponent(remoteId)}/${encodeURIComponent(alternativeId)}/false`;
@@ -757,6 +831,7 @@ repairMojibakeInBank();
 
 // Fluxo principal: busca na API + parse + merge no banco local (usado pelo painel e pelo auto-sync)
 async function runHardworqSync(filters = {}) {
+  if (!HWQ_STATE.userToken) await hwqLogin(); // garante token antes da busca (se falhar, hwqRequest tenta de novo)
   const search = await hwqSearchQuestions(filters);
   HWQ_STATE.lastSyncAt = new Date().toISOString();
 
@@ -768,7 +843,7 @@ async function runHardworqSync(filters = {}) {
       authFailed: !!search.authFailed,
       status: search.status,
       msg: search.authFailed
-        ? 'Sessão do Hardworq inválida ou expirada. Atualize o HARDWORQ_COOKIE no .env do servidor.'
+        ? 'Login no Hardworq falhou (auth:false). Verifique HARDWORQ_EMAIL/HARDWORQ_SENHA no .env do servidor.'
         : (search.msg || search.error || `A API do Hardworq respondeu ${search.status}.`),
       fetched: 0
     };
@@ -796,6 +871,12 @@ app.get('/api/questions/hardworq/status', (req, res) => {
     success: true,
     idTurma: HWQ.idTurma,
     apiBase: HWQ.apiBase,
+    authMode: (HWQ.email && HWQ.senha) ? 'login' : (HWQ.cookie ? 'cookie' : 'nenhum'),
+    emailConfigured: !!HWQ.email,
+    userTokenActive: !!HWQ_STATE.userToken,
+    tokenPersisted: fs.existsSync(HWQ_TOKEN_FILE),
+    lastLoginAt: HWQ_STATE.lastLoginAt,
+    lastLoginOk: HWQ_STATE.lastLoginOk,
     cookieConfigured: !!HWQ.cookie,
     autoSync: HWQ.autoSync,
     syncIntervalHours: HWQ.syncIntervalHours,
@@ -810,15 +891,17 @@ app.get('/api/questions/hardworq/status', (req, res) => {
 // Sincronização com a API do Hardworq (botão "Sincronizar Hardworq" do app)
 app.post('/api/questions/hardworq/sync', async (req, res) => {
   try {
-    const { areas, anos, grupos_prova, qtd_maxima, cookie, idTurma, salvar = true } = req.body || {};
-    if (cookie) HWQ.cookie = String(cookie).trim(); // sessão avulsa informada no painel (não persiste)
+    const { areas, anos, grupos_prova, qtd_maxima, cookie, email, senha, idTurma, salvar = true } = req.body || {};
+    if (email && senha) { HWQ.email = String(email).trim(); HWQ.senha = String(senha); HWQ_STATE.userToken = null; } // sessão avulsa (não persiste)
+    if (cookie) HWQ.cookie = String(cookie).trim(); // legado
 
     if (salvar === false) {
+      if (!HWQ_STATE.userToken) await hwqLogin();
       const search = await hwqSearchQuestions({ areas, anos, grupos_prova, qtd_maxima, idTurma });
       if (search.error || search.authFailed || search.status >= 400) {
         return res.status(search.authFailed ? 401 : 502).json({
           success: false, authFailed: !!search.authFailed, status: search.status,
-          msg: search.authFailed ? 'Sessão do Hardworq inválida ou expirada.' : (search.msg || search.error || `A API respondeu ${search.status}.`)
+          msg: search.authFailed ? 'Login no Hardworq falhou — verifique email/senha.' : (search.msg || search.error || `A API respondeu ${search.status}.`)
         });
       }
       const parsed = parseHardworqPayload(search.questions);
@@ -853,26 +936,28 @@ app.get('/api/questions/hardworq/aluno', async (req, res) => {
 // Importação manual (compatibilidade): aceita jsonText/payload colado OU idTurma para buscar na API
 app.post('/api/questions/import-hardworq', async (req, res) => {
   try {
-    const { idTurma, cookie, jsonText, payload, qtd_maxima = 20, areas, anos, grupos_prova } = req.body || {};
+    const { idTurma, cookie, email, senha, jsonText, payload, qtd_maxima = 20, areas, anos, grupos_prova } = req.body || {};
     let parsedQuestions = [];
 
+    if (email && senha) { HWQ.email = String(email).trim(); HWQ.senha = String(senha); HWQ_STATE.userToken = null; }
     if (cookie) HWQ.cookie = String(cookie).trim();
 
     if (payload || jsonText) {
       parsedQuestions = parseHardworqPayload(payload || jsonText);
-    } else if (idTurma || HWQ.cookie) {
+    } else if (idTurma || HWQ.email || HWQ.cookie) {
+      if (!HWQ_STATE.userToken) await hwqLogin();
       const search = await hwqSearchQuestions({ idTurma, areas, anos, grupos_prova, qtd_maxima });
       if (search.error || search.authFailed || search.status >= 400) {
         return res.status(search.authFailed ? 401 : 502).json({
           error: search.authFailed
-            ? 'Sessão do Hardworq inválida ou expirada (auth:false). Atualize o cookie no .env.'
+            ? 'Login no Hardworq falhou (auth:false). Verifique HARDWORQ_EMAIL/HARDWORQ_SENHA no .env.'
             : (search.msg || search.error || `Hardworq API retornou status ${search.status}.`),
           details: search.data || null
         });
       }
       parsedQuestions = parseHardworqPayload(search.questions);
     } else {
-      return res.status(400).json({ error: 'Envie "idTurma", "cookie" ou "jsonText" com o retorno da API do Hardworq.' });
+      return res.status(400).json({ error: 'Envie "idTurma", "email"+"senha" ou "jsonText" com o retorno da API do Hardworq.' });
     }
 
     if (!parsedQuestions.length) {
@@ -903,6 +988,9 @@ async function autoSyncHardworq() {
 }
 setTimeout(autoSyncHardworq, 20000);
 setInterval(autoSyncHardworq, HWQ.syncIntervalHours * 60 * 60 * 1000);
+
+// Login no boot apenas se não houver token reutilizável — credenciais certas entram em segundos
+setTimeout(() => { if (!HWQ_STATE.userToken && HWQ.email && HWQ.senha) hwqLogin(); }, 5000);
 
 // 2. Gerar questões sob demanda com Gemini AI (Aba 2)
 app.post('/api/gemini/generate-questions', async (req, res) => {
