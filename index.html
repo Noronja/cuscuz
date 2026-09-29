@@ -1081,6 +1081,7 @@ mark.exam-highlight {
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn-primary btn-sm glass-shimmer" onclick="startTreinoLivreFiltered()"><i class="ph ph-play-circle"></i> Iniciar Simulado</button>
+            <button class="btn-outline btn-sm" onclick="openHardworqSync()"><i class="ph ph-cloud-arrow-down"></i> Sincronizar Hardworq</button>
             <button class="btn-outline btn-sm" onclick="openImport()"><i class="ph ph-upload-simple"></i> Importar</button>
           </div>
         </div>
@@ -2775,6 +2776,111 @@ function refreshQuestionsBank() {
   loadQuestionsBankFromAPI(false);
 }
 
+/* ── Integração Hardworq: sincronização do banco oficial (extensivo.hardworkmedicina.api.br) ── */
+const HWQ_AREAS = ['Clínica Médica', 'Cirurgia Geral', 'Pediatria', 'Ginecologia e Obstetrícia', 'Medicina Preventiva'];
+const HWQ_ANOS = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
+const HWQ_GRUPOS = ['R1', 'R3', 'REVALIDA'];
+
+function hwqChip(label, on) {
+  return '<span class="chip' + (on ? ' active' : '') + '" onclick="this.classList.toggle(\'active\')">' + esc(label) + '</span>';
+}
+
+async function fetchHardworqStatus() {
+  const el = $('hwq-status');
+  if (!el) return;
+  try {
+    const res = await fetch('/api/questions/hardworq/status');
+    const s = await res.json();
+    el.innerHTML = '<b style="color:var(--teal)">Turma: ' + esc(String(s.idTurma)) + '</b>'
+      + ' · cookie de sessão: ' + (s.cookieConfigured
+        ? '<b style="color:var(--green)">configurado no servidor</b>'
+        : '<b style="color:var(--amber)">ausente — defina HARDWORQ_COOKIE no .env</b>')
+      + ' · banco local: <b>' + s.bankCount + '</b> questões (' + s.hardworqCount + ' do Hardworq)'
+      + (s.lastSyncAt ? ' · última sync: ' + new Date(s.lastSyncAt).toLocaleString('pt-BR') : '');
+  } catch (e) {
+    el.innerHTML = '<span style="color:var(--rose)">Sem contato com o servidor.</span>';
+  }
+}
+
+async function openHardworqSync() {
+  openModal('<div class="modal-title"><i class="ph ph-cloud-arrow-down"></i> Banco Hardworq — API oficial<button class="modal-close"><i class="ph ph-x"></i></button></div>'
+    + '<div id="hwq-status" style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6">Carregando status da integração…</div>'
+    + '<span class="sim-label">Áreas do conhecimento</span>'
+    + '<div class="chips" id="hwq-areas">' + HWQ_AREAS.map(a => hwqChip(a, true)).join('') + '</div>'
+    + '<span class="sim-label" style="margin-top:12px">Grupos de prova</span>'
+    + '<div class="chips" id="hwq-grupos">' + HWQ_GRUPOS.map(g => hwqChip(g, g !== 'R3')).join('') + '</div>'
+    + '<span class="sim-label" style="margin-top:12px">Anos das provas</span>'
+    + '<div class="chips" id="hwq-anos">' + HWQ_ANOS.map(a => hwqChip(a, true)).join('') + '</div>'
+    + '<div class="form-row" style="margin-top:14px"><div><span class="sim-label">Quantidade máxima</span>'
+    + '<select id="hwq-qtd" class="sim-select"><option>10</option><option selected>20</option><option>30</option><option>50</option><option>100</option></select></div></div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5">O gabarito vem junto no feed da API. Duplicadas são ignoradas e questões já existentes são atualizadas. A sessão (cookie) é configurada no servidor via <b>HARDWORQ_COOKIE</b> no .env.</div>'
+    + '<div id="hwq-result" style="display:none;margin-top:12px"></div>'
+    + '<div class="form-actions"><button class="btn-outline" onclick="closeModals()">Fechar</button>'
+    + '<button id="hwq-sync-btn" class="btn-primary" onclick="runHardworqSync()"><i class="ph ph-cloud-arrow-down"></i> Buscar e importar</button></div>');
+  fetchHardworqStatus();
+}
+
+async function runHardworqSync() {
+  const btn = $('hwq-sync-btn');
+  const out = $('hwq-result');
+  const activeChips = (id) => {
+    const box = $(id);
+    return box ? Array.from(box.querySelectorAll('.chip.active')).map(c => c.textContent.trim()) : [];
+  };
+  const body = {
+    areas: activeChips('hwq-areas'),
+    grupos_prova: activeChips('hwq-grupos'),
+    anos: activeChips('hwq-anos').map(Number).filter(n => n > 0),
+    qtd_maxima: +($('hwq-qtd') && $('hwq-qtd').value || 20)
+  };
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph ph-circle-notch"></i> Buscando…'; }
+  if (out) out.style.display = 'none';
+  try {
+    const res = await fetch('/api/questions/hardworq/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const d = await res.json();
+    if (res.ok && d.success) {
+      if (out) {
+        out.style.display = 'block';
+        out.innerHTML = '<div style="padding:12px 14px;border-radius:10px;background:var(--teal-dim);border:1px solid var(--teal-border);color:var(--teal);font-size:13px">'
+          + '<b>✅ ' + d.imported + ' nova(s) questão(ões) importada(s)</b> · ' + d.updated + ' atualizada(s) · ' + d.fetched + ' retornada(s) pela API. Banco agora tem ' + (d.total || '—') + ' questões.</div>';
+      }
+      toast('📚 Hardworq: +' + d.imported + ' questões no banco', 'success');
+      await loadQuestionsBankFromAPI(false);
+      renderTreinoLivre();
+    } else {
+      const msg = esc(d.msg || d.error || ('Erro ' + res.status));
+      if (out) {
+        out.style.display = 'block';
+        out.innerHTML = '<div style="padding:12px 14px;border-radius:10px;background:rgba(251,113,133,.08);border:1px solid var(--rose-border);color:var(--rose);font-size:13px;line-height:1.6"><b>⚠️ ' + msg + '</b>'
+          + (d.authFailed ? '<br><span style="font-size:11px">Abra o Hardworq no navegador logado, copie o cookie <b>session-id</b> (F12 → Application → Cookies) e cole em HARDWORQ_COOKIE no .env do servidor.</span>' : '')
+          + '</div>';
+      }
+      toast('Falha na sincronização Hardworq', 'error');
+    }
+  } catch (err) {
+    toast('Erro de rede: ' + err.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ph ph-cloud-arrow-down"></i> Buscar e importar'; }
+    fetchHardworqStatus();
+  }
+}
+
+// Registra a resposta no Hardworq quando a questão veio de lá (best-effort, silencioso)
+function reportHardworqAnswer(q, selectedIdx) {
+  if (!q || !q.remoteId || !Array.isArray(q.remoteAlternatives)) return;
+  const alt = q.remoteAlternatives[selectedIdx];
+  if (!alt || !alt.id) return;
+  fetch('/api/questions/hardworq/answer', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ remoteId: q.remoteId, alternativeId: alt.id })
+  }).catch(() => {});
+}
+
 function updateBankBadges() {
   const badge1 = $('prontas-badge-count');
   if (badge1) badge1.textContent = BANK_QUESTIONS.length;
@@ -3198,6 +3304,7 @@ function confirmTreinoAnswer() {
   SIM_EXAM.userAnswers[q.id] = record;
   BANK_ANSWERS[q.id] = record;
   lsSet('cuscuz_exam_answers', BANK_ANSWERS);
+  reportHardworqAnswer(q, selectedIdx);
 
   if (isCorrect) {
     addXP(10, 'Questão acertada no treino');

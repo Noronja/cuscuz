@@ -9,6 +9,27 @@ import { GoogleGenAI, Type } from '@google/genai';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Carrega o .env sem dependência externa — variáveis já definidas no ambiente têm prioridade
+function loadDotEnv() {
+  try {
+    const envPath = path.join(__dirname, '.env');
+    if (!fs.existsSync(envPath)) return;
+    const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+    for (const line of lines) {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!m) continue;
+      let value = m[2].trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      if (!(m[1] in process.env)) process.env[m[1]] = value;
+    }
+  } catch (err) {
+    console.warn('⚠️ Não foi possível carregar o .env:', err.message);
+  }
+}
+loadDotEnv();
+
 const app = express();
 const PORT = 3000;
 const HOST = '0.0.0.0';
@@ -483,13 +504,135 @@ app.get('/api/questions/bank', (req, res) => {
   res.json({ success: true, count: bank.length, questions: bank });
 });
 
-// Parser de questões com o schema oficial do Hardworq (extensivo.hardworkmedicina.api.br)
+/* ═══════════════════════════════════════════════════════════════
+   INTEGRAÇÃO HARDWORQ — banco de questões oficial
+   API: PUT https://extensivo.hardworkmedicina.api.br/banco/questoes/{id_turma}
+   (schema validado: gabarito vem no feed em alternativas[].correta)
+   ═══════════════════════════════════════════════════════════════ */
+const HWQ = {
+  apiBase: process.env.HARDWORQ_API_BASE || 'https://extensivo.hardworkmedicina.api.br',
+  hwqBase: process.env.HARDWORQ_HWQ_BASE || 'https://hardworq.hardworkmedicina.api.br',
+  idTurma: process.env.HARDWORQ_ID_TURMA || '1273',
+  cookie: process.env.HARDWORQ_COOKIE || '',
+  autoSync: /^(1|true|on)$/i.test(process.env.HARDWORQ_AUTO_SYNC || ''),
+  syncIntervalHours: Math.max(1, parseInt(process.env.HARDWORQ_SYNC_INTERVAL_H, 10) || 6),
+  maxBankSize: Math.max(50, parseInt(process.env.HARDWORQ_MAX_BANK, 10) || 400)
+};
+const HWQ_STATE = { lastSyncAt: null, lastSyncOk: null, lastSyncResult: null };
+
+const HWQ_AREAS_DEFAULT = ['Clínica Médica', 'Cirurgia Geral', 'Pediatria', 'Ginecologia e Obstetrícia', 'Medicina Preventiva'];
+const HWQ_ANOS_DEFAULT = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
+const HWQ_GRUPOS_DEFAULT = ['R1', 'REVALIDA'];
+
+function hwqHeaders(extra = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json, text/plain, */*',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    'Origin': HWQ.apiBase,
+    'Referer': HWQ.apiBase + '/',
+    ...extra
+  };
+  if (HWQ.cookie) headers['Cookie'] = HWQ.cookie;
+  return headers;
+}
+
+// Chamada genérica às APIs do Hardworq; normaliza erro de sessão (auth:false / "Invalid User")
+async function hwqRequest(url, { method = 'GET', body = null, timeoutMs = 20000 } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: hwqHeaders(),
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal
+    });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (_) { data = { raw: text.slice(0, 500) }; }
+    const authFailed = res.status === 401 || res.status === 403 ||
+      (data && (data.auth === false || /invalid user|n[ãa]o autentic/i.test(String(data.msg || data.raw || ''))));
+    return { ok: res.ok && !(data && data.ok === false), status: res.status, data, authFailed };
+  } catch (err) {
+    return { ok: false, status: 0, data: null, authFailed: false, error: err.name === 'AbortError' ? 'Timeout na API do Hardworq' : (err.message || String(err)) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Busca questões no banco do Hardworq (doc §2)
+async function hwqSearchQuestions(opts = {}) {
+  const body = {
+    qtd_maxima: Math.min(100, Math.max(1, parseInt(opts.qtd_maxima, 10) || 20)),
+    areas: Array.isArray(opts.areas) && opts.areas.length ? opts.areas : HWQ_AREAS_DEFAULT,
+    id_prova_similar: 0,
+    ids_instituicoes: opts.ids_instituicoes || [],
+    ids_doencas: opts.ids_doencas || [],
+    ids_tags: opts.ids_tags || [],
+    anos: Array.isArray(opts.anos) && opts.anos.length ? opts.anos : HWQ_ANOS_DEFAULT,
+    grupos_prova: Array.isArray(opts.grupos_prova) && opts.grupos_prova.length ? opts.grupos_prova : HWQ_GRUPOS_DEFAULT,
+    outra_opcao: opts.outra_opcao || ''
+  };
+  const url = `${HWQ.apiBase}/banco/questoes/${encodeURIComponent(opts.idTurma || HWQ.idTurma)}`;
+  const r = await hwqRequest(url, { method: 'PUT', body });
+  const list = r.data && Array.isArray(r.data.obj) ? r.data.obj : (Array.isArray(r.data) ? r.data : []);
+  return { ok: r.ok && list.length > 0, status: r.status, authFailed: r.authFailed, error: r.error, msg: (r.data && r.data.msg) || '', questions: list };
+}
+
+// Registra a resposta do aluno na API (doc §9) — exige sessão/cookie válido
+async function hwqAnswerQuestion({ remoteId, alternativeId, idTurma } = {}) {
+  if (!remoteId || !alternativeId) return { ok: false, status: 0, authFailed: false, error: 'remoteId e alternativeId são obrigatórios' };
+  const url = `${HWQ.apiBase}/banco/questoes/${encodeURIComponent(idTurma || HWQ.idTurma)}/${encodeURIComponent(remoteId)}/${encodeURIComponent(alternativeId)}/false`;
+  return hwqRequest(url, { method: 'POST' });
+}
+
+// Perfil do aluno (doc §3) — diagnóstico de sessão
+async function hwqStudentInfo() {
+  const aluno = await hwqRequest(`${HWQ.hwqBase}/alunos`);
+  let plano = null;
+  if (aluno.ok) plano = await hwqRequest(`${HWQ.hwqBase}/alunos/plano`);
+  return { ok: aluno.ok, status: aluno.status, authFailed: aluno.authFailed, aluno: aluno.data, plano: plano ? plano.data : null };
+}
+
+// Repara acentos duplamente codificados (UTF-8 lido como latin1), comuns em payloads colados
+function fixMojibake(s) {
+  const out = String(s == null ? '' : s);
+  if (!/[\u00C0-\u00FF]/.test(out)) return out;
+  try {
+    const repaired = Buffer.from(out, 'latin1').toString('utf8');
+    if (repaired !== out && !repaired.includes('\uFFFD') && /[áéíóúâêôãõçàÁÉÍÓÚÂÊÔÃÕÇÀ]/.test(repaired)) {
+      return repaired;
+    }
+  } catch (_) { /* mantém o original */ }
+  return out;
+}
+
+const HWQ_LETTER_MAP = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', '5': 'E' };
+
+const cleanHtml = (s) => String(s || '').replace(/<[^>]*>?/gm, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+const hwqText = (s) => fixMojibake(cleanHtml(s));
+
+function hwqNormalizeArea(spec) {
+  const s = String(spec || '').trim();
+  if (!s) return '';
+  const lower = s.toLowerCase();
+  if (/preventiva|social|sa[uú]de coletiva/.test(lower)) return 'Medicina Preventiva e Social';
+  if (/gineco|obstet/.test(lower)) return 'Ginecologia e Obstetrícia';
+  if (/cirurg/.test(lower)) return 'Cirurgia Geral';
+  if (/pediatr/.test(lower)) return 'Pediatria';
+  if (/per[ií]cia|legal|forense/.test(lower)) return 'Perito Médico Federal';
+  if (/cl[ií]nica|interna/.test(lower)) return 'Clínica Médica';
+  return s;
+}
+
+// Parser do schema oficial do Hardworq → formato interno do app (id estável p/ dedupe)
 function parseHardworqPayload(rawInput) {
   let list = [];
   if (typeof rawInput === 'string') {
     try {
       const parsed = JSON.parse(rawInput);
-      list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.obj) ? parsed.obj : (Array.isArray(parsed.questoes) ? parsed.questoes : []));
+      list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.obj) ? parsed.obj : (Array.isArray(parsed?.questoes) ? parsed.questoes : []));
     } catch (e) {
       return [];
     }
@@ -499,50 +642,51 @@ function parseHardworqPayload(rawInput) {
     list = Array.isArray(rawInput.obj) ? rawInput.obj : (Array.isArray(rawInput.questoes) ? rawInput.questoes : (Array.isArray(rawInput.data) ? rawInput.data : []));
   }
 
-  const cleanHtml = (s) => String(s || '').replace(/<[^>]*>?/gm, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-  const letterMap = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', '5': 'E' };
-
   return list.map((item, idx) => {
     const rawOptions = Array.isArray(item.alternativas) ? item.alternativas : [];
-    let correctIdx = 0;
+    if (!rawOptions.length) return null;
 
+    let correctIdx = 0;
+    const remoteAlternatives = [];
     const formattedOptions = rawOptions.map((opt, oIdx) => {
       const rawLetra = String(opt.letra != null ? opt.letra : (oIdx + 1)).trim();
-      const letter = letterMap[rawLetra] || (['A','B','C','D','E'][oIdx] || 'A');
-      if (opt.correta === true || opt.correta === 'true' || opt.correta === 1) {
-        correctIdx = oIdx;
-      }
-      const text = cleanHtml(opt.alternativa || opt.texto || opt.descricao || '');
-      return `${letter}) ${text}`;
+      const letter = HWQ_LETTER_MAP[rawLetra] || (['A', 'B', 'C', 'D', 'E'][oIdx] || 'A');
+      remoteAlternatives.push({ id: opt.id != null ? String(opt.id) : null, index: oIdx, letter });
+      if (opt.correta === true || opt.correta === 'true' || opt.correta === 1) correctIdx = oIdx;
+      return `${letter}) ${hwqText(opt.alternativa || opt.texto || opt.descricao || '')}`;
     });
 
     const correctLetter = ['A', 'B', 'C', 'D', 'E'][correctIdx] || 'A';
-    const inst = item.prova?.instituicao || item.instituicao || 'Oficial';
+    const inst = fixMojibake(item.prova?.instituicao || item.instituicao || 'Oficial');
     const ano = parseInt(item.prova?.ano || item.ano, 10) || 2024;
-    const grupo = item.prova?.grupo || item.grupo || 'R1';
+    const grupo = String(item.prova?.grupo || item.grupo || 'R1');
     const code = item.codigo || `HW-${item.id || (idx + 1)}`;
+    const statement = hwqText(item.enunciado || '');
 
-    let spec = item.area || item.especialidade || item.specialty || '';
+    let spec = hwqNormalizeArea(item.area || item.especialidade || item.specialty);
     if (!spec) {
-      const hay = (item.enunciado || '').toLowerCase();
+      const hay = statement.toLowerCase();
       if (/cardio|hipertens|coron|infarto|pulm|pneumo|dispneia|renal|diabetes|eletrocardio|arritmia/i.test(hay)) spec = 'Clínica Médica';
       else if (/apendic|cirurg|trauma|laparotom|abdome agudo|hérnia|queimadur|colecist|atls/i.test(hay)) spec = 'Cirurgia Geral';
-      else if (/criança|lactente|pediatr|neonato|exantema|febre|parto|recém-nascido|puericult/i.test(hay)) spec = 'Pediatria';
-      else if (/gestante|gestação|pré-eclâmpsia|útero|parto|colo uterino|amamentação|cesárea|puerpér/i.test(hay)) spec = 'Ginecologia e Obstetrícia';
+      else if (/criança|lactente|pediatr|neonato|exantema|recém-nascido|puericult/i.test(hay)) spec = 'Pediatria';
+      else if (/gestante|gestação|pré-eclâmpsia|útero|colo uterino|cesárea|puerpér/i.test(hay)) spec = 'Ginecologia e Obstetrícia';
       else if (/epidemiolog|sus|risco relativo|prevalência|atenção básica|incidência|vigilância|coorte/i.test(hay)) spec = 'Medicina Preventiva e Social';
-      else if (/perícia|incapacidade|laudo pericial|inss|previdência|nexo causal|auxílio-doença/i.test(hay)) spec = 'Perito Médico Federal';
+      else if (/perícia|incapacidade|laudo pericial|inss|previdência|nexo causal/i.test(hay)) spec = 'Perito Médico Federal';
       else spec = 'Residência Médica';
     }
 
-    const statement = cleanHtml(item.enunciado || '');
     const explanation = item.comentario
-      ? cleanHtml(item.comentario)
+      ? hwqText(item.comentario)
       : `Questão oficial de prova (${inst} ${ano} - ${grupo}). Gabarito confirmado: Alternativa ${correctLetter}.`;
 
+    const stableId = (item.id != null && item.id !== '') ? String(item.id) : (String(code).replace(/[^a-zA-Z0-9_-]/g, '') || `${Date.now()}-${idx}`);
+
     return {
-      id: `q-hw-${item.id || String(code).replace(/[^a-zA-Z0-9_-]/g, '') || (Date.now() + '-' + idx)}`,
+      id: `q-hw-${stableId}`,
+      remoteId: (item.id != null && item.id !== '') ? String(item.id) : null,
+      remoteAlternatives,
       specialty: spec,
-      subspecialty: grupo || 'Oficial',
+      subspecialty: grupo,
       institution: inst,
       year: ano,
       statement,
@@ -551,90 +695,214 @@ function parseHardworqPayload(rawInput) {
       correctLetter,
       explanation,
       difficulty: 'Médio',
-      tags: [inst, grupo, code].filter(Boolean),
+      tags: [inst, grupo, String(code)].filter(Boolean),
+      image: item.imagem ? String(item.imagem) : '',
       createdAt: new Date().toISOString(),
       source: `Hardworq (${code})`
     };
-  }).filter(q => q.statement.length > 15 && q.options.length >= 2);
+  }).filter(q => q && q.statement.length > 15 && q.options.length >= 2);
 }
 
-// Endpoint para alimentar o banco via JSON ou API do Hardworq
+function hwqStatementKey(q) {
+  return String(q.statement || '').replace(/\s+/g, ' ').trim().slice(0, 80).toLowerCase();
+}
+
+// Mescla questões parseadas no banco local: atualiza as existentes (mesmo id ou enunciado) e adiciona as novas
+function mergeQuestionsIntoBank(parsed) {
+  const bank = readQuestionsBank();
+  const indexById = new Map(bank.map((q, i) => [q.id, i]));
+  const indexByStmt = new Map(bank.map((q, i) => [hwqStatementKey(q), i]));
+  const seenIds = new Set();
+  const seenStmts = new Set();
+  let updated = 0;
+  const fresh = [];
+
+  for (const q of parsed) {
+    const key = hwqStatementKey(q);
+    if (seenIds.has(q.id) || seenStmts.has(key)) continue;
+    seenIds.add(q.id);
+    seenStmts.add(key);
+    const i = indexById.has(q.id) ? indexById.get(q.id) : (indexByStmt.has(key) ? indexByStmt.get(key) : null);
+    if (i != null) {
+      bank[i] = { ...bank[i], ...q };
+      updated++;
+    } else {
+      fresh.push(q);
+      indexById.set(q.id, -1);
+    }
+  }
+
+  const updatedBank = [...fresh, ...bank];
+  writeQuestionsBank(updatedBank);
+  return { imported: fresh.length, updated, total: updatedBank.length };
+}
+
+// Repara acentos quebrados já persistidos por imports antigos
+function repairMojibakeInBank() {
+  const bank = readQuestionsBank();
+  let changed = 0;
+  const fixed = bank.map(q => {
+    const next = { ...q, options: (q.options || []).map(o => fixMojibake(o)) };
+    ['statement', 'explanation', 'specialty', 'institution'].forEach(f => { if (q[f]) next[f] = fixMojibake(q[f]); });
+    if (Array.isArray(q.tags)) next.tags = q.tags.map(t => fixMojibake(t));
+    if (JSON.stringify(next) !== JSON.stringify(q)) { changed++; return next; }
+    return q;
+  });
+  if (changed) {
+    writeQuestionsBank(fixed);
+    console.log(`🔧 [Hardworq] Acentos reparados em ${changed} questões do banco local.`);
+  }
+}
+repairMojibakeInBank();
+
+// Fluxo principal: busca na API + parse + merge no banco local (usado pelo painel e pelo auto-sync)
+async function runHardworqSync(filters = {}) {
+  const search = await hwqSearchQuestions(filters);
+  HWQ_STATE.lastSyncAt = new Date().toISOString();
+
+  if (search.error || search.authFailed || search.status >= 400) {
+    HWQ_STATE.lastSyncOk = false;
+    HWQ_STATE.lastSyncResult = { fetched: 0, imported: 0, authFailed: search.authFailed, status: search.status };
+    return {
+      ok: false,
+      authFailed: !!search.authFailed,
+      status: search.status,
+      msg: search.authFailed
+        ? 'Sessão do Hardworq inválida ou expirada. Atualize o HARDWORQ_COOKIE no .env do servidor.'
+        : (search.msg || search.error || `A API do Hardworq respondeu ${search.status}.`),
+      fetched: 0
+    };
+  }
+
+  const parsed = parseHardworqPayload(search.questions);
+  if (!parsed.length) {
+    HWQ_STATE.lastSyncOk = true;
+    HWQ_STATE.lastSyncResult = { fetched: search.questions.length, imported: 0, updated: 0 };
+    return { ok: true, fetched: search.questions.length, imported: 0, updated: 0, questions: [], msg: 'A API respondeu sem questões para os filtros escolhidos.' };
+  }
+
+  const merge = mergeQuestionsIntoBank(parsed);
+  HWQ_STATE.lastSyncOk = true;
+  HWQ_STATE.lastSyncResult = { fetched: search.questions.length, imported: merge.imported, updated: merge.updated };
+  console.log(`🟣 [Hardworq] Sincronização: ${search.questions.length} buscadas → ${merge.imported} novas, ${merge.updated} atualizadas.`);
+  return { ok: true, fetched: search.questions.length, imported: merge.imported, updated: merge.updated, total: merge.total, questions: parsed };
+}
+
+// Status da integração (painel do app)
+app.get('/api/questions/hardworq/status', (req, res) => {
+  const bank = readQuestionsBank();
+  const hwqCount = bank.filter(q => q.source && String(q.source).startsWith('Hardworq')).length;
+  res.json({
+    success: true,
+    idTurma: HWQ.idTurma,
+    apiBase: HWQ.apiBase,
+    cookieConfigured: !!HWQ.cookie,
+    autoSync: HWQ.autoSync,
+    syncIntervalHours: HWQ.syncIntervalHours,
+    lastSyncAt: HWQ_STATE.lastSyncAt,
+    lastSyncOk: HWQ_STATE.lastSyncOk,
+    lastSyncResult: HWQ_STATE.lastSyncResult,
+    bankCount: bank.length,
+    hardworqCount: hwqCount
+  });
+});
+
+// Sincronização com a API do Hardworq (botão "Sincronizar Hardworq" do app)
+app.post('/api/questions/hardworq/sync', async (req, res) => {
+  try {
+    const { areas, anos, grupos_prova, qtd_maxima, cookie, idTurma, salvar = true } = req.body || {};
+    if (cookie) HWQ.cookie = String(cookie).trim(); // sessão avulsa informada no painel (não persiste)
+
+    if (salvar === false) {
+      const search = await hwqSearchQuestions({ areas, anos, grupos_prova, qtd_maxima, idTurma });
+      if (search.error || search.authFailed || search.status >= 400) {
+        return res.status(search.authFailed ? 401 : 502).json({
+          success: false, authFailed: !!search.authFailed, status: search.status,
+          msg: search.authFailed ? 'Sessão do Hardworq inválida ou expirada.' : (search.msg || search.error || `A API respondeu ${search.status}.`)
+        });
+      }
+      const parsed = parseHardworqPayload(search.questions);
+      return res.json({ success: true, fetched: search.questions.length, imported: 0, updated: 0, questions: parsed });
+    }
+
+    const result = await runHardworqSync({ areas, anos, grupos_prova, qtd_maxima, idTurma });
+    res.status(result.ok ? 200 : (result.authFailed ? 401 : 502)).json(result);
+  } catch (err) {
+    console.error('Erro na sincronização Hardworq:', err);
+    res.status(500).json({ success: false, msg: err.message || 'Erro interno na sincronização Hardworq' });
+  }
+});
+
+// Registra a resposta no Hardworq quando o aluno resolve a questão no simulador (doc §9)
+app.post('/api/questions/hardworq/answer', async (req, res) => {
+  try {
+    const { remoteId, alternativeId, idTurma } = req.body || {};
+    const r = await hwqAnswerQuestion({ remoteId, alternativeId, idTurma });
+    res.json({ success: r.ok, authFailed: !!r.authFailed, status: r.status, msg: (r.data && r.data.msg) || r.error || '' });
+  } catch (err) {
+    res.status(500).json({ success: false, msg: err.message });
+  }
+});
+
+// Perfil/plano do aluno no Hardworq — diagnóstico de sessão
+app.get('/api/questions/hardworq/aluno', async (req, res) => {
+  const info = await hwqStudentInfo();
+  res.json({ success: info.ok, authFailed: !!info.authFailed, status: info.status, aluno: info.aluno, plano: info.plano });
+});
+
+// Importação manual (compatibilidade): aceita jsonText/payload colado OU idTurma para buscar na API
 app.post('/api/questions/import-hardworq', async (req, res) => {
   try {
     const { idTurma, cookie, jsonText, payload, qtd_maxima = 20, areas, anos, grupos_prova } = req.body || {};
     let parsedQuestions = [];
 
-    // Se o usuário passou diretamente o payload ou JSON colado
+    if (cookie) HWQ.cookie = String(cookie).trim();
+
     if (payload || jsonText) {
       parsedQuestions = parseHardworqPayload(payload || jsonText);
-    } 
-    // Se o usuário solicitou buscar via endpoint Hardworq
-    else if (idTurma) {
-      const url = `https://extensivo.hardworkmedicina.api.br/banco/questoes/${encodeURIComponent(idTurma)}`;
-      const requestBody = {
-        qtd_maxima: Math.min(100, Math.max(1, parseInt(qtd_maxima, 10) || 20)),
-        areas: areas || ["Clínica Médica","Cirurgia Geral","Pediatria","Ginecologia e Obstetrícia","Medicina Preventiva"],
-        id_prova_similar: 0,
-        ids_instituicoes: [],
-        ids_doencas: [],
-        ids_tags: [],
-        anos: anos || [2026,2025,2024,2023,2022,2021,2020,2019,2018],
-        grupos_prova: grupos_prova || ["R1","REVALIDA"],
-        outra_opcao: ""
-      };
-
-      const headers = {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-      };
-      if (cookie) headers['Cookie'] = cookie;
-
-      const remoteRes = await fetch(url, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!remoteRes.ok) {
-        const errText = await remoteRes.text();
-        return res.status(remoteRes.status).json({
-          error: `Hardworq API retornou status ${remoteRes.status}. A sessão pode exigir cookie ou ticket tt atualizado.`,
-          details: errText
+    } else if (idTurma || HWQ.cookie) {
+      const search = await hwqSearchQuestions({ idTurma, areas, anos, grupos_prova, qtd_maxima });
+      if (search.error || search.authFailed || search.status >= 400) {
+        return res.status(search.authFailed ? 401 : 502).json({
+          error: search.authFailed
+            ? 'Sessão do Hardworq inválida ou expirada (auth:false). Atualize o cookie no .env.'
+            : (search.msg || search.error || `Hardworq API retornou status ${search.status}.`),
+          details: search.data || null
         });
       }
-
-      const remoteData = await remoteRes.json();
-      parsedQuestions = parseHardworqPayload(remoteData);
+      parsedQuestions = parseHardworqPayload(search.questions);
     } else {
-      return res.status(400).json({ error: 'Envie "idTurma" ou "jsonText" com o retorno da API do Hardworq.' });
+      return res.status(400).json({ error: 'Envie "idTurma", "cookie" ou "jsonText" com o retorno da API do Hardworq.' });
     }
 
     if (!parsedQuestions.length) {
       return res.status(400).json({ error: 'Nenhuma questão válida encontrada no formato Hardworq informado.' });
     }
 
-    // Salvar no banco evitando duplicadas
-    const currentBank = readQuestionsBank();
-    const existingKeys = new Set(currentBank.map(q => q.statement.slice(0, 80)));
-    const toAdd = parsedQuestions.filter(q => !existingKeys.has(q.statement.slice(0, 80)));
-
-    if (toAdd.length > 0) {
-      const updated = [...toAdd, ...currentBank];
-      writeQuestionsBank(updated);
-    }
-
-    res.json({
-      success: true,
-      imported: toAdd.length,
-      total: currentBank.length + toAdd.length,
-      ignoredDuplicates: parsedQuestions.length - toAdd.length,
-      questions: toAdd
-    });
+    const merge = mergeQuestionsIntoBank(parsedQuestions);
+    res.json({ success: true, imported: merge.imported, updated: merge.updated, total: merge.total, questions: parsedQuestions });
   } catch (err) {
     console.error('Erro ao importar do Hardworq:', err);
     res.status(500).json({ error: err.message || 'Falha ao processar importação do Hardworq' });
   }
 });
+
+// Alimentador automático a partir do Hardworq (HARDWORQ_AUTO_SYNC=1 no .env)
+async function autoSyncHardworq() {
+  if (!HWQ.autoSync) return;
+  try {
+    const bank = readQuestionsBank();
+    if (bank.length >= HWQ.maxBankSize) return;
+    console.log('🟣 [Hardworq] Auto-sync do banco de questões...');
+    const r = await runHardworqSync({ qtd_maxima: 20 });
+    if (r.ok) console.log(`🟣 [Hardworq] Auto-sync: ${r.imported} novas, ${r.updated} atualizadas.`);
+    else console.warn(`⚠️ [Hardworq] Auto-sync falhou: ${r.msg}`);
+  } catch (err) {
+    console.warn('⚠️ [Hardworq] Auto-sync erro:', err.message);
+  }
+}
+setTimeout(autoSyncHardworq, 20000);
+setInterval(autoSyncHardworq, HWQ.syncIntervalHours * 60 * 60 * 1000);
 
 // 2. Gerar questões sob demanda com Gemini AI (Aba 2)
 app.post('/api/gemini/generate-questions', async (req, res) => {
