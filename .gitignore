@@ -1,0 +1,13 @@
+# Segredos — NUNCA subir
+.env
+
+# Sessão do Hardworq (token do aluno)
+data/hwq-token.json
+
+# Dependências
+node_modules/
+
+# Sistema
+Thumbs.db
+.DS_Store
+*.log
