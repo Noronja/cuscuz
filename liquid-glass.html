@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apple visionOS — Liquid Glass UI Components</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          letterSpacing: {
+            'tight-6': '-0.06em',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      font-family: 'Inter', sans-serif;
+      letter-spacing: -0.06em;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Iridescent Border Utility */
+    .iridescent-border {
+      position: relative;
+    }
+    .iridescent-border::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(56,189,248,0.5), rgba(232,121,249,0.35), rgba(99,102,241,0.5));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    /* Continuous Chromatic Shimmer */
+    .glass-shimmer {
+      position: relative;
+      overflow: hidden;
+    }
+    .glass-shimmer::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+      transition: transform 0.8s ease;
+      pointer-events: none;
+    }
+    .glass-shimmer:hover::after {
+      transform: translateX(100%);
+    }
+
+    /* Ripple Animation */
+    @keyframes ripple-effect {
+      to {
+        transform: scale(2.8);
+        opacity: 0;
+      }
+    }
+    .ripple-bubble {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.3);
+      transform: scale(0);
+      animation: ripple-effect 0.6s ease-out forwards;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-100 dark:bg-[#07090e] text-slate-900 dark:text-slate-100 transition-colors duration-500 overflow-x-hidden selection:bg-cyan-500/30">
+
+  <!-- visionOS Ambient Auroras -->
+  <div class="fixed top-[-10%] left-[-10%] w-[55vw] h-[55vw] rounded-full bg-cyan-500/20 dark:bg-cyan-600/15 blur-[120px] pointer-events-none"></div>
+  <div class="fixed top-[20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-fuchsia-500/15 dark:bg-fuchsia-600/10 blur-[130px] pointer-events-none"></div>
+  <div class="fixed bottom-[-10%] left-[20%] w-[60vw] h-[60vw] rounded-full bg-indigo-500/20 dark:bg-indigo-600/15 blur-[140px] pointer-events-none"></div>
+
+  <!-- 1. LIQUID GLASS NAVIGATION BAR -->
+  <nav class="sticky top-4 z-50 mx-auto w-full max-w-5xl px-4 sm:px-6">
+    <div class="relative flex items-center justify-between px-5 py-3 rounded-2xl backdrop-blur-md shadow-xl bg-white/15 dark:bg-white/10 border border-white/25 dark:border-white/15 iridescent-border">
+      
+      <!-- Brand / Logo -->
+      <a href="/" class="flex items-center gap-3 select-none hover:scale-105 transition-transform duration-200">
+        <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500/30 to-indigo-500/30 border border-white/30 text-cyan-600 dark:text-cyan-300 shadow-sm backdrop-blur-md">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+        </div>
+        <span class="text-lg font-bold tracking-tight-6 text-slate-900 dark:text-white">Liquid Glass</span>
+      </a>
+
+      <!-- Desktop Nav Links -->
+      <div class="hidden md:flex items-center gap-2">
+        <button class="nav-item active px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-105 active:scale-95 text-cyan-900 dark:text-cyan-100 bg-white/35 dark:bg-white/20 shadow-md border border-white/40 dark:border-cyan-400/30 glass-shimmer">
+          Visão Geral
+        </button>
+        <button class="nav-item px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-105 active:scale-95 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/15 dark:hover:bg-white/10 glass-shimmer">
+          Componentes <span class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-cyan-500/20 text-cyan-700 dark:text-cyan-300">vOS</span>
+        </button>
+        <button class="nav-item px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-105 active:scale-95 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/15 dark:hover:bg-white/10 glass-shimmer">
+          Documentação
+        </button>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2">
+        <!-- Light / Dark Toggle Button -->
+        <button id="theme-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/20 dark:bg-white/10 hover:bg-white/30 dark:hover:bg-white/20 border border-white/30 dark:border-white/20 text-slate-800 dark:text-white shadow-md hover:scale-105 active:scale-95 transition-all duration-200">
+          <span id="theme-icon">🌙</span>
+          <span id="theme-text">Modo Escuro</span>
+        </button>
+
+        <a href="/" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-700 dark:text-cyan-300 border border-cyan-400/40 hover:scale-105 active:scale-95 transition-all duration-200">
+          Voltar ao App
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Header -->
+  <main class="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 pt-12 pb-24">
+    <div class="text-center max-w-2xl mx-auto mb-10">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-white/20 dark:bg-white/10 border border-cyan-400/40 text-cyan-700 dark:text-cyan-300 backdrop-blur-md mb-4 shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+        Apple visionOS Component Set
+      </div>
+      <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight-6 text-slate-900 dark:text-white mb-3">
+        Interface "Liquid Glass"
+      </h1>
+      <p class="text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+        Componentes estilizados em Tailwind CSS com transparência <code class="px-1.5 py-0.5 rounded bg-white/20 text-cyan-700 dark:text-cyan-300 text-xs">bg-white/10</code> a <code class="px-1.5 py-0.5 rounded bg-white/20 text-cyan-700 dark:text-cyan-300 text-xs">bg-white/20</code>, <code class="px-1.5 py-0.5 rounded bg-white/20 text-xs">backdrop-blur-md</code>, bordas iridescentes e microinterações de escala 105.
+      </p>
+    </div>
+
+    <!-- 2. LIQUID GLASS TAB MENU -->
+    <div class="flex justify-center mb-12">
+      <div class="inline-flex items-center p-1.5 gap-1.5 rounded-2xl backdrop-blur-md shadow-xl bg-white/15 dark:bg-white/10 border border-white/25 dark:border-white/15 iridescent-border">
+        <button class="tab-btn active px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-105 active:scale-95 text-cyan-900 dark:text-cyan-100 bg-white/40 dark:bg-white/20 shadow-md border border-white/40 dark:border-cyan-400/30 flex items-center gap-2">
+          <span>🌌 Computação Espacial</span>
+          <span class="px-1.5 py-0.5 text-[10px] rounded-full bg-cyan-500 text-white font-bold">3</span>
+        </button>
+        <button class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-105 active:scale-95 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/15 dark:hover:bg-white/10 flex items-center gap-2">
+          <span>✨ Reflexos & Shimmer</span>
+        </button>
+        <button class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-105 active:scale-95 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/15 dark:hover:bg-white/10 flex items-center gap-2">
+          <span>🎛️ Controladores</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. LIQUID GLASS FEATURE CARDS GRID -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      
+      <!-- Card 1 -->
+      <div class="feature-card group relative overflow-hidden rounded-2xl p-7 backdrop-blur-md shadow-xl bg-white/15 dark:bg-white/10 hover:bg-white/20 dark:hover:bg-white/15 border border-white/25 dark:border-white/15 iridescent-border transition-all duration-300 hover:scale-105 active:scale-[0.98] cursor-pointer">
+        <div class="card-spotlight absolute pointer-events-none w-64 h-64 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200" style="background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(56,189,248,0.12) 40%, transparent 70%);"></div>
+        <div class="relative z-10">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 rounded-xl bg-white/20 dark:bg-white/15 border border-white/30 text-cyan-600 dark:text-cyan-300 flex items-center justify-center text-xl shadow-md transition-transform duration-300 group-hover:scale-110">
+              💎
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-400/30">
+              visionOS 2
+            </span>
+          </div>
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
+            Janelas de Vidro Líquido
+          </h3>
+          <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-5">
+            Superfícies translúcidas que adaptam contraste dinâmico conforme a cena física externa ou modo de iluminação.
+          </p>
+          <button class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white/25 dark:bg-white/10 hover:bg-cyan-500/20 text-slate-800 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-300 border border-white/30 dark:border-white/20 transition-all">
+            <span>Explorar superfície</span>
+            <span>→</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Card 2 (Featured) -->
+      <div class="feature-card group relative overflow-hidden rounded-2xl p-7 backdrop-blur-md shadow-xl bg-gradient-to-br from-white/20 via-white/10 to-cyan-500/10 dark:from-white/15 dark:via-white/10 dark:to-cyan-400/15 border border-white/25 dark:border-white/15 iridescent-border transition-all duration-300 hover:scale-105 active:scale-[0.98] cursor-pointer shadow-cyan-500/10">
+        <div class="card-spotlight absolute pointer-events-none w-64 h-64 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200" style="background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, rgba(56,189,248,0.15) 40%, transparent 70%);"></div>
+        <div class="relative z-10">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 rounded-xl bg-white/20 dark:bg-white/15 border border-white/30 text-cyan-600 dark:text-cyan-300 flex items-center justify-center text-xl shadow-md transition-transform duration-300 group-hover:scale-110">
+              🌈
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300 border border-fuchsia-400/30">
+              Iridescente
+            </span>
+          </div>
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
+            Dispersão Cromática
+          </h3>
+          <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-5">
+            Bordas com degradê de microdispersão óptica reagindo ao ângulo de visão e coordenadas do cursor do usuário.
+          </p>
+          <button class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white/25 dark:bg-white/10 hover:bg-cyan-500/20 text-slate-800 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-300 border border-white/30 dark:border-white/20 transition-all">
+            <span>Interagir com borda</span>
+            <span>→</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="feature-card group relative overflow-hidden rounded-2xl p-7 backdrop-blur-md shadow-xl bg-white/15 dark:bg-white/10 hover:bg-white/20 dark:hover:bg-white/15 border border-white/25 dark:border-white/15 iridescent-border transition-all duration-300 hover:scale-105 active:scale-[0.98] cursor-pointer">
+        <div class="card-spotlight absolute pointer-events-none w-64 h-64 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200" style="background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(56,189,248,0.12) 40%, transparent 70%);"></div>
+        <div class="relative z-10">
+          <div class="flex items-center justify-between mb-4">
+            <div class="w-12 h-12 rounded-xl bg-white/20 dark:bg-white/15 border border-white/30 text-cyan-600 dark:text-cyan-300 flex items-center justify-center text-xl shadow-md transition-transform duration-300 group-hover:scale-110">
+              ⚡
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-400/30">
+              Microinteração
+            </span>
+          </div>
+          <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
+            Feedback Tátil Visual
+          </h3>
+          <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-5">
+            Ondas concêntricas de clique (ripple), animação de escala 105 no hover e transições suaves de interpolação.
+          </p>
+          <button class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white/25 dark:bg-white/10 hover:bg-cyan-500/20 text-slate-800 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-300 border border-white/30 dark:border-white/20 transition-all">
+            <span>Disparar ripple</span>
+            <span>→</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 4. LIQUID GLASS TOGGLES / INTERRUPTORES -->
+    <div class="p-8 rounded-2xl backdrop-blur-md shadow-xl bg-white/15 dark:bg-white/10 border border-white/25 dark:border-white/15 iridescent-border">
+      <div class="max-w-xl mb-6">
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">Interruptores (Toggle Switches)</h2>
+        <p class="text-sm text-slate-600 dark:text-slate-300">
+          Trilhas translúcidas com thumb líquido, halo de luz ciano no estado ativo e microinterações de clique.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
+        
+        <!-- Large Toggle -->
+        <div class="flex items-center gap-4 cursor-pointer select-none" onclick="toggleSwitch('toggle-1')">
+          <button id="toggle-1" class="relative w-20 h-10 p-1.5 flex items-center shrink-0 rounded-full transition-all duration-300 ease-out hover:scale-105 active:scale-95 backdrop-blur-md shadow-xl overflow-hidden bg-gradient-to-r from-cyan-500/30 via-sky-500/25 to-indigo-500/30 iridescent-border" data-checked="true">
+            <span class="toggle-thumb relative z-10 w-7 h-7 rounded-full shadow-lg transition-transform duration-300 bg-white flex items-center justify-center translate-x-10">
+              <span class="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+            </span>
+          </button>
+          <div>
+            <div class="text-sm font-semibold text-slate-900 dark:text-white">Áudio Espacial</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">Tamanho Grande (lg)</div>
+          </div>
+        </div>
+
+        <!-- Medium Toggle -->
+        <div class="flex items-center gap-4 cursor-pointer select-none" onclick="toggleSwitch('toggle-2')">
+          <button id="toggle-2" class="relative w-16 h-8 p-1 flex items-center shrink-0 rounded-full transition-all duration-300 ease-out hover:scale-105 active:scale-95 backdrop-blur-md shadow-xl overflow-hidden bg-gradient-to-r from-cyan-500/30 via-sky-500/25 to-indigo-500/30 iridescent-border" data-checked="true">
+            <span class="toggle-thumb relative z-10 w-6 h-6 rounded-full shadow-lg transition-transform duration-300 bg-white flex items-center justify-center translate-x-8">
+              <span class="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+            </span>
+          </button>
+          <div>
+            <div class="text-sm font-semibold text-slate-900 dark:text-white">Seguir Olhar</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">Tamanho Médio (md)</div>
+          </div>
+        </div>
+
+        <!-- Small Toggle -->
+        <div class="flex items-center gap-4 cursor-pointer select-none" onclick="toggleSwitch('toggle-3')">
+          <button id="toggle-3" class="relative w-12 h-6 p-0.5 flex items-center shrink-0 rounded-full transition-all duration-300 ease-out hover:scale-105 active:scale-95 backdrop-blur-md shadow-xl overflow-hidden bg-slate-900/10 dark:bg-white/10 iridescent-border" data-checked="false">
+            <span class="toggle-thumb relative z-10 w-5 h-5 rounded-full shadow-lg transition-transform duration-300 bg-white/90 flex items-center justify-center translate-x-0">
+              <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+            </span>
+          </button>
+          <div>
+            <div class="text-sm font-semibold text-slate-900 dark:text-white">Pass-through</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400">Tamanho Pequeno (sm)</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Theme Switcher (Light / Dark)
+    const themeBtn = document.getElementById('theme-btn');
+    const themeIcon = document.getElementById('theme-icon');
+    const themeText = document.getElementById('theme-text');
+    const htmlEl = document.documentElement;
+
+    themeBtn.addEventListener('click', () => {
+      htmlEl.classList.toggle('dark');
+      const isDark = htmlEl.classList.contains('dark');
+      themeIcon.textContent = isDark ? '🌙' : '☀️';
+      themeText.textContent = isDark ? 'Modo Escuro' : 'Modo Claro';
+    });
+
+    // Ripple click handler for any glass element
+    document.addEventListener('pointerdown', (e) => {
+      const target = e.target.closest('button, .feature-card, .tab-btn');
+      if (!target) return;
+
+      const rect = target.getBoundingClientRect();
+      const ripple = document.createElement('span');
+      ripple.className = 'ripple-bubble';
+      const size = Math.max(rect.width, rect.height) * 1.5;
+      ripple.style.width = size + 'px';
+      ripple.style.height = size + 'px';
+      ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+      ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+
+      target.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+    });
+
+    // Card Cursor Spotlight tracking (visionOS specular eye-tracking effect)
+    document.querySelectorAll('.feature-card').forEach((card) => {
+      const spotlight = card.querySelector('.card-spotlight');
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        spotlight.style.left = (e.clientX - rect.left) + 'px';
+        spotlight.style.top = (e.clientY - rect.top) + 'px';
+      });
+    });
+
+    // Toggle switch interaction
+    function toggleSwitch(id) {
+      const btn = document.getElementById(id);
+      const isChecked = btn.dataset.checked === 'true';
+      const newChecked = !isChecked;
+      btn.dataset.checked = String(newChecked);
+
+      const thumb = btn.querySelector('.toggle-thumb');
+      const dot = thumb.querySelector('span');
+
+      const maxTranslate = id === 'toggle-1' ? 'translate-x-10' : id === 'toggle-2' ? 'translate-x-8' : 'translate-x-6';
+
+      if (newChecked) {
+        btn.classList.remove('bg-slate-900/10', 'dark:bg-white/10');
+        btn.classList.add('bg-gradient-to-r', 'from-cyan-500/30', 'via-sky-500/25', 'to-indigo-500/30');
+        thumb.classList.remove('translate-x-0', 'bg-white/90');
+        thumb.classList.add(maxTranslate, 'bg-white');
+        dot.classList.remove('bg-slate-400');
+        dot.classList.add('bg-cyan-500');
+      } else {
+        btn.classList.add('bg-slate-900/10', 'dark:bg-white/10');
+        btn.classList.remove('bg-gradient-to-r', 'from-cyan-500/30', 'via-sky-500/25', 'to-indigo-500/30');
+        thumb.classList.add('translate-x-0', 'bg-white/90');
+        thumb.classList.remove(maxTranslate, 'bg-white');
+        dot.classList.add('bg-slate-400');
+        dot.classList.remove('bg-cyan-500');
+      }
+    }
+
+    // Tabs switching
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          b.classList.remove('active', 'text-cyan-900', 'dark:text-cyan-100', 'bg-white/40', 'dark:bg-white/20', 'shadow-md', 'border-white/40', 'dark:border-cyan-400/30');
+          b.classList.add('text-slate-600', 'dark:text-slate-300');
+        });
+        btn.classList.add('active', 'text-cyan-900', 'dark:text-cyan-100', 'bg-white/40', 'dark:bg-white/20', 'shadow-md', 'border-white/40', 'dark:border-cyan-400/30');
+        btn.classList.remove('text-slate-600', 'dark:text-slate-300');
+      });
+    });
+  </script>
+</body>
+</html>

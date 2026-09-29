@@ -1,0 +1,474 @@
+[
+  {
+    "id": "q-hw-303089",
+    "specialty": "Clínica Médica",
+    "subspecialty": "R1",
+    "institution": "CMC",
+    "year": 2022,
+    "statement": "Paciente de 45 anos é trazido ao pronto atendimento com dor torácica retroesternal opressiva há 2 horas. Ao ECG: elevação de segmento ST de 2 mm em derivações V1 a V4. Qual a artéria coronária mais provável de estar ocluída?",
+    "options": [
+      "A) Coronária Direta",
+      "B) Descendente Anterior",
+      "C) Circunflexa",
+      "D) Artéria Marginal Esquerda"
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "Questão oficial de prova (CMC 2022 - R1). Gabarito confirmado: Alternativa B.",
+    "difficulty": "Médio",
+    "tags": [
+      "CMC",
+      "R1",
+      "CMC2022R1-80"
+    ],
+    "createdAt": "2026-09-29T17:22:55.629Z",
+    "source": "Hardworq (CMC2022R1-80)"
+  },
+  {
+    "id": "q-gemini-1790701501090-1",
+    "specialty": "Clínica Médica",
+    "subspecialty": "Cardiologia",
+    "institution": "Gerador Gemini AI",
+    "year": 2026,
+    "statement": "Paciente masculino, 62 anos, hipertenso e tabagista, dá entrada no pronto-socorro com dor precordial opressiva de forte intensidade há 2 horas. Ao exame: PA 100/60 mmHg, FC 98 bpm, FR 20 irpm, SatO2 94%. ECG mostra supradesnivelamento do segmento ST de 3mm em V2, V3, V4, V5 e V6. Qual a conduta imediata mais adequada para este paciente?",
+    "options": [
+      "A) Iniciar betabloqueador oral imediatamente, seguido de estreptoquinase.",
+      "B) Administrar 300mg de ácido acetilsalicílico, 180mg de ticagrelor e encaminhar para angioplastia primária.",
+      "C) Realizar tomografia de tórax para descartar dissecção aórtica antes de qualquer medicação.",
+      "D) Iniciar infusão contínua de heparina não fracionada e aguardar melhora da dor.",
+      "E) Administrar morfina endovenosa e aguardar o resultado de troponina para definir conduta."
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "O paciente apresenta um IAM com supra de ST (IAMCSST). A conduta padrão-ouro é a reperfusão mecânica (angioplastia primária) em tempo hábil, associada à terapia antiagregante plaquetária dupla (AAS + inibidor P2Y12, preferencialmente ticagrelor ou prasugrel). Betabloqueador na fase aguda pode ser deletério se houver sinais de baixo débito ou risco de choque. A tomografia não é necessária se o ECG é diagnóstico. A espera por troponina retarda a reperfusão.",
+    "difficulty": "Médio",
+    "tags": [
+      "IAMCSST",
+      "Angioplastia",
+      "Antiagregação",
+      "Emergência Cardiovascular"
+    ],
+    "createdAt": "2026-09-29T17:05:01.090Z",
+    "source": "Gerador Gemini"
+  },
+  {
+    "id": "q-gemini-1790701501090-2",
+    "specialty": "Clínica Médica",
+    "subspecialty": "Cardiologia",
+    "institution": "Gerador Gemini AI",
+    "year": 2026,
+    "statement": "Paciente de 55 anos, internado em unidade coronariana por IAM inferior, evolui subitamente com rebaixamento do nível de consciência. Monitor apresenta taquicardia ventricular monomórfica sem pulso. Qual a conduta inicial mandatória?",
+    "options": [
+      "A) Administrar amiodarona 300mg IV em bolus.",
+      "B) Realizar manobra vagal imediata.",
+      "C) Aplicar choque sincronizado de 100J.",
+      "D) Iniciar RCP de alta qualidade e preparar desfibrilação (choque não sincronizado).",
+      "E) Administrar adenosina 6mg em bolus rápido."
+    ],
+    "correctIndex": 3,
+    "correctLetter": "D",
+    "explanation": "Trata-se de uma parada cardiorrespiratória (PCR) em ritmo de TV sem pulso. Segundo as diretrizes do ACLS, em qualquer ritmo de PCR (FV ou TV sem pulso), a conduta é a desfibrilação (choque não sincronizado) associada à RCP de alta qualidade. Choque sincronizado é indicado para taquiarritmias instáveis COM pulso.",
+    "difficulty": "Médio",
+    "tags": [
+      "ACLS",
+      "TV sem pulso",
+      "PCR",
+      "Ressuscitação"
+    ],
+    "createdAt": "2026-09-29T17:05:01.090Z",
+    "source": "Gerador Gemini"
+  },
+  {
+    "id": "q-gemini-1790701501090-3",
+    "specialty": "Clínica Médica",
+    "subspecialty": "Cardiologia",
+    "institution": "Gerador Gemini AI",
+    "year": 2026,
+    "statement": "Mulher, 70 anos, com história de insuficiência cardíaca crônica, é admitida com dispneia progressiva e hipotensão (PA 85/50 mmHg), extremidades frias e enchimento capilar lentificado. ECG revela taquicardia sinusal e ecocardiograma mostra FEVE de 25% com sinais de congestão pulmonar grave. Qual a droga vasoativa de escolha inicial para este quadro de choque cardiogênico?",
+    "options": [
+      "A) Noradrenalina.",
+      "B) Dobutamina.",
+      "C) Vasopressina.",
+      "D) Fenilefrina.",
+      "E) Dopamina em dose alta.",
+      "F) Milrinona."
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "No choque cardiogênico com hipotensão e sinais de hipoperfusão, a dobutamina é o inotrópico de escolha para melhorar o débito cardíaco. Embora a noradrenalina possa ser necessária em casos de hipotensão grave refratária para manter a pressão de perfusão coronariana, a dobutamina é o agente de primeira linha para suporte inotrópico no choque cardiogênico.",
+    "difficulty": "Médio",
+    "tags": [
+      "Choque Cardiogênico",
+      "Dobutamina",
+      "Insuficiência Cardíaca",
+      "Inotrópicos"
+    ],
+    "createdAt": "2026-09-29T17:05:01.090Z",
+    "source": "Gerador Gemini"
+  },
+  {
+    "id": "q-gemini-1790701501090-4",
+    "specialty": "Clínica Médica",
+    "subspecialty": "Cardiologia",
+    "institution": "Gerador Gemini AI",
+    "year": 2026,
+    "statement": "Paciente 68 anos, admitido por palpitações. ECG mostra taquicardia de complexo largo, rítmica, com frequência de 160 bpm. O paciente apresenta-se sudoreico e com PA 80/50 mmHg. Qual a conduta imediata?",
+    "options": [
+      "A) Adenosina 6mg IV.",
+      "B) Amiodarona 150mg IV.",
+      "C) Cardioversão elétrica sincronizada.",
+      "D) Procainamida IV.",
+      "E) Verapamil IV."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "Qualquer taquiarritmia (seja de complexo largo ou estreito) que se apresente com sinais de instabilidade hemodinâmica (hipotensão, alteração do nível de consciência, dor torácica isquêmica, sinais de choque) tem indicação mandatória de cardioversão elétrica sincronizada imediata.",
+    "difficulty": "Médio",
+    "tags": [
+      "Taquicardia",
+      "Instabilidade Hemodinâmica",
+      "Cardioversão",
+      "Emergência"
+    ],
+    "createdAt": "2026-09-29T17:05:01.090Z",
+    "source": "Gerador Gemini"
+  },
+  {
+    "id": "q-gemini-1790701501090-5",
+    "specialty": "Clínica Médica",
+    "subspecialty": "Cardiologia",
+    "institution": "Gerador Gemini AI",
+    "year": 2026,
+    "statement": "Um paciente de 50 anos, sem antecedentes, sofre um IAM de parede anterior. No segundo dia de internação, apresenta episódios recorrentes de TV monomórfica não sustentada. Qual a conduta para prevenir a progressão para arritmias ventriculares malignas nesta fase?",
+    "options": [
+      "A) Iniciar amiodarona profilática para todos os pacientes com IAM.",
+      "B) Realizar estudo eletrofisiológico invasivo de rotina.",
+      "C) Otimizar o bloqueio beta-adrenérgico e corrigir distúrbios eletrolíticos (K+ e Mg2+).",
+      "D) Indicar implante de CDI (Cardioversor Desfibrilador Implantável) nas primeiras 48h.",
+      "E) Administrar lidocaína profilática por 7 dias."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "No contexto pós-IAM, a prevenção de arritmias ventriculares baseia-se na otimização do tratamento clínico, especialmente com betabloqueadores, que reduzem a mortalidade e a incidência de arritmias. A correção de distúrbios eletrolíticos é fundamental. O uso profilático de amiodarona ou lidocaína não é recomendado de rotina. O CDI só é indicado para prevenção primária após avaliação da FEVE após pelo menos 40 dias do evento agudo.",
+    "difficulty": "Médio",
+    "tags": [
+      "IAM",
+      "Arritmias Ventriculares",
+      "Betabloqueador",
+      "Profilaxia"
+    ],
+    "createdAt": "2026-09-29T17:05:01.090Z",
+    "source": "Gerador Gemini"
+  },
+  {
+    "id": "q-gemini-1790700476489-1",
+    "specialty": "Clínica Médica",
+    "subspecialty": "Cardiologia",
+    "institution": "Gerador Gemini AI",
+    "year": 2026,
+    "statement": "Homem, 68 anos, hipertenso, é admitido no pronto-socorro com queixa de precordialgia opressiva iniciada há 2 horas, associada a sudorese profusa. Ao exame: PA 100/60 mmHg, FC 110 bpm, FR 22 irpm, saturação de oxigênio 92% em ar ambiente. Ausculta pulmonar com estertores crepitantes em bases. ECG revela supra de segmento ST em derivações DII, DIII e aVF, com infra de ST em DI e aVL. Qual a conduta imediata mais adequada para este paciente?",
+    "options": [
+      "A) Administração de nitroglicerina sublingual para alívio da dor.",
+      "B) Expansão volêmica com 500ml de soro fisiológico 0,9%.",
+      "C) Administração imediata de betabloqueador venoso.",
+      "D) Realização de trombólise química com alteplase.",
+      "E) Punção de acesso venoso central para monitorização de pressão venosa central."
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "O caso descreve um infarto agudo do miocárdio com supra de ST de parede inferior. A presença de hipotensão e estertores pulmonares em um IAM de parede inferior sugere fortemente o acometimento de ventrículo direito (IAMVD). O tratamento inicial do IAMVD envolve a otimização da pré-carga através da expansão volêmica. Nitroglicerina e betabloqueadores (alternativas A e C) são contraindicados neste contexto devido ao risco de choque grave por redução da pré-carga. A trombólise é indicada, mas a medida imediata de estabilização hemodinâmica é a expansão volêmica.",
+    "difficulty": "Médio",
+    "tags": [
+      "IAM",
+      "IAMVD",
+      "Emergência Cardiovascular"
+    ],
+    "createdAt": "2026-09-29T16:47:56.489Z",
+    "source": "Gerador Gemini"
+  },
+  {
+    "id": "q-gemini-1790700476489-2",
+    "specialty": "Clínica Médica",
+    "subspecialty": "Cardiologia",
+    "institution": "Gerador Gemini AI",
+    "year": 2026,
+    "statement": "Paciente de 55 anos, sexo feminino, chega ao pronto-socorro com quadro de palpitações e tontura. Ao exame, apresenta PA 80/50 mmHg, FC 180 bpm, sudorese, pele fria e rebaixamento do nível de consciência (Escala de Coma de Glasgow 13). O monitor mostra uma taquicardia de complexo estreito regular. Qual a conduta inicial mandatória?",
+    "options": [
+      "A) Manobras vagais.",
+      "B) Administração de adenosina 6mg em bolus rápido.",
+      "C) Cardioversão elétrica sincronizada.",
+      "D) Administração de verapamil venoso.",
+      "E) Solicitação de ecocardiograma transtorácico de urgência."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "O paciente apresenta um quadro de taquicardia supraventricular instável (sinais de choque, rebaixamento do nível de consciência e hipotensão). Segundo os protocolos do ACLS, em qualquer arritmia com instabilidade hemodinâmica, a conduta mandatória e imediata é a cardioversão elétrica sincronizada. Manobras vagais e adenosina são indicadas apenas para pacientes estáveis. O verapamil é contraindicado em pacientes hipotensos devido ao seu efeito inotrópico negativo.",
+    "difficulty": "Médio",
+    "tags": [
+      "Taquicardia",
+      "ACLS",
+      "Emergência Cardiovascular"
+    ],
+    "createdAt": "2026-09-29T16:47:56.489Z",
+    "source": "Gerador Gemini"
+  },
+  {
+    "id": "q-auto-1790700467771-0",
+    "specialty": "Cardiologia",
+    "subspecialty": "Síndromes Coronarianas Agudas",
+    "institution": "Auto-Feed IA Diário",
+    "year": 2026,
+    "statement": "Paciente masculino, 62 anos, hipertenso e diabético, chega ao pronto-socorro com dor retroesternal opressiva de forte intensidade iniciada há 40 minutos, associada a sudorese profusa. Ao exame físico: PA 150/90 mmHg, FC 88 bpm, ausculta pulmonar limpa. ECG realizado aos 10 minutos mostra supradesnivelamento do segmento ST de 3mm em V2-V5. Qual é a conduta inicial mais adequada após a administração de AAS e antiagregante P2Y12 (ticagrelor ou clopidogrel)?",
+    "options": [
+      "Administrar tenecteplase imediatamente e transferir para angioplastia primária em até 24 horas.",
+      "Aguardar resultado de troponina ultrassensível para confirmar o diagnóstico de IAM com supra antes de proceder com a angioplastia.",
+      "Encaminhar para cineangiocoronariografia (angioplastia primária) com objetivo de tempo porta-balão inferior a 90 minutos.",
+      "Iniciar infusão de nitroglicerina endovenosa para redução do supradesnivelamento antes do procedimento intervencionista.",
+      "Realizar ecocardiograma transtorácico à beira leito para descartar dissecção aguda de aorta antes da anticoagulação."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "No IAM com supra de ST, o tempo é músculo. A estratégia de reperfusão preferencial é a angioplastia primária. Se o hospital possui serviço de hemodinâmica, o tempo porta-balão deve ser < 90 min. Se não for possível, deve-se considerar a trombólise química (tempo porta-agulha < 30 min).",
+    "difficulty": "Médio",
+    "tags": [
+      "IAMCSST",
+      "Emergência",
+      "Reperfusão"
+    ],
+    "createdAt": "2026-09-29T16:47:47.771Z",
+    "source": "Auto-Feed Diário"
+  },
+  {
+    "id": "q-auto-1790700467771-1",
+    "specialty": "Cardiologia",
+    "subspecialty": "Arritmias",
+    "institution": "Auto-Feed IA Diário",
+    "year": 2026,
+    "statement": "Mulher, 70 anos, relata episódios de palpitações seguidos de pré-síncope. Traz ECG de emergência revelando taquicardia de complexo estreito, regular, com frequência de 170 bpm, sem ondas P visíveis. A paciente apresenta-se sudoreica, com PA 85/50 mmHg e rebaixamento do nível de consciência. Qual a conduta imediata mais apropriada?",
+    "options": [
+      "Administrar adenosina 6 mg em bolus rápido.",
+      "Realizar manobras vagais vigorosas por 30 segundos.",
+      "Cardioversão elétrica sincronizada com 100J.",
+      "Amiodarona 150 mg endovenosa em 10 minutos.",
+      "Beta-bloqueador endovenoso (metoprolol) para controle da frequência cardíaca."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "A paciente apresenta um quadro de taquiarritmia sintomática com instabilidade hemodinâmica (hipotensão e alteração de consciência). Conforme os protocolos de ACLS, a presença de instabilidade exige cardioversão elétrica sincronizada imediata, independentemente do tipo de taquicardia de complexo estreito.",
+    "difficulty": "Médio",
+    "tags": [
+      "ACLS",
+      "Taquicardia",
+      "Emergência"
+    ],
+    "createdAt": "2026-09-29T16:47:47.771Z",
+    "source": "Auto-Feed Diário"
+  },
+  {
+    "id": "q-cm-001",
+    "specialty": "Clínica Médica",
+    "subspecialty": "Cardiologia",
+    "institution": "USP / ENARE",
+    "year": 2024,
+    "statement": "Homem de 63 anos, hipertenso e tabagista de 40 maços-ano, dá entrada na sala de emergência com dor retroesternal em aperto iniciada há 90 minutos, de forte intensidade (9/10), com irradiação para mandíbula e membro superior esquerdo, acompanhada de sudorese fria e náuseas. Sinais vitais: PA = 150/95 mmHg, FC = 88 bpm, SatO2 = 96% em ar ambiente. O eletrocardiograma (ECG) realizado em 6 minutos revela supradesnivelamento do segmento ST de 3 mm em DII, DIII e aVF, com infradesnivelamento recíproco em DI e aVL. O hospital conta com serviço de hemodinâmica ativo disponível 24h, com tempo porta-balão estimado em 45 minutos. Considerando as diretrizes atuais para a abordagem do infarto com supradesnivelamento de ST (IAMCSST), qual é a conduta imediata mais indicada?",
+    "options": [
+      "A) Iniciar trombolítico com Tenecteplase imediatamente e avaliar necessidade de resgate após 90 minutos.",
+      "B) Encaminhar para intervenção coronária percutânea (ICP) primária com tempo porta-balão previsto < 90 minutos, associando dupla antiagregação plaquetária e anticoagulação plena.",
+      "C) Administrar betabloqueador venoso em bolus para redução do consumo miocárdico de oxigênio antes de qualquer intervenção invasiva.",
+      "D) Aguardar resultado da troponina ultrassensível para confirmação diagnóstica antes de transferir à sala de hemodinâmica.",
+      "E) Realizar ecocardiograma transtorácico de urgência para estimar a fração de ejeção e orientar a escolha entre angioplastia e cirurgia de revascularização."
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "No IAM com supra de ST (IAMCSST), o tempo é miocárdio. Em hospitais com laboratório de hemodinâmica e capacidade de realizar ICP primária com tempo porta-balão inferior a 90 minutos (ou < 120 min para pacientes transferidos), a angioplastia primária é a estratégia de reperfusão de escolha indiscutível. O ECG típico dispensa a espera de biomarcadores cardíacos para a indicação da reperfusão. A trombólise só é a conduta inicial se a ICP primária não puder ser realizada em até 120 minutos. Betabloqueador venoso na fase hiperaguda é contraindicado se houver risco de choque ou insuficiência cardíaca.",
+    "tags": [
+      "Cardiologia",
+      "IAMCSST",
+      "Emergência",
+      "ECG"
+    ],
+    "createdAt": "2026-09-29T10:00:00.000Z",
+    "source": "Banco Oficial"
+  },
+  {
+    "id": "q-cir-002",
+    "specialty": "Cirurgia Geral",
+    "subspecialty": "Abdome Agudo",
+    "institution": "Revalida INEP",
+    "year": 2024,
+    "statement": "Jovem de 24 anos, previamente hígido, procura o pronto-socorro com queixa de dor abdominal iniciada há 18 horas, de início periumbilical e difuso, de caráter vago, que migrou nas últimas 6 horas para a fossa ilíaca direita, tornando-se contínua e de forte intensidade. Relata febre não medida, náuseas e anorexia total. Ao exame físico: paciente em posição antálgica, FC = 96 bpm, Tax = 38,1 °C; abdome plano, ruídos hidroaéreos diminuídos, dor intensa à palpação do ponto de McBurney com descompressão brusca dolorosa positiva (sinal de Blumberg). Hemograma: 14.500 leucócitos/mm³ com 8% de bastonetes. Diante desse quadro clínico e laboratorial clássico, a conduta mais apropriada é:",
+    "options": [
+      "A) Solicitar tomografia computadorizada de abdome total com contraste e manter o paciente em jejum sem analgesia.",
+      "B) Prescrever ciprofloxacino e metronidazol por via oral e dar alta com retorno ambulatorial em 48 horas.",
+      "C) Indicar apendicectomia de urgência (videolaparoscópica ou aberta), com antibioticoprofilaxia iniciada na indução anestésica.",
+      "D) Realizar paracentese diagnóstica no quadrante inferior direito para análise citológica do líquido peritoneal.",
+      "E) Solicitar colonoscopia urgente para descartar diverticulite do ceco ou doença inflamatória intestinal."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "O quadro é típico de apendicite aguda (escore de Alvarado alto: dor migratória, anorexia, febre, descompressão brusca e leucocitose com desvio à esquerda em paciente jovem do sexo masculino). Em homens jovens com apresentação clínica inequívoca, o diagnóstico é eminentemente clínico e a conduta é a intervenção cirúrgica de urgência (apendicectomia). Exames tomográficos adicionais são reservados para apresentações atípicas, mulheres em idade fértil (diagnóstico diferencial ginecológico) ou idosos.",
+    "tags": [
+      "Cirurgia",
+      "Apendicite Aguda",
+      "Abdome Agudo Inflamatório"
+    ],
+    "createdAt": "2026-09-29T10:00:00.000Z",
+    "source": "Banco Oficial"
+  },
+  {
+    "id": "q-ped-003",
+    "specialty": "Pediatria",
+    "subspecialty": "Infectologia / Exantemáticas",
+    "institution": "UNICAMP",
+    "year": 2024,
+    "statement": "Menina de 3 anos é levada à Unidade Básica de Saúde pela mãe devido a quadro de febre alta (39,2 °C) de início súbito há 4 dias, associada a irritabilidade e recusa alimentar, sem outros sintomas aparentes. No 4º dia de evolução, a febre cessou abruptamente (defervescência em crise) e, poucas horas depois, surgiu um exantema maculopapular róseo, não pruriginoso, iniciando-se no tronco e pescoço e disseminando-se discretamente para a face e extremidades. Ao exame físico atual: criança em bom estado geral, efebril, ativa, hidratada, sem visceromegalias ou sinais meníngeos. O diagnóstico mais provável e o agente etiológico responsável são:",
+    "options": [
+      "A) Sarampo — Morbillivirus.",
+      "B) Escarlatina — Streptococcus pyogenes.",
+      "C) Exantema Súbito (Roséola Infantil) — Herpes-vírus humano tipo 6 (HHV-6).",
+      "D) Rubéola — Rubivirus.",
+      "E) Eritema Infeccioso — Parvovírus B19."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "O Exantema Súbito (ou Roséola Infantil), causado principalmente pelo Herpes-vírus humano tipo 6 (HHV-6) e menos frequentemente pelo HHV-7, acomete lactentes e pré-escolares entre 6 meses e 3 anos. Sua marca clínica patognomônica é a febre alta súbita que dura de 3 a 5 dias, na qual a criança permanece com aspecto relativamente preservado, seguida pelo desaparecimento súbito da febre (crise) concomitante ao aparecimento do exantema maculopapular róseo que se inicia no tronco. O tratamento é de suporte.",
+    "tags": [
+      "Pediatria",
+      "Exantema Súbito",
+      "Infectologia Pediátrica"
+    ],
+    "createdAt": "2026-09-29T10:00:00.000Z",
+    "source": "Banco Oficial"
+  },
+  {
+    "id": "q-go-004",
+    "specialty": "Ginecologia e Obstetrícia",
+    "subspecialty": "Hipertensão na Gestação",
+    "institution": "USP-RP",
+    "year": 2024,
+    "statement": "Primigesta de 28 anos, idade gestacional de 34 semanas confirmada por ultrassonografia de primeiro trimestre, comparece à consulta de pré-natal assintomática. Ao exame físico: PA aferida em duas ocasiões com intervalo de 4 horas: 155/100 mmHg e 150/98 mmHg. Edema de membros inferiores 2+/4+. Exames laboratoriais de triagem revelam: proteinúria de fita reagente 2+, relação proteína/creatinina urinária = 0,45 mg/mg (VN < 0,3); plaquetas = 195.000/mm³; creatinina = 0,8 mg/dL; TGO = 28 U/L; TGP = 25 U/L; bilirrubinas normais. Não refere cefaleia, alterações visuais ou dor em hipocôndrio direito. A vitalidade fetal é confirmada como preservada (cardiotocografia reativa e perfil biofísico fetal 10/10). A classificação do distúrbio hipertensivo e a melhor conduta são, respectivamente:",
+    "options": [
+      "A) Hipertensão arterial crônica; indicar cesariana imediata devido ao risco materno-fetal.",
+      "B) Pré-eclâmpsia sem sinais de gravidade; conduta expectante sob vigilância estrita ambulatorial/hospitalar com controle pressórico e reavaliação seriada de vitalidade fetal até completar 37 semanas.",
+      "C) Pré-eclâmpsia com sinais de gravidade (grave); realizar corticoterapia e interrupção da gestação em 48 horas.",
+      "D) Hipertensão gestacional transitória; suspender pré-natal e orientar repouso absoluto no leito até o termo.",
+      "E) Eclâmpsia iminente; iniciar sulfato de magnésio imediatamente e proceder ao parto vaginal induzido nas próximas 6 horas."
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "Trata-se de Pré-eclâmpsia sem critérios de gravidade, caracterizada por hipertensão (PAS >= 140 ou PAD >= 90 mmHg) surgida após 20 semanas de gestação associada à proteinúria significativa (relação P/C > 0,3), sem critérios de gravidade (ausência de sintomas neurológicos/visuais, plaquetopenia < 100.000, elevação de transaminases > 2x o limite normal, creatinina > 1,1 mg/dL ou edema agudo de pulmão). Entre 34 e 37 semanas, na ausência de deterioração clínica materna ou sofrimento fetal, a conduta recomendada é expectante, postergando o parto preferencialmente até 37 semanas com vigilância rigorosa.",
+    "tags": [
+      "Ginecologia e Obstetrícia",
+      "Pré-eclâmpsia",
+      "Hipertensão Gestacional"
+    ],
+    "createdAt": "2026-09-29T10:00:00.000Z",
+    "source": "Banco Oficial"
+  },
+  {
+    "id": "q-prev-005",
+    "specialty": "Medicina Preventiva e Social",
+    "subspecialty": "Epidemiologia e Bioestatística",
+    "institution": "SUS-SP / UNIFESP",
+    "year": 2024,
+    "statement": "Um grupo de pesquisadores médicos realizou um estudo para investigar a associação entre o uso crônico de inibidores da bomba de prótons (IBP) e a incidência de fraturas ósseas por osteoporose em idosos. Para isso, selecionaram 2.500 pacientes com fratura recente de quadril confirmada por radiografia e 2.500 pacientes de mesma faixa etária e sexo sem fratura óssea. Em seguida, entrevistaram os pacientes e revisaram seus prontuários médicos para verificar o histórico prévio de exposição ao IBP nos últimos 5 anos. Qual é o delineamento metodológico desse estudo e qual a principal medida de associação epidemiológica a ser calculada?",
+    "options": [
+      "A) Ensaio clínico randomizado; Risco Relativo (RR).",
+      "B) Estudo de coorte prospectivo; Risco Relativo (RR).",
+      "C) Estudo de caso-controle; Odds Ratio (Razão de Chances).",
+      "D) Estudo transversal (seccional); Razão de Prevalência (RP).",
+      "E) Estudo ecológico; Coeficiente de correlação de Pearson."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "O estudo partiu da presença ou ausência do desfecho/doença (casos = pacientes com fratura; controles = pacientes sem fratura) e olhou retrospectivamente para o passado para avaliar o histórico de exposição (uso prévio de IBP). Essa é a definição exata de um estudo de Caso-Controle (Case-Control Study). Em estudos de caso-controle não é possível estimar incidência diretamente na população-base; portanto, a medida padrão de associação é o Odds Ratio (OR ou Razão de Chances).",
+    "tags": [
+      "Preventiva",
+      "Epidemiologia",
+      "Delineamento de Estudos",
+      "Caso-Controle"
+    ],
+    "createdAt": "2026-09-29T10:00:00.000Z",
+    "source": "Banco Oficial"
+  },
+  {
+    "id": "q-pmf-006",
+    "specialty": "Perito Médico Federal",
+    "subspecialty": "Medicina Legal e Perícias",
+    "institution": "Cespe / Cebraspe - Perito Médico Previdenciário",
+    "year": 2024,
+    "statement": "Em perícia médica previdenciária realizada para concessão de benefício por incapacidade temporária (antigo auxílio-doença), um segurado de 45 anos, trabalhador da construção civil (pedreiro), apresenta laudo médico particular atestando 'lombalgia crônica secundária a discopatia degenerativa L4-L5 e L5-S1 (CID M51.1) com recomendação de afastamento definitivo do trabalho'. Ao exame físico pericial objetivo detalhado: marcha normal sem claudicação, capacidade preservada de ficar na ponta dos pés e sobre os calcanhares, reflexos patelar e aquileu simétricos e normais, teste de elevação da perna estendida (Lasègue) negativo bilateralmente, e amplitude de movimentos da coluna lombar preservada sem contratura paravertebral. Com base nos preceitos técnico-periciais do INSS e na legislação previdenciária, qual deve ser a conclusão fundamentada do Perito Médico Federal?",
+    "options": [
+      "A) Concluir pela incapacidade laborativa permanente e sugerir conversão imediata para aposentadoria por incapacidade permanente, pois o laudo do médico assistente tem fé pública superior ao exame pericial.",
+      "B) Reconhecer a existência da alteração anátomo-patológica degenerativa (doença), mas concluir pela inexistência de incapacidade laborativa atual, tendo em vista a ausência de repercussão funcional, déficits neurológicos ou limitação biomecânica incompatível com a atividade laboral.",
+      "C) Conceder benefício acidentário vitalício (B91), uma vez que qualquer dor lombar em trabalhador braçal presume nexo de causalidade laboral automático sem necessidade de análise ergonômica.",
+      "D) Rejeitar a avaliação pericial e encaminhar o segurado para exame de ressonância magnética contrastada no exterior antes de fechar o parecer.",
+      "E) Atribuir incapacidade parcial e permanente e encaminhar para readaptação compulsória mesmo sem evidência de limitação articular."
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "Na perícia médica previdenciária, vigora o princípio fundamental de que doença ou lesão não é sinônimo de incapacidade laborativa. A presença de achados de imagem degenerativos da coluna vertebral é comum na população adulta e, desacompanhada de sinais de compressão radicular ativa (Lasègue negativo), sem paresias, sem alteração de reflexos e com mobilidade preservada ao exame físico pericial objetivo, não configura incapacidade funcional laborativa. O perito não está vinculado às conclusões do médico assistente, devendo fundamentar sua decisão no exame clínico-pericial perfunctório e objetivo.",
+    "tags": [
+      "Perito Médico",
+      "Medicina Legal",
+      "Incapacidade Laborativa",
+      "Previdência"
+    ],
+    "createdAt": "2026-09-29T10:00:00.000Z",
+    "source": "Banco Oficial"
+  },
+  {
+    "id": "q-cm-007",
+    "specialty": "Clínica Médica",
+    "subspecialty": "Pneumologia / Emergência",
+    "institution": "ENARE",
+    "year": 2024,
+    "statement": "Mulher de 29 anos, asmática em uso irregular de salbutamol inalatório, é admitida na sala de emergência em crise asmática grave iniciada há 3 horas após infecção de vias aéreas superiores. Apresenta-se sudoreica, sentada inclinada para frente (ortopneia), taquipneica com FR = 34 irpm, FC = 125 bpm, SatO2 = 89% em ar ambiente, falando apenas monossílabos entrecortados. À ausculta respiratória: murmúrio vesicular universalmente reduzido com sibilos expiratórios e inspiratórios difusos, e uso evidente da musculatura acessória (tiragem intercostal e fúrcula esternal). A gasometria arterial inicial em ar ambiente evidencia: pH = 7,37; PaCO2 = 42 mmHg; PaO2 = 58 mmHg; HCO3 = 24 mEq/L. A interpretação correta da gasometria arterial nessa paciente e a primeira linha de tratamento farmacológico imediato são:",
+    "options": [
+      "A) A PaCO2 de 42 mmHg é normal e traduz melhora da troca gasosa; indicar nebulização simples com soro fisiológico e alta hospitalar.",
+      "B) A PaCO2 'normal' em um paciente com taquipneia intensa sinaliza fadiga da musculatura respiratória e falência ventilatória iminente; a conduta imediata consiste em oxigenoterapia, beta-2 agonista de curta duração inalatório associado a brometo de ipratrópio e corticoide sistêmico.",
+      "C) Trata-se de alcalose respiratória compensada; realizar sedação profunda e bloqueio neuromuscular com intubação traqueal de emergência antes de broncodilatadores.",
+      "D) O quadro traduz hiperventilação psicogênica por ataque de pânico; prescrever ansiolítico benzodiazepínico sublingual e máscara com reservatório.",
+      "E) Prescrever apenas sulfato de magnésio venoso contínuo em bomba de infusão como monoterapia inicial."
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "Na crise grave de asma, a taquipneia intensa fisiologicamente deveria gerar alcalose respiratória com PaCO2 baixa (< 35 mmHg). O achado de uma PaCO2 'normal' (40-45 mmHg) ou discretamente elevada em um paciente exausto e taquipneico é um sinal clássico de alarme gravíssimo de fadiga muscular e falência respiratória iminente (pseudonormalização do PaCO2). A abordagem imediata inclui oxigênio para manter SatO2 >= 93-95%, doses repetidas de beta-2 agonista inalatório de curta duração (salbutamol/fenoterol) combinado com anticolinérgico (brometo de ipratrópio) e corticoterapia sistêmica precoce (hidrocortisona IV ou prednisona oral).",
+    "tags": [
+      "Clínica Médica",
+      "Pneumologia",
+      "Asma",
+      "Emergência",
+      "Gasometria"
+    ],
+    "createdAt": "2026-09-29T10:00:00.000Z",
+    "source": "Banco Oficial"
+  },
+  {
+    "id": "q-cir-008",
+    "specialty": "Cirurgia Geral",
+    "subspecialty": "Trauma / ATLS",
+    "institution": "USP / Santa Casa",
+    "year": 2024,
+    "statement": "Vítima de colisão moto x anteparo fixo dá entrada na sala vermelha do centro de trauma trazido pelo SAMU em prancha rígida e colar cervical. Na avaliação primária do ATLS (10ª edição): A - Via aérea pérvia com coluna cervical estabilizada; B - Taquipneico (FR = 36 irpm), cianose perioral, SatO2 = 84% sob máscara não reinalante a 15 L/min. Ao exame do tórax: hemitórax direito com expansibilidade abolida, timpanismo marcante à percussão e murmúrio vesicular totalmente ausente, turgência jugular patológica bilateral e desvio da traqueia para o lado esquerdo; C - PA = 70/40 mmHg, FC = 138 bpm (filiforme), sudorese fria. Diante desse quadro clínico crítico, qual conduta deve ser adotada imediatamente?",
+    "options": [
+      "A) Solicitar radiografia de tórax no leito para confirmar a presença de pneumotórax antes de qualquer punção.",
+      "B) Realizar intubação orotraqueal em sequência rápida com pressão positiva imediata.",
+      "C) Realizar descompressão torácica imediata com agulha (toracocentese de alívio no 4º ou 5º espaço intercostal na linha axilar anterior/média ou 2º EIC na linha hemiclavicular), seguida de drenagem em selo d'água.",
+      "D) Puncionar veia subclávia direita e infundir rapidamente 2.000 mL de ringer lactato aquecido.",
+      "E) Realizar ultrassonografia FAST torácico e aguardar parecer da cirurgia torácica."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "Trata-se de um Pneumotórax Hipertensivo à direita com choque obstrutivo (hipotensão, turgência jugular, desvio traqueal contralateral, timpanismo e ausência de murmúrio vesicular). O pneumotórax hipertensivo é um diagnóstico EMINENTEMENTE CLÍNICO. Jamais se deve perder tempo solicitando radiografia de tórax ou exames complementares antes da descompressão. O ATLS preconiza descompressão imediata com agulha calibrosa (no 4º/5º EIC entre a linha axilar anterior e média no adulto, ou 2º EIC hemiclavicular), transformando o pneumotórax hipertensivo em aberto, e em seguida realizar a drenagem tubular fechada de tórax com dreno em selo d'água.",
+    "tags": [
+      "Cirurgia",
+      "Trauma",
+      "ATLS",
+      "Pneumotórax Hipertensivo",
+      "Emergência"
+    ],
+    "createdAt": "2026-09-29T10:00:00.000Z",
+    "source": "Banco Oficial"
+  }
+]
