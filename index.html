@@ -2816,7 +2816,7 @@ async function openHardworqSync() {
     + '<span class="sim-label" style="margin-top:12px">Anos das provas</span>'
     + '<div class="chips" id="hwq-anos">' + HWQ_ANOS.map(a => hwqChip(a, true)).join('') + '</div>'
     + '<div class="form-row" style="margin-top:14px"><div><span class="sim-label">Quantidade máxima</span>'
-    + '<select id="hwq-qtd" class="sim-select"><option>10</option><option selected>20</option><option>30</option><option>50</option><option>100</option></select></div></div>'
+    + '<select id="hwq-qtd" class="sim-select"><option>10</option><option>20</option><option>50</option><option selected>100</option><option>200</option><option>500</option><option>1000</option><option value="99999">Tudo (sem limite)</option></select></div></div>'
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5">O gabarito vem junto no feed da API. Duplicadas são ignoradas e questões já existentes são atualizadas. O servidor faz login sozinho com <b>HARDWORQ_EMAIL</b>/<b>HARDWORQ_SENHA</b> no .env e renova o token automaticamente.</div>'
     + '<div id="hwq-result" style="display:none;margin-top:12px"></div>'
     + '<div class="form-actions"><button class="btn-outline" onclick="closeModals()">Fechar</button>'
@@ -2835,7 +2835,7 @@ async function runHardworqSync() {
     areas: activeChips('hwq-areas'),
     grupos_prova: activeChips('hwq-grupos'),
     anos: activeChips('hwq-anos').map(Number).filter(n => n > 0),
-    qtd_maxima: +($('hwq-qtd') && $('hwq-qtd').value || 20)
+    qtd_maxima: +($('hwq-qtd') && $('hwq-qtd').value || 100)
   };
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph ph-circle-notch"></i> Buscando…'; }
   if (out) out.style.display = 'none';

@@ -654,6 +654,28 @@ async function hwqSearchQuestions(opts = {}) {
   return { ok: r.ok && list.length > 0, status: r.status, authFailed: r.authFailed, error: r.error, msg: (r.data && r.data.msg) || '', questions: list };
 }
 
+// Busca em rodadas de 100 até não voltarem questões novas (a API não pagina — repete amostras).
+// qtd_maxima define o teto; "tudo" = 5000 (60 rodadas no máximo, por segurança).
+async function hwqFetchAll(opts = {}) {
+  const target = Math.min(5000, Math.max(1, parseInt(opts.qtd_maxima, 10) || 5000));
+  const seen = new Map();
+  let rounds = 0;
+  while (seen.size < target && rounds < 60) {
+    rounds++;
+    const search = await hwqSearchQuestions({ ...opts, qtd_maxima: 100 });
+    if (search.error || search.authFailed || search.status >= 400) {
+      return { ...search, questions: [...seen.values()], rounds };
+    }
+    let novas = 0;
+    for (const q of search.questions) {
+      const key = q && q.id != null ? `id:${q.id}` : JSON.stringify(q);
+      if (!seen.has(key)) { seen.set(key, q); novas++; }
+    }
+    if (novas === 0) break; // a API começou a repetir — filtro esgotado
+  }
+  return { ok: true, status: 200, authFailed: false, error: null, msg: '', questions: [...seen.values()].slice(0, target), rounds };
+}
+
 // Registra a resposta do aluno na API (doc §9) — exige UserToken válido (login email/senha)
 async function hwqAnswerQuestion({ remoteId, alternativeId, idTurma } = {}) {
   if (!remoteId || !alternativeId) return { ok: false, status: 0, authFailed: false, error: 'remoteId e alternativeId são obrigatórios' };
@@ -832,7 +854,7 @@ repairMojibakeInBank();
 // Fluxo principal: busca na API + parse + merge no banco local (usado pelo painel e pelo auto-sync)
 async function runHardworqSync(filters = {}) {
   if (!HWQ_STATE.userToken) await hwqLogin(); // garante token antes da busca (se falhar, hwqRequest tenta de novo)
-  const search = await hwqSearchQuestions(filters);
+  const search = await hwqFetchAll(filters);
   HWQ_STATE.lastSyncAt = new Date().toISOString();
 
   if (search.error || search.authFailed || search.status >= 400) {
@@ -897,7 +919,7 @@ app.post('/api/questions/hardworq/sync', async (req, res) => {
 
     if (salvar === false) {
       if (!HWQ_STATE.userToken) await hwqLogin();
-      const search = await hwqSearchQuestions({ areas, anos, grupos_prova, qtd_maxima, idTurma });
+      const search = await hwqFetchAll({ areas, anos, grupos_prova, qtd_maxima, idTurma });
       if (search.error || search.authFailed || search.status >= 400) {
         return res.status(search.authFailed ? 401 : 502).json({
           success: false, authFailed: !!search.authFailed, status: search.status,
@@ -946,7 +968,7 @@ app.post('/api/questions/import-hardworq', async (req, res) => {
       parsedQuestions = parseHardworqPayload(payload || jsonText);
     } else if (idTurma || HWQ.email || HWQ.cookie) {
       if (!HWQ_STATE.userToken) await hwqLogin();
-      const search = await hwqSearchQuestions({ idTurma, areas, anos, grupos_prova, qtd_maxima });
+      const search = await hwqFetchAll({ idTurma, areas, anos, grupos_prova, qtd_maxima });
       if (search.error || search.authFailed || search.status >= 400) {
         return res.status(search.authFailed ? 401 : 502).json({
           error: search.authFailed
