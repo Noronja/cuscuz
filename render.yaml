@@ -1,0 +1,35 @@
+# Blueprint do Render — cria o serviço web automaticamente a partir deste repositório
+# Deploy: render.com → New + → Blueprint → escolha este repo
+services:
+  - type: web
+    name: cuscuz-med
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      # Credenciais do Hardworq — o Render pergunta na hora do deploy (não ficam no repo)
+      - key: HARDWORQ_EMAIL
+        sync: false
+      - key: HARDWORQ_SENHA
+        sync: false
+      - key: HARDWORQ_ID_TURMA
+        value: "1273"
+      - key: HARDWORQ_AUTO_SYNC
+        value: "0"
+      - key: HARDWORQ_SYNC_INTERVAL_H
+        value: "6"
+      - key: HARDWORQ_MAX_BANK
+        value: "2000"
+      # Opcionais (deixe em branco se não usar; o app funciona sem elas, com recursos reduzidos)
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: NODE_VERSION
+        value: "22.14.0"

@@ -31,7 +31,8 @@ function loadDotEnv() {
 loadDotEnv();
 
 const app = express();
-const PORT = 3000;
+// Em hospedagens (Render, Railway...) a porta vem do ambiente; 3000 é o padrão local
+const PORT = parseInt(process.env.PORT, 10) || 3000;
 const HOST = '0.0.0.0';
 
 app.use(express.json());
