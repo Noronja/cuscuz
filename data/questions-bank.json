@@ -1,5 +1,1565 @@
 [
   {
+    "id": "q-hw-39314",
+    "remoteId": "39314",
+    "remoteAlternatives": [
+      {
+        "id": "164592",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "164593",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "164594",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "164595",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "164596",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "SES-PE",
+    "year": 2021,
+    "statement": "Um paciente de 68 anos começou a desenvolver sintomas neurológicos após episódio de diarreia e vômitos, associados a intoxicação alimentar. Inicialmente seus familiares o notaram lentificado, evoluindo com dificuldade para deambular e sonolência. Ao ser trazido para a emergência, apresentava fasciculações e mioclonias, evoluindo para episódio convulsivo. Tinha antecedente de transtorno bipolar para o qual usava carbonato de lítio há anos. Não havia relato de outras comorbidades.Com relação ao caso, assinale a alternativa INCORRETA.",
+    "options": [
+      "A) Hidratação venosa vigorosa deve ser realizada e pode melhorar o quadro clínico.",
+      "B) A intoxicação crônica pode levar a diabetes insipidus nefrogênico, por isso é essencial à monitorização dos níveis séricos de sódio.",
+      "C) Hemodiálise é o tratamento de escolha em casos graves.",
+      "D) O paciente pode evoluir com sequelas neurológicas, principalmente cerebelares, apesar do tratamento adequado do quadro agudo.",
+      "E) Esse paciente deve ter feito ingestão intencional de dose supraterapêutica do lítio, pois a intoxicação não seria esperada em um paciente que utiliza dose estável da medicação há muito tempo."
+    ],
+    "correctIndex": 4,
+    "correctLetter": "E",
+    "explanation": "Questão oficial de prova (SES-PE 2021 - R1). Gabarito confirmado: Alternativa E.",
+    "difficulty": "Médio",
+    "tags": [
+      "SES-PE",
+      "R1",
+      "SESPE2021R1-9"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.806Z",
+    "source": "Hardworq (SESPE2021R1-9)"
+  },
+  {
+    "id": "q-hw-68636",
+    "remoteId": "68636",
+    "remoteAlternatives": [
+      {
+        "id": "250713",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "250714",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "250715",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "250716",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "250717",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "UEL",
+    "year": 2021,
+    "statement": "Sobre o uso de lítio, suas indicações e aspectos clínico-farmacológicos, assinale a alternativa correta.",
+    "options": [
+      "A) Devido à gravidade de uma eventual intoxicação medicamentosa voluntária por overdose, o lítio deve ser evi- tado, e proscrito, em pacientes com ideação suicida ou tentativas prévias de suicídio.",
+      "B) É fundamental o monitoramento dos níveis séricos do lítio, além da função tireoidiana e da função hepática, devido ao risco de hipotireoidismo e hepatotoxicidade.",
+      "C) Pode ocorrer intoxicação pelo lítio por elevação de seus níveis séricos quando prescrito concomitantemente com diuréticos tiazídicos e anti-inflamatórios não esteroidais.",
+      "D) Seus efeitos colaterais mais comuns incluem tremores, rigidez plástica, bradicinesia, hipertonia, sedação, hi- porreflexia e obstipação.",
+      "E) Trata-se de uma opção farmacológica antiga para o tratamento do Transtorno Bipolar; entretanto, devido a seus efeitos colaterais, é deixado como segunda ou terceira linha para o tratamento dessa doença."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "Questão oficial de prova (UEL 2021 - R1). Gabarito confirmado: Alternativa C.",
+    "difficulty": "Médio",
+    "tags": [
+      "UEL",
+      "R1",
+      "UEL2021R1-3"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.807Z",
+    "source": "Hardworq (UEL2021R1-3)"
+  },
+  {
+    "id": "q-hw-342675",
+    "remoteId": "342675",
+    "remoteAlternatives": [
+      {
+        "id": "945562",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "945563",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "945564",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "945565",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "945566",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "SEMAD",
+    "year": 2025,
+    "statement": "Adolescente de 16 anos, sexo masculino, é levado à consulta por queda no rendimento escolar nos últimos seis meses. A mãe relata que seu filho está irritável e irresponsável, mudou seu grupo de amigos e está descuidado com sua higiene pessoal. Era excelente aluno, mas neste ano escolar será reprovado. Baseado na hipótese diagnóstica mais provável, que patologia pode explicar os sintomas descritos:",
+    "options": [
+      "A) transtorno bipolar.",
+      "B) depressão maior.",
+      "C) abuso de substâncias ilícitas.",
+      "D) depressão persistente (distimia).",
+      "E) transtorno de ansiedade."
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "Questão oficial de prova (SEMAD 2025 - R1). Gabarito confirmado: Alternativa B.",
+    "difficulty": "Médio",
+    "tags": [
+      "SEMAD",
+      "R1",
+      "SEMAD2025R1-99"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.807Z",
+    "source": "Hardworq (SEMAD2025R1-99)"
+  },
+  {
+    "id": "q-hw-303915",
+    "remoteId": "303915",
+    "remoteAlternatives": [
+      {
+        "id": "793566",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "793567",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "793568",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "793569",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Pediatria",
+    "subspecialty": "R1",
+    "institution": "USP-RP",
+    "year": 2024,
+    "statement": "Mãe procura pediatra, pois seu filho de 9 anos está apresentando sonolência e dormindo na escola. Dorme às 22:00, com latência para o início do sono menor que 5 minutos, e é acordado às 6:00 pela mãe, com dificuldade. Estuda pela manhã, tem bom aproveitamento escolar e a mãe queixa-se de irritabilidade em casa. Aos finais de semana dorme às 22:00 e acorda às 9:00. Nega roncos, sonambulismo, dores pelo corpo ou outras queixas. Qual seria a orientação que teria um melhor impacto na melhora da sonolência da criança?",
+    "options": [
+      "A) Realizar atividades físicas no período da manhã.",
+      "B) Evitar alimentos gordurosos antes de deitar-se.",
+      "C) Encorajar o uso de cafeína pela manhã.",
+      "D) Incentivar a criança a dormir por volta das 20:00."
+    ],
+    "correctIndex": 3,
+    "correctLetter": "D",
+    "explanation": "Questão oficial de prova (USP-RP 2024 - R1). Gabarito confirmado: Alternativa D.",
+    "difficulty": "Médio",
+    "tags": [
+      "USP-RP",
+      "R1",
+      "USPRP2024R1-73"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.807Z",
+    "source": "Hardworq (USPRP2024R1-73)"
+  },
+  {
+    "id": "q-hw-38391",
+    "remoteId": "38391",
+    "remoteAlternatives": [
+      {
+        "id": "160891",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "160892",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "160893",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "160894",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "AMRIGS",
+    "year": 2021,
+    "statement": "Alguns transtornos psiquiátricos ocorrem no período pós-parto com importante impacto sobre a mulher, o bebê e pessoas próximas. Assinale a alternativa que corretamente descreve um desses transtornos.",
+    "options": [
+      "A) A psicose puerperal, que se caracteriza por um quadro delirante, é um evento raro e costuma ocorrer geralmente em torno do segundo ou terceiro mês pós-parto.",
+      "B) A síndrome de tristeza pós-parto (também chamada de baby blues) é bastante comum (com incidência em até 75% das mulheres) e ocorre durante o período de 3 a 6 meses após o parto.",
+      "C) Nenhuma evidência conclusiva indica que a síndrome de tristeza pós-parto leve a um episódio subsequente de depressão.",
+      "D) Os dados indicam que um episódio de depressão pós-parto não aumenta o risco de recorrência para novos episódios de depressão durante a vida."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "Questão oficial de prova (AMRIGS 2021 - R1). Gabarito confirmado: Alternativa C.",
+    "difficulty": "Médio",
+    "tags": [
+      "AMRIGS",
+      "R1",
+      "AMRIGS2021R1-50"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.807Z",
+    "source": "Hardworq (AMRIGS2021R1-50)"
+  },
+  {
+    "id": "q-hw-340205",
+    "remoteId": "340205",
+    "remoteAlternatives": [
+      {
+        "id": "935182",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "935183",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "935184",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "935185",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "935186",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "HIS",
+    "year": 2025,
+    "statement": "Mulher, de 27 anos de idade, relata que há dois meses começou a se sentir desmotivada e triste, sem vontade de sair de casa ou de encontrar com amigos, sem motivo aparente. Ela menciona que perdeu o interesse por atividades que costumava gostar, como praticar esportes e sair para socializar. A paciente relata que está tendo dificuldades para dormir, com insônia frequente. Sente-se cansada durante o dia e tem pensamentos frequentes de se sentir inútil e um estorvo. Ela também se queixa de dificuldades de concentração nos estudos e sentimentos de inadequação. No últimos mês, começou a ter sensação constante de nervosismo e preocupações excessivas sobre o futuro, episódios espontâneos de taquicardia com sudorese várias vezes durante a semana, que passam após alguns minutos. Nega comorbidades clínicas e uso de medicações. Três dias após o início do tratamento, a paciente retorna informando que está tendo muitas taquicardias, mais do que antes, e começou a ficar mais inquieta, com mais sudorese e às vezes com sensação de opressão no peito. Relacionou temporalmente a piora do quadro ao início do tratamento. Relata que não houve melhora do sono e continua com muitos pensamentos antes de dormir, fazendo com que demore mais de 2 horas até adormecer depois que deita. Qual é a conduta correta a ser tomada nesse momento?",
+    "options": [
+      "A) Suspender a medicação prescrita anteriormente e trocar por bupropiona 150mg para melhor tratamento do quadro.",
+      "B) Aumentar a dose da medicação prescrita anteriormente e prescrever clonazepam 0,5mg à noite, provisoriamente.",
+      "C) Manter a dose da medicação prescrita anteriormente e prescrever ciclobenzaprina 5mg à noite como tratamento a longo prazo.",
+      "D) Reduzir a dose da medicação prescrita anteriormente para metade e prescrever carbonato de lítio 600mg/dia como tratamento de manutenção.",
+      "E) Reduzir a dose da medicação prescrita anteriormente para metade e prescrever clonazepam 0,5mg à noite, provisoriamente."
+    ],
+    "correctIndex": 4,
+    "correctLetter": "E",
+    "explanation": "Questão oficial de prova (HIS 2025 - R1). Gabarito confirmado: Alternativa E.",
+    "difficulty": "Médio",
+    "tags": [
+      "HIS",
+      "R1",
+      "HIS2025R1-49"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.807Z",
+    "source": "Hardworq (HIS2025R1-49)"
+  },
+  {
+    "id": "q-hw-316657",
+    "remoteId": "316657",
+    "remoteAlternatives": [
+      {
+        "id": "841910",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "841911",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "841912",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "841913",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Pediatria",
+    "subspecialty": "R1",
+    "institution": "USP-RP",
+    "year": 2025,
+    "statement": "Uma criança de 8 anos é atendida no ambulatório geral de pediatria devido a baixo rendimento escolar. Há 3 meses, vem sendo observadas diculdades como falta de atenção nos afazeres escolares e domésticos, diculdade em manter a concentração durante as atividades de lazer e nas aulas de educação física, além de diculdade em seguir instruções e concluir os deveres. A mãe relata que o comportamento desatento é frequente e que a criança rotineiramente perde objetos e se distrai facilmente com estímulos externos. O prénatal e parto foram sem intercorrências e não tem antecedentes familiares de doenças neurológicas. O exame neurológico não tem sinais de focalização. Qual é a conduta mais adequada?",
+    "options": [
+      "A) Iniciar metilfenidato 30 minutos antes de ir para escola",
+      "B) Manter seguimento e solicitar relatórios acadêmicos",
+      "C) Solicitar eletroencefalograma com fotoestimulação",
+      "D) Iniciar carbamazepina e checar níveis séricos no retorno"
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "Questão oficial de prova (USP-RP 2025 - R1). Gabarito confirmado: Alternativa B.",
+    "difficulty": "Médio",
+    "tags": [
+      "USP-RP",
+      "R1",
+      "USPRP2025R1-7"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.807Z",
+    "source": "Hardworq (USPRP2025R1-7)"
+  },
+  {
+    "id": "q-hw-333544",
+    "remoteId": "333544",
+    "remoteAlternatives": [
+      {
+        "id": "910037",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "910038",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "910039",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "910040",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "910041",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "IAMSPE",
+    "year": 2026,
+    "statement": "Um paciente apresenta-se ao ambulatório com relato de estar recebendo mensagens codificadas através da televisão e do rádio, que o orientam sobre conspirações contra sua vida. Refere que essas mensagens são exclusivamente direcionadas a ele, sendo capaz de descodificá-las apenas através de sua inteligência especial. O paciente mantém crítica relativa à natureza da vivência, reconhecendo que outras pessoas não conseguem captar tais mensagens. Identifique o fenômeno psicopatológico que melhor caracteriza essa apresentação clínica:",
+    "options": [
+      "A) Prosopagnosia, no qual o reconhecimento de faces humanas está prejudicado ou abolido e há incapacidade de reconhecer membros específicos de determinada classe semântica.",
+      "B) Delírio sistematizado de perseguição com conteúdo místico-religioso, no qual o paciente apresenta estrutura lógica complexa mas sem nenhuma crítica sobre a vivência delirante.",
+      "C) Pseudoalucinação ou alucinose, caracterizada pela percepção do paciente da experiência alucinatória como estranha a sua pessoa, o sujeito é adequadamente crítico, reconhecendo seu caráter patológico.",
+      "D) Amnésia dissociativa, ou psicogênica, há perda de elementos mnêmicos seletivos. O indivíduo esquece, por exemplo, uma fase ou um evento de sua vida, mas consegue lembrar de tudo que ocorreu \"ao seu redor\".",
+      "E) Alucinação extracampina multimodal combinada com delírio não sistematizado, mantendo ausência completa de crítica e integração das vivências psicopatológicas."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "Questão oficial de prova (IAMSPE 2026 - R1). Gabarito confirmado: Alternativa C.",
+    "difficulty": "Médio",
+    "tags": [
+      "IAMSPE",
+      "R1",
+      "IAMSPE2026R1-91"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.809Z",
+    "source": "Hardworq (IAMSPE2026R1-91)"
+  },
+  {
+    "id": "q-hw-305973",
+    "remoteId": "305973",
+    "remoteAlternatives": [
+      {
+        "id": "801292",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "801293",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "801294",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "801295",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "FAMEMA",
+    "year": 2024,
+    "statement": "A disforia puerperal e a depressão pós-parto são duas condições que afetam o estado emocional de uma mulher após o parto, mas elas diferem em vários aspectos, incluindo sua duração, intensidade e características clínicas. Assinale a alternativa correta sobre a diferença entre a disforia puerperal e a depressão pós-parto.",
+    "options": [
+      "A) A disforia puerperal é um evento incomum que ocorre em 5% das mulheres após o trabalho de parto. Esse quadro é grave e requer tratamento imediato. A depressão pós-parto tem prevalência em torno de 50% e representa um quadro leve e transitório. Costuma ser autolimitada.",
+      "B) A disforia puerperal é um evento comum que ocorre em 50% das mulheres após o trabalho de parto. Esse quadro é bastante prejudicial por interferir negativamente na interação mãe-bebê e em outros aspectos da vida da mulher. Portanto, a mãe deve ser tratada em ambiente separado do bebê recém- -nascido. A depressão pós-parto tem prevalência semelhante de 50% ou mais, mas não causa impacto significativo na interação mãe-bebê. Esse quadro representa uma forma de depressão tratável com medicamentos antidepressivos, por isso o aleitamento está contraindicado nesses casos.",
+      "C) A disforia puerperal ocorre em 50% a 85% das mulheres, o quadro é leve e transitório e não requer maiores tratamentos. A depressão pós-parto tem uma prevalência em torno de 10%, pode causar repercussões negativas na interação mãe-bebê e em outros aspectos da vida da mulher. A prescrição de medicamentos antidepressivos pode abreviar a duração do transtorno.",
+      "D) A disforia puerperal ocorre em 90% das mulheres com história de disforia pré-menstrual antes da gestação. Embora o quadro seja leve, mas persistente, o seu tratamento com medicamentos está recomendado para evitar futuros episódios de disforia durante o período pré-menstrual e no pós-parto. A depressão pós-parto, por sua vez, tem uma prevalência em torno de 40%. Por causar repercussões mínimas na interação mãe-bebê e retorno às atividades laborais, somente um monitoramento próximo é suficiente para reverter o quadro clínico."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "Questão oficial de prova (FAMEMA 2024 - R1). Gabarito confirmado: Alternativa C.",
+    "difficulty": "Médio",
+    "tags": [
+      "FAMEMA",
+      "R1",
+      "FAMEMA2024R1-88"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.809Z",
+    "source": "Hardworq (FAMEMA2024R1-88)"
+  },
+  {
+    "id": "q-hw-289116",
+    "remoteId": "289116",
+    "remoteAlternatives": [
+      {
+        "id": "731712",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "731713",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "731714",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "731715",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Clínica Médica",
+    "subspecialty": "R1",
+    "institution": "HPEV",
+    "year": 2023,
+    "statement": "Mulher de 68 anos de idade comparece em consulta na Unidade Básica de Saúde por tristeza intensa há 3 meses, associada a falta de prazer nas atividades, falta de energia e insônia inicial. Relata que não consegue mais trabalhar como antes, não tem vontade de sair de casa e têm pensamentos de inutilidade e desesperança com a vida. Tem antecedente de hipertensão arterial sistêmica, diabetes mellitus, dislipidemia e obesidade. Na avaliação, apresenta pressão arterial 186x112mmHg e índice de massa corporal 36,4kg/m². Trouxe exames complementares, evidenciando: hemoglobina glicada 9,6% (VR",
+    "options": [
+      "A) Clonazepam",
+      "B) Venlafaxina",
+      "C) Mirtazapina",
+      "D) Citalopram"
+    ],
+    "correctIndex": 3,
+    "correctLetter": "D",
+    "explanation": "Questão oficial de prova (HPEV 2023 - R1). Gabarito confirmado: Alternativa D.",
+    "difficulty": "Médio",
+    "tags": [
+      "HPEV",
+      "R1",
+      "HPEV2023R1-45"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.812Z",
+    "source": "Hardworq (HPEV2023R1-45)"
+  },
+  {
+    "id": "q-hw-316772",
+    "remoteId": "316772",
+    "remoteAlternatives": [
+      {
+        "id": "842375",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "842376",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "842377",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "842378",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Clínica Médica",
+    "subspecialty": "R1",
+    "institution": "USP",
+    "year": 2025,
+    "statement": "Paciente, do sexo feminino, 71 anos de idade, tem hipertensão arterial sistêmica e transtorno de ansiedade. Em uso de amlodipino 5 mg ao dia, enalapril 20 mg duas vezes ao dia, sertralina 50 mg uma vez ao dia e clonazepam 0,5 mg uma vez ao dia. Foi levada ao pronto socorro por queixa de náusea e fadiga há 1 mês. Ao exame físico, apresentou-se corada, hidratada, afebril, colaborativa; ausculta cardíaca sem alterações, ausência de turgência jugular a 45° ou refluxo hepatojugular; murmúrios vesiculares presentes bilateralmente, sem ruídos adventícios; abdome globoso e extremidades sem edema, com perfusão adequada. Exames laboratoriais: Hb: 12,1 g/dL Leucócitos: 6.200 células/mm³ Plaquetas: 321 mil/mm³ Creatinina: 1,1 mg/dL Sódio: 126 mEq/L Glicemia: 129 mg/dL Osmolalidade sérica: 255 mOsm/kg Sódio urinário: 60 mEq/L (VR:40 a 220 mEq/L) Assinale a alternativa que apresenta a melhor conduta terapêutica a ser adotada nesse momento.",
+    "options": [
+      "A) NaCl 3% intravenoso.",
+      "B) NaCl 0,9% intravenoso.",
+      "C) Suspender clonazepam.",
+      "D) Suspender sertralina."
+    ],
+    "correctIndex": 3,
+    "correctLetter": "D",
+    "explanation": "Questão oficial de prova (USP 2025 - R1). Gabarito confirmado: Alternativa D.",
+    "difficulty": "Médio",
+    "tags": [
+      "USP",
+      "R1",
+      "USP2025R1-5"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.812Z",
+    "source": "Hardworq (USP2025R1-5)"
+  },
+  {
+    "id": "q-hw-49975",
+    "remoteId": "49975",
+    "remoteAlternatives": [
+      {
+        "id": "204189",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "204190",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "204191",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "204192",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Pediatria",
+    "subspecialty": "R1",
+    "institution": "UFRJ",
+    "year": 2021,
+    "statement": "Menina, 7 anos, é encaminhada ao pediatra por baixo rendimento escolar. Nasceu de parto vaginal a termo, Escala de Apgar 9/10, peso = 3.700g. Ao iniciar o período de alfabetização, sua inteligência e rico vocabulário oral foram notórios, entretanto, fez pouco progresso na leitura. Recentemente, começou a reclamar que os trabalhos escolares a deixavam com dor de cabeça, apesar de o exame oftalmológico ser normal. A mãe relata que ela apresenta irritabilidade e agressividade apenas à menção de ir à escola. Exame físico: cooperante, inteligente e curiosa sem alterações clínicas. A hipótese diagnóstica mais provável para essa menina é:",
+    "options": [
+      "A) disritmia",
+      "B) discalculia",
+      "C) retardo mental leve",
+      "D) dislexia"
+    ],
+    "correctIndex": 3,
+    "correctLetter": "D",
+    "explanation": "Questão oficial de prova (UFRJ 2021 - R1). Gabarito confirmado: Alternativa D.",
+    "difficulty": "Médio",
+    "tags": [
+      "UFRJ",
+      "R1",
+      "UFRJ2021R1-66"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.812Z",
+    "source": "Hardworq (UFRJ2021R1-66)"
+  },
+  {
+    "id": "q-hw-304001",
+    "remoteId": "304001",
+    "remoteAlternatives": [
+      {
+        "id": "793914",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "793915",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "793916",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "793917",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "UERJ",
+    "year": 2024,
+    "statement": "Adolescente de 13 anos, filha única de uma família de classe média, é levada ao ambulatório por sua tia, que a considerou muito magra. Atualmente, ela está cursando o nono ano da educação básica. A adolescente não apresenta qualquer queixa. Ao exame físico, apresenta IMC de 12 com sinais clínicos de desnutrição. Afastadas outras causas para perda de peso, foi feito então o diagnóstico de anorexia nervosa. Essa doença se caracteriza por:",
+    "options": [
+      "A) índice de massa corpórea menor que 17 e episódios de sangramento intestinal",
+      "B) medo intenso de ganhar peso e distúrbio em avaliar corretamente a própria imagem corporal",
+      "C) calosidade frequente sobre a articulação proximal das articulações da mão (Sinal de Russell)",
+      "D) episódios de compulsão alimentar seguidos de intenso desejo de perder peso, com indução de vômitos"
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "Questão oficial de prova (UERJ 2024 - R1). Gabarito confirmado: Alternativa B.",
+    "difficulty": "Médio",
+    "tags": [
+      "UERJ",
+      "R1",
+      "UERJ2024R1-67"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.812Z",
+    "source": "Hardworq (UERJ2024R1-67)"
+  },
+  {
+    "id": "q-hw-306349",
+    "remoteId": "306349",
+    "remoteAlternatives": [
+      {
+        "id": "803061",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "803067",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "803068",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "803069",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "803070",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "SCM-SP",
+    "year": 2024,
+    "statement": "Puérpera, 2 meses pós-parto, vem em consulta de rotina com queixa de insônia, grande desânimo e tristeza, sensação de culpa por não conseguir cuidar adequadamente do filho. Refere também perda de peso (foi informada pela vizinha que amamentar ajuda a emagrecer) e fraqueza, não conseguindo se sentir muito ligada ao bebê. Seu marido trabalha o dia todo e chega em casa à noite, mas mesmo com sua companhia os sintomas não melhoram. Sente que está difícil por não ter rede de apoio, e, como o bebê chora muito, fica o tempo todo cuidando dele, não sobrando tempo para cuidar de si. Diante da situação hipotética, assinale a alternativa que melhor explica sua conduta.",
+    "options": [
+      "A) Vê-se que a paciente está em um momento difícil sem apoio, e os sintomas de cansaço, e as noites em claro, que já seriam esperadas, se intensificam. Orientar procurar ajuda na reestruturação de sua rotina e se alimentar melhor.",
+      "B) Prescrever Rivotril 3 gotas à noite para ajudar paciente a dormir mais facilmente entre as mamadas e orientar aumento de contato social. Prescrever suplemento de ferro, pois não está se alimentando adequadamente.",
+      "C) Trata-se claramente de depressão pós-parto e a paciente deve iniciar tratamento medicamentoso com antidepressivo e seguimento (com psiquiatra, sempre que possível), bem como do diagnóstico e do suporte à paciente. Investigar paralelamente alterações orgânicas como anemia e hipotireoidismo.",
+      "D) O diagnóstico é de blues puerperal e o tratamento é orientações de ajustamento devido à grande mudança na vida, além de suplementos vitamínicos que podem ajudar. Orientar que se trata de quadro autolimitado.",
+      "E) Suspender amamentação, pois a paciente está esgotada, orientar reposição venosa de ferro e iniciar psicanálise, que tem melhor evidência científica no tratamento dessa condição."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "Questão oficial de prova (SCM-SP 2024 - R1). Gabarito confirmado: Alternativa C.",
+    "difficulty": "Médio",
+    "tags": [
+      "SCM-SP",
+      "R1",
+      "SCMSP2024R11-79"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.812Z",
+    "source": "Hardworq (SCMSP2024R11-79)"
+  },
+  {
+    "id": "q-hw-331043",
+    "remoteId": "331043",
+    "remoteAlternatives": [
+      {
+        "id": "899388",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "899389",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "899390",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "899391",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "899392",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "SANTA CASA-SP",
+    "year": 2026,
+    "statement": "Homem, 43 anos, vem para atendimento de demanda espontânea no acolhimento da equipe de eSF com queixa de angústia, palpitações frequentes, tremores, tontura e medo de perder o controle no último mês. Isto tem causado prejuízo no trabalho e na vida social. Durante a consulta está tranquilo, nega ideação suicida ou pensamentos de morte. Entre as condutas abaixo, a melhor para este paciente no âmbito da APS é:",
+    "options": [
+      "A) Encaminhamento para hospital via SAMU, para internação.",
+      "B) Encaminhamento para o CAPS para avaliação inicial do quadro.",
+      "C) Iniciar seguimento multiprofissional na UBS e considerar introdução de inibidor seletivo da recaptação da serotonina.",
+      "D) Encaminhar paciente para psicóloga da equipe para definir se o seguimento será na APS ou no CAPS.",
+      "E) Acolher paciente, realizar escuta qualificada e explicar que é comum se sentir assim, sem necessidade de acompanhamento específico."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "Questão oficial de prova (SANTA CASA-SP 2026 - R1). Gabarito confirmado: Alternativa C.",
+    "difficulty": "Médio",
+    "tags": [
+      "SANTA CASA-SP",
+      "R1",
+      "SCMSP2026R1-100"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.812Z",
+    "source": "Hardworq (SCMSP2026R1-100)"
+  },
+  {
+    "id": "q-hw-316549",
+    "remoteId": "316549",
+    "remoteAlternatives": [
+      {
+        "id": "841777",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "841778",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "841779",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "841780",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "AMRIGS",
+    "year": 2025,
+    "statement": "No atendimento a vítimas de catástrofes, violências ou acidentes, algumas abordagens podem ser adotadas para auxiliar na prevenção do desenvolvimento de transtornos mentais após eventos traumáticos, principalmente o Transtorno de Estresse Pós-Traumático (TEPT). São abordagens recomendadas as mencionadas a seguir, EXCETO:",
+    "options": [
+      "A) Evitar a retraumatização, não induzindo o paciente a descrever o evento traumático, nem o forçando a retornar à cena violenta. Deve-se priorizar a anamnese objetiva quanto aos dados da situação traumática, por meio de entrevistas com familiares ou terceiros envolvidos (testemunhas, policiais, bombeiros, socorristas, etc.), e não diretamente com o paciente",
+      "B) Fazer o reasseguramento, reforçando a condição atual de estabilidade clínica e segurança do paciente, afastando-o do ambiente da cena traumática, valorizando o \"aqui e agora estou seguro\" (ambiente hospitalar/unidade de saúde, presença da equipe de saúde, equipe de segurança, familiares, etc.)",
+      "C) Administrar benzodiazepínicos na maioria dos casos, com objetivo de reduzir o sofrimento agudo (ansiedade, medo, insônia) relacionado ao trauma",
+      "D) Evitar a vitimização, procurando não valorizar o impacto destruidor do trauma, não patologizar e não se referir a sintomas reacionais como doença mental"
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "Questão oficial de prova (AMRIGS 2025 - R1). Gabarito confirmado: Alternativa C.",
+    "difficulty": "Médio",
+    "tags": [
+      "AMRIGS",
+      "R1",
+      "AMRIGS2025R1-99"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.812Z",
+    "source": "Hardworq (AMRIGS2025R1-99)"
+  },
+  {
+    "id": "q-hw-289854",
+    "remoteId": "289854",
+    "remoteAlternatives": [
+      {
+        "id": "734777",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "734778",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "734779",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "734780",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "HUOL",
+    "year": 2023,
+    "statement": "Valéria, 21 anos, desempregada, solteira, relata quadro de angústia e tristeza diária iniciado há 5 meses, após o falecimento de seus pais devido à COVID-19. Refere falta de vontade para realizar suas atividades diárias, crises de choro, sono excessivo, falta de perspectiva para o futuro. Relata que tem vontade de sumir, mas nega pensamentos de morte ou de autoagressão. Apresenta rede de apoio fragilizada, já que seus familiares moram em outro estado. Nesse caso, a melhor conduta é iniciar",
+    "options": [
+      "A) fluoxetina 20 mg e encaminhar para o psicólogo.",
+      "B) práticas integrativas e complementares.",
+      "C) lítio 300 mg, duas vezes ao dia, e encaminhar para o CAPS.",
+      "D) amitriptilina 25 mg e encaminhar para o psiquiatra."
+    ],
+    "correctIndex": 0,
+    "correctLetter": "A",
+    "explanation": "Questão oficial de prova (HUOL 2023 - R1). Gabarito confirmado: Alternativa A.",
+    "difficulty": "Médio",
+    "tags": [
+      "HUOL",
+      "R1",
+      "HUOLR12023-83"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (HUOLR12023-83)"
+  },
+  {
+    "id": "q-hw-332048",
+    "remoteId": "332048",
+    "remoteAlternatives": [
+      {
+        "id": "903458",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "903459",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "903460",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "903461",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "903462",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "FMJ",
+    "year": 2026,
+    "statement": "Mulher de 26 anos de idade, saudável, sem uso prévio de medicações, procurou atendimento por crises frequentes de ansiedade generalizada há vários meses, com sintomas diários de preocupação excessiva, insônia, irritabilidade, tensão muscular e dificuldade de concentração. Relatou episódios atuais, frequentes e intensos de ansiedade, com palpitações, sudorese e sensação de falta de controle, que a impedem de realizar atividades acadêmicas e sociais. Após avaliação psiquiátrica, foi indicado início de tratamento farmacológico. Com base nesse caso clínico hipotético, assinale a opção que apresenta a conduta farmacológica mais adequada para essa paciente.",
+    "options": [
+      "A) iniciar uso continuo de clonazepam",
+      "B) iniciar uso de sertralina",
+      "C) iniciar clonazepam e sertralina, com posterior desmame de benzodiazepínico",
+      "D) iniciar clonazepam e amitriptilina, com posterior desmame de benzodiazepínico",
+      "E) iniciar clonazepam e canabidiol, com posterior desmame de benzodiazepínico"
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "Questão oficial de prova (FMJ 2026 - R1). Gabarito confirmado: Alternativa C.",
+    "difficulty": "Médio",
+    "tags": [
+      "FMJ",
+      "R1",
+      "FMJ2026R1-38"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (FMJ2026R1-38)"
+  },
+  {
+    "id": "q-hw-281001",
+    "remoteId": "281001",
+    "remoteAlternatives": [
+      {
+        "id": "697694",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "697695",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "697696",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "697697",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "AMRIGS",
+    "year": 2023,
+    "statement": "Analise as assertivas abaixo relacionadas aos transtornos do sono: I. Os quadros de insônia são mais frequentes em homens e têm predisposição familiar. II. O tratamento deve ser iniciado por medidas não farmacológicas (higiene do sono). III. Deve-se considerar a síndrome obstrutiva do sono em casos de sonolência excessiva diurna. Quais estão corretas?",
+    "options": [
+      "A) Apenas I e II.",
+      "B) Apenas I e III.",
+      "C) Apenas II e III.",
+      "D) I, II e III."
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "Questão oficial de prova (AMRIGS 2023 - R1). Gabarito confirmado: Alternativa C.",
+    "difficulty": "Médio",
+    "tags": [
+      "AMRIGS",
+      "R1",
+      "AMRIGS2023R1-97"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (AMRIGS2023R1-97)"
+  },
+  {
+    "id": "q-hw-281091",
+    "remoteId": "281091",
+    "remoteAlternatives": [
+      {
+        "id": "698140",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "698141",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "698142",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "698143",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "698144",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "SCM-SP",
+    "year": 2023,
+    "statement": "Nathalia, de 35 anos de idade, buscou a UBS com a demanda de cessar o uso de fluoxetina para depressão. A paciente relatou estar se sentindo muito bem, \"sem sintomas\" (sic). Iniciara o uso de inibidor seletivo da recaptação de serotonina (ISRS) havia quatro meses, mantendo a dose de 20 mg por dia durante todo esse tempo. Com relação à solicitação de Nathalia no caso hipotético acima, a conduta inicial correta consiste em",
+    "options": [
+      "A) fazer diagnóstico diferencial com ansiedade; se for compatível, deve-se trocar a medicação por ansiolítico e reavaliar a paciente em duas semanas.",
+      "B) parabenizar a paciente pelo sucesso no tratamento e iniciar a retirada gradual do medicamento, na medida de um quarto de dose, quinzenalmente.",
+      "C) reavaliar o diagnóstico, pois é improvável a melhora tão rápida. Em caso de erro, deve-se cessar o uso do medicamento de maneira gradual.",
+      "D) reavaliar o diagnóstico e, na vigência de melhora, considerar a retirada após seis meses, contados do esbatimento dos sintomas.",
+      "E) fazer diagnóstico diferencial com transtorno afetivo bipolar, pois a euforia da paciente pode configurar virada maníaca causada pelo ISRS."
+    ],
+    "correctIndex": 3,
+    "correctLetter": "D",
+    "explanation": "Questão oficial de prova (SCM-SP 2023 - R1). Gabarito confirmado: Alternativa D.",
+    "difficulty": "Médio",
+    "tags": [
+      "SCM-SP",
+      "R1",
+      "SCMSP2023R1-87"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (SCMSP2023R1-87)"
+  },
+  {
+    "id": "q-hw-288548",
+    "remoteId": "288548",
+    "remoteAlternatives": [
+      {
+        "id": "729296",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "729297",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "729298",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "729299",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "729300",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "UEPABELEM",
+    "year": 2023,
+    "statement": "Marque a alternativa abaixo onde a fala logorreica está presente.",
+    "options": [
+      "A) Esquizofrenia Paranóide.",
+      "B) Transtorno Bipolar tipo I.",
+      "C) Transtorno Obsessivo Compulsivo.",
+      "D) Transtorno Bipolar tipo II.",
+      "E) Esquizofrenia Ebefrênica."
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "Questão oficial de prova (UEPABELEM 2023 - R1). Gabarito confirmado: Alternativa B.",
+    "difficulty": "Médio",
+    "tags": [
+      "UEPABELEM",
+      "R1",
+      "UEPABELEM2023R1-7"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (UEPABELEM2023R1-7)"
+  },
+  {
+    "id": "q-hw-38403",
+    "remoteId": "38403",
+    "remoteAlternatives": [
+      {
+        "id": "160939",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "160940",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "160941",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "160942",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Pediatria",
+    "subspecialty": "R1",
+    "institution": "AMRIGS",
+    "year": 2021,
+    "statement": "Menino de 8 anos é trazido à consulta pelos pais. Ambos referem que o filho está \"sempre agitado\", que é incapaz de brincar calmamente, que com frequência fala demais e interrompe os outros, apresentando muita dificuldade em esperar a sua vez (por exemplo, em uma fila). Além disso, evita ou reluta em se envolver em atividades que exijam esforço mental, é bastante desorganizado nas suas tarefas diárias e repetidamente perde coisas (seu material escolar, seus óculos, entre outros). O menino confirma as informações trazidas pelos pais. Em função dessa sintomatologia, você realiza o diagnóstico de Transtorno de Déficit de Atenção/Hiperatividade (TDAH) subtipo combinado e indica tratamento psicoterápico e farmacológico. Sobre o tratamento farmacológico do TDAH em crianças, é correto afirmar que:",
+    "options": [
+      "A) A terapia farmacológica não é considerada o tratamento de primeira linha.",
+      "B) Os estimulantes do sistema nervoso central são contraindicados para uso em crianças com anormalidades e riscos cardíacos conhecidos.",
+      "C) O metilfenidato é altamente eficaz nesse Transtorno, porém apresenta muitos efeitos adversos.",
+      "D) Ao contrário do que se pensava anteriormente, a administração contínua do metilfenidato por muitos anos, sem qualquer interrupção, não apresenta queda em centímetros durante o processo de crescimento."
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "Questão oficial de prova (AMRIGS 2021 - R1). Gabarito confirmado: Alternativa B.",
+    "difficulty": "Médio",
+    "tags": [
+      "AMRIGS",
+      "R1",
+      "AMRIGS2021R1-62"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (AMRIGS2021R1-62)"
+  },
+  {
+    "id": "q-hw-262028",
+    "remoteId": "262028",
+    "remoteAlternatives": [
+      {
+        "id": "616149",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "616150",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "616151",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "616152",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "616153",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Pediatria",
+    "subspecialty": "R1",
+    "institution": "HEDA",
+    "year": 2022,
+    "statement": "José, 11 anos, vem à consulta com o pediatra por dificuldades de relacionamento social na família e na escola. Mostra um desempenho escolar errático com alguns bons resultados mesclados com resultados ruins. A família recebe bilhetes da escola, quase diariamente, com queixas de que o paciente atrapalha o andamento da aula com piadas, conversas ou discussões. Segundo a mãe, o filho é bastante inteligente, mas vem deteriorando o seu desempenho ao longo dos anos com piora acentuada nas últimas séries do ensino fundamental. Não consegue se concentrar nos trabalhos e termina as tarefas muito rápido, com uma qualidade baixa. Frequentemente, perde o material necessário para fazer as lições de casa. De acordo com a família, isso sempre aconteceu, mas nos últimos anos os sintomas têm ficado mais significativos. Com base nessa história, o diagnóstico mais provável é:",
+    "options": [
+      "A) Transtorno do déficit de atenção e hiperatividade.",
+      "B) Transtorno opositor-desafiador.",
+      "C) Transtorno de humor bipolar.",
+      "D) Distúrbio de conduta.",
+      "E) Distimia."
+    ],
+    "correctIndex": 0,
+    "correctLetter": "A",
+    "explanation": "Questão oficial de prova (HEDA 2022 - R1). Gabarito confirmado: Alternativa A.",
+    "difficulty": "Médio",
+    "tags": [
+      "HEDA",
+      "R1",
+      "HEDA2022R1-37"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (HEDA2022R1-37)"
+  },
+  {
+    "id": "q-hw-325825",
+    "remoteId": "325825",
+    "remoteAlternatives": [
+      {
+        "id": "879758",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "879759",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "879760",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "879761",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "879762",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "Sírio Libanês - SP",
+    "year": 2026,
+    "statement": "Um homem de 35 anos, morador de área urbana, é encaminhado pela Estratégia Saúde da Família (ESF) ao Centro de Atenção Psicossocial (CAPS II) após episódio de ansiedade intensa, caracterizado por palpitações, sudorese e tremores, em meio a conflitos familiares e no trabalho. Relata uso nocivo de álcool, mas nega dependência. Considerando a Política Nacional de Saúde Mental e a função do CAPS na rede de atenção psicossocial, a conduta mais adequada é",
+    "options": [
+      "A) priorizar internação hospitalar para estabilização clínica, considerando o risco potencial de agravamento dos sintomas ansiosos.",
+      "B) realizar atendimento no CAPS, articulando ações da equipe multiprofissional e construindo um projeto terapêutico singular que envolva aspectos clínicos, psicossociais e de reinserção social.",
+      "C) iniciar atendimento com psicoterapia individual e medicação ansiolítica, visando à estabilização imediata dos sintomas.",
+      "D) direcionar o paciente para comunidade terapêutica, considerando seu histórico de uso de substâncias psicoativas.",
+      "E) limitar a intervenção ao manejo da crise atual, orientando o paciente a procurar pronto-socorro psiquiátrico em novas situações semelhantes."
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "Questão oficial de prova (Sírio Libanês - SP 2026 - R1). Gabarito confirmado: Alternativa B.",
+    "difficulty": "Médio",
+    "tags": [
+      "Sírio Libanês - SP",
+      "R1",
+      "HSLSP2026R1-93"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (HSLSP2026R1-93)"
+  },
+  {
+    "id": "q-hw-338028",
+    "remoteId": "338028",
+    "remoteAlternatives": [
+      {
+        "id": "926113",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "926114",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "926115",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "926116",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "UFSC",
+    "year": 2024,
+    "statement": "Em relação ao Transtorno do Espectro Autista (TEA), assinale a alternativa correta.",
+    "options": [
+      "A) Por ser impossível o diagnóstico de TEA em lactentes entre os 18 e 24 meses, na prática, ele é realizado tardiamente.",
+      "B) O diagnóstico de TEA é clínico, reservando-se a utilização de teste complementar de biomarcador específico nos casos de dúvida diagnóstica.",
+      "C) Quando o lactente tem irmãos ou pais com TEA ou atraso nos marcos do desenvolvimento neuropsicomotor, especialmente nas áreas de comunicação, comportamento e socialização, torna-se mandatória a investigação diagnóstica de TEA.",
+      "D) Considerando a elevação progressiva da prevalência de TEA, a Sociedade Brasileira de Pediatria recomenda complementar a avaliação da Caderneta da Criança com a triagem específica para autismo em todas as crianças nas idades de 36 e 48 meses, por meio do M"
+    ],
+    "correctIndex": 2,
+    "correctLetter": "C",
+    "explanation": "Questão oficial de prova (UFSC 2024 - R1). Gabarito confirmado: Alternativa C.",
+    "difficulty": "Médio",
+    "tags": [
+      "UFSC",
+      "R1",
+      "UFSC2024R1-68"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (UFSC2024R1-68)"
+  },
+  {
+    "id": "q-hw-325253",
+    "remoteId": "325253",
+    "remoteAlternatives": [
+      {
+        "id": "877303",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "877304",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "877305",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "877306",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Clínica Médica",
+    "subspecialty": "R1",
+    "institution": "HCPA",
+    "year": 2026,
+    "statement": "Paciente feminina, de 32 anos, veio à consulta na Atenção Primária com queixa de dor precordial em aperto, sem irradiação, com duração de cerca de 1 hora ao final do dia, quadro iniciado há 6 meses. Relatou cansaço, razão pela qual ficava mais em casa. Negou ortopneia, dispneia paroxística noturna ou dispneia aos esforços; negou, também, tabagismo e etilismo; fazia ginástica 3 vezes/semana. Ao exame físico, não apresentava anormalidades. Informou ter estado na Emergência devido à dor, ocasião em que foram feitos exames laboratoriais e eletrocardiografia, todos normais. Referiu muita preocupação com a saúde desde que perdera a mãe por um infarto há 7 meses. Não acreditava que a dor no peito fosse de origem \"psicológica\", como sugerido na última consulta na UPA, mas comentou ter pensamentos persistentes com a mãe, chorar quase todos os dias, ter dificuldade para dormir. Quando chegava ao final do dia, horário próximo ao da morte da mãe, apresentava sensações de formigamento na face e a impressão de ouvir a voz dela vindo do quarto. Considerando o quadro de sintomas relatado, assinale a alternativa que contempla o tipo de luto, a natureza dos sintomas somáticos e a proposta terapêutica para a situação.",
+    "options": [
+      "A) Luto normal - sintomas devidos à somatização do infarto sofrido pela mãe - Prescrever o uso de antidepressivo para prevenir o transtor- no do luto complexo persistente",
+      "B) Luto normal - sintomas somáticos decorrentes da vivência da perda da mãe - Indicar intervenção psicossocial (terapia de reatribui- ção) para o sintoma somático de dor no peito",
+      "C) Transtorno do luto complexo persistente - sintomas somáticos relacionados ao luto - Iniciar medicamento antidepressivo.",
+      "D) Transtorno do luto complexo persistente - dor torácica a ser investigada com exames complementares - Encaminhar a paciente para psicoterapia para abordagem do luto"
+    ],
+    "correctIndex": 1,
+    "correctLetter": "B",
+    "explanation": "Questão oficial de prova (HCPA 2026 - R1). Gabarito confirmado: Alternativa B.",
+    "difficulty": "Médio",
+    "tags": [
+      "HCPA",
+      "R1",
+      "HCPA2026R1-99"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (HCPA2026R1-99)"
+  },
+  {
+    "id": "q-hw-289889",
+    "remoteId": "289889",
+    "remoteAlternatives": [
+      {
+        "id": "734934",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "734935",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "734936",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "734937",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "734938",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "HUSE",
+    "year": 2023,
+    "statement": "Sobre Depressão marque a resposta ERRADA:",
+    "options": [
+      "A) Pode causar incapacidade",
+      "B) É um fator de risco reversível para Demência",
+      "C) Inibidores da receptação da serotonina é uma das classes de anti-depressivo mais utilizadas para tratar depressão",
+      "D) Sintomas cognitivos podem estar presentes na depressão",
+      "E) Clonazepan e lorazepan são as drogas de escolha para tratamento da depressão"
+    ],
+    "correctIndex": 4,
+    "correctLetter": "E",
+    "explanation": "Questão oficial de prova (HUSE 2023 - R1). Gabarito confirmado: Alternativa E.",
+    "difficulty": "Médio",
+    "tags": [
+      "HUSE",
+      "R1",
+      "HUSE2023R1-18"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (HUSE2023R1-18)"
+  },
+  {
+    "id": "q-hw-331687",
+    "remoteId": "331687",
+    "remoteAlternatives": [
+      {
+        "id": "901977",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "901978",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "901979",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "901980",
+        "index": 3,
+        "letter": "D"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "FAMEMA",
+    "year": 2026,
+    "statement": "Assinale a alternativa que inclui os transtornos psiquiátricos prevalentes nos Centros de Atenção Primária, os chamados \"transtornos mentais comuns\".",
+    "options": [
+      "A) Ansiedade, depressão e somatização.",
+      "B) Transtorno bipolar e esquizofrenia.",
+      "C) Transtorno de personalidade e transtorno de sintomas neurológicos funcionais.",
+      "D) Transtorno de déficit de atenção e hiperatividade e transtorno obsessivo-compulsivo."
+    ],
+    "correctIndex": 0,
+    "correctLetter": "A",
+    "explanation": "Questão oficial de prova (FAMEMA 2026 - R1). Gabarito confirmado: Alternativa A.",
+    "difficulty": "Médio",
+    "tags": [
+      "FAMEMA",
+      "R1",
+      "FAMEMA2026R1-87"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (FAMEMA2026R1-87)"
+  },
+  {
+    "id": "q-hw-343318",
+    "remoteId": "343318",
+    "remoteAlternatives": [
+      {
+        "id": "947990",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "947991",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "947992",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "947993",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "947994",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Residência Médica",
+    "subspecialty": "R1",
+    "institution": "FAMECA - Faculdade de Medicina de Catanduva",
+    "year": 2026,
+    "statement": "Enzo, um menino de 7 anos de idade, é trazido ao médico pelos pais devido a queixas escolares crescentes nos últimos dois anos. A professora relata que Enzo tem dificuldade em permanecer sentado por longos períodos, interrompe as aulas frequentemente, \"sonha acordado\" durante as atividades e não consegue completar as tarefas, mesmo as mais simples, por falta de foco. Os pais descrevem-no como \"ligado no 220 V\" desde os 3 anos, com energia inesgotável, dificuldade em obedecer regras e impulsividade. Relatam que, ultimamente, ele tem se mostrado muito ansioso em situações sociais e apresenta dificuldade para dormir. Em alguns momentos de grande frustração com as tarefas escolares, a mãe notou pequenos cortes superficiais que Enzo faz na coxa com uma régua. O pai do menino revela ter tido \"déficit de atenção\" não tratado na infância. Ao exame físico, Enzo é ativo e alerta, sem dismorfias, nem visceromegalias ou achados neurológicos focais. Os pais expressam preocupação e não querem introdução de medicação. Qual é a conduta correta?",
+    "options": [
+      "A) Solicitar um eletroencefalograma (EEG) e uma ressonância magnética (RM) de crânio para descartar epilepsia tipo ausência ou lesões cerebrais focais, dada a dificuldade de concentração e os episódios de \"sonhar acordado\", antes de iniciar qualquer tratamen",
+      "B) Encaminhar Enzo para avaliação neuropsicológica aprofundada para quantificar os déficits nas funções executivas e no QI e, com base nesses resultados, decidir sobre a introdução de metilfenidato.",
+      "C) Iniciar imediatamente o tratamento farmacológico com metilfenidato de liberação prolongada, mesmo com a hesitação dos pais, pois é a primeira linha para crianças em idade escolar com TDAH, em associação com terapia cognitivo-comportamental (TCC) para mane",
+      "D) Priorizar a psicoeducação dos pais e da escola, o treinamento parental com foco em estratégias comportamentais para manejo da hiperatividade e da impulsividade, e encaminhar Enzo para psicoterapia individual focada na autoagressão e ansiedade, avaliando a",
+      "E) Considerar que os sintomas de hiperatividade e impulsividade de Enzo, associados à dificuldade de obedecer regras, podem ser indicativos de Transtorno Opositor-Desafiador (TOD) como diagnóstico primário, exigindo um foco inicial no manejo comportamental e"
+    ],
+    "correctIndex": 3,
+    "correctLetter": "D",
+    "explanation": "Questão oficial de prova (FAMECA - Faculdade de Medicina de Catanduva 2026 - R1). Gabarito confirmado: Alternativa D.",
+    "difficulty": "Médio",
+    "tags": [
+      "FAMECA - Faculdade de Medicina de Catanduva",
+      "R1",
+      "FAMECA2026R1-52"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.813Z",
+    "source": "Hardworq (FAMECA2026R1-52)"
+  },
+  {
+    "id": "q-hw-263512",
+    "remoteId": "263512",
+    "remoteAlternatives": [
+      {
+        "id": "623027",
+        "index": 0,
+        "letter": "A"
+      },
+      {
+        "id": "623028",
+        "index": 1,
+        "letter": "B"
+      },
+      {
+        "id": "623029",
+        "index": 2,
+        "letter": "C"
+      },
+      {
+        "id": "623030",
+        "index": 3,
+        "letter": "D"
+      },
+      {
+        "id": "623031",
+        "index": 4,
+        "letter": "E"
+      }
+    ],
+    "specialty": "Clínica Médica",
+    "subspecialty": "R1",
+    "institution": "HIS",
+    "year": 2022,
+    "statement": "Mulher, 38 anos de idade, auxiliar de cozinha, comparece a consulta em uma Unidade Básica de Saúde por tristeza, desânimo e diminuição do apetite há 6 meses, perdendo cerca de 8kg nos últimos meses. Não tem mais vontade de sair com os filhos para ir ao cinema nem passear na praça perto de casa, está tendo muita dificuldade em se concentrar no trabalho, já esqueceu várias vezes de pôr sal nas comidas que prepara. No último mês, faltou com frequência ao trabalho porque não consegue se levantar da cama pela manhã. Demora bastante para pegar no sono e acorda diversas vezes durante a noite, o que a incomoda muito. Algumas vezes, chega a pensar se vale realmente a pena viver a vida dessa forma. Possui hipertensão arterial bem controlada com uso de losartana 100 mg/dia. Durante o atendimento, a paciente foi questionada sobre pensamentos suicidas, informando que às vezes tinha ideias de tirar sua própria vida. Não tinha planejado como fazê-lo, nem desejava tentar suicídio no momento. Sobre a conduta do profissional na consulta e a conduta terapêutica nesse caso, é possível dizer:",
+    "options": [
+      "A) A conduta foi inadequada, pois perguntar sobre ideação suicida aumenta o risco da paciente tentar suicídio. Deve-se encaminhá-la com urgência para emergência psiquiátrica para possível internação.",
+      "B) A conduta foi inadequada, pois perguntar sobre ideação suicida aumenta o risco da paciente tentar suicídio. Deve-se encaminhar ao CAPS com urgência para avaliação psiquiátrica imediata.",
+      "C) A conduta foi adequada, pois o risco de suicídio deve ser abordado em consulta. Deve-se prescrever lítio na dose de 900 mg/dia e mobilizar a rede de suporte da paciente.",
+      "D) A conduta foi adequada, pois o risco de suicídio deve ser abordado em consulta. Deve-se aprofundar a investigação, mobilizar rede de suporte da paciente e marcar um retorno breve.",
+      "E) A conduta foi inadequada, pois perguntar sobre ideação suicida aumenta o risco da paciente tentar suicídio. Deve-se prescrever lítio na dose de 900 mg/dia e mobilizar a rede de suporte da paciente."
+    ],
+    "correctIndex": 3,
+    "correctLetter": "D",
+    "explanation": "Questão oficial de prova (HIS 2022 - R1). Gabarito confirmado: Alternativa D.",
+    "difficulty": "Médio",
+    "tags": [
+      "HIS",
+      "R1",
+      "HIS2022R1-42"
+    ],
+    "image": "",
+    "createdAt": "2026-09-29T23:45:52.815Z",
+    "source": "Hardworq (HIS2022R1-42)"
+  },
+  {
     "id": "q-hw-88014",
     "remoteId": "88014",
     "remoteAlternatives": [

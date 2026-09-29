@@ -2806,6 +2806,58 @@ async function fetchHardworqStatus() {
   }
 }
 
+// ── Busca de doenças/temas do Hardworq (filtro do painel de sync) ──
+let hwqDoencaTimer = null;
+function hwqBuscaDoencasDebounced() {
+  clearTimeout(hwqDoencaTimer);
+  hwqDoencaTimer = setTimeout(hwqBuscaDoencas, 350);
+}
+
+async function hwqBuscaDoencas() {
+  const inp = $('hwq-doenca-busca');
+  const box = $('hwq-doenca-resultados');
+  if (!inp || !box) return;
+  const q = inp.value.trim();
+  if (q.length < 3) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = 'block';
+  box.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px">Buscando doenças…</div>';
+  try {
+    const res = await fetch('/api/questions/hardworq/doencas?q=' + encodeURIComponent(q));
+    const d = await res.json();
+    if (!d.success) { box.innerHTML = '<div style="font-size:12px;color:var(--rose);padding:4px">' + esc(d.msg || 'Erro ao buscar.') + '</div>'; return; }
+    if (!d.doencas || !d.doencas.length) {
+      box.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px">Nada encontrado no catálogo (' + d.total + ' doenças cadastradas). Tente outro termo — ex.: Diabetes, Sepse, Psiquiatria.</div>';
+      return;
+    }
+    box.innerHTML = d.doencas.map(x =>
+      '<div class="chip" data-id="' + x.id + '" data-nome="' + esc(x.nome) + '" onclick="hwqAddDoencaFromEl(this)" style="display:block;margin:2px 0;text-align:left;cursor:pointer">🦠 ' + esc(x.nome)
+      + (x.especialidade ? ' <span style="opacity:.55">· ' + esc(x.especialidade) + '</span>' : '') + '</div>'
+    ).join('');
+  } catch (e) {
+    box.innerHTML = '<div style="font-size:12px;color:var(--rose);padding:4px">Erro de rede ao buscar doenças.</div>';
+  }
+}
+
+function hwqAddDoencaFromEl(el) {
+  const box = $('hwq-doencas');
+  if (!box) return;
+  const id = el.getAttribute('data-id');
+  if (box.querySelector('[data-id="' + id + '"]')) return;
+  const chip = document.createElement('span');
+  chip.className = 'chip active';
+  chip.setAttribute('data-id', id);
+  chip.textContent = '🦠 ' + el.getAttribute('data-nome') + ' ✕';
+  chip.onclick = () => chip.remove();
+  box.appendChild(chip);
+  const inp = $('hwq-doenca-busca'); if (inp) inp.value = '';
+  const res = $('hwq-doenca-resultados'); if (res) { res.style.display = 'none'; res.innerHTML = ''; }
+}
+
+function hwqDoencasSelecionadas() {
+  const box = $('hwq-doencas');
+  return box ? Array.from(box.querySelectorAll('.chip[data-id]')).map(c => parseInt(c.getAttribute('data-id'), 10)).filter(Boolean) : [];
+}
+
 async function openHardworqSync() {
   openModal('<div class="modal-title"><i class="ph ph-cloud-arrow-down"></i> Banco Hardworq — API oficial<button class="modal-close"><i class="ph ph-x"></i></button></div>'
     + '<div id="hwq-status" style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6">Carregando status da integração…</div>'
@@ -2815,6 +2867,10 @@ async function openHardworqSync() {
     + '<div class="chips" id="hwq-grupos">' + HWQ_GRUPOS.map(g => hwqChip(g, g !== 'R3')).join('') + '</div>'
     + '<span class="sim-label" style="margin-top:12px">Anos das provas</span>'
     + '<div class="chips" id="hwq-anos">' + HWQ_ANOS.map(a => hwqChip(a, true)).join('') + '</div>'
+    + '<span class="sim-label" style="margin-top:12px">Doenças / temas (opcional — filtra o banco por assunto)</span>'
+    + '<input id="hwq-doenca-busca" class="sim-select" style="width:100%;margin-top:4px" placeholder="Digite para buscar: Diabetes, Sepse, Psiquiatria…" oninput="hwqBuscaDoencasDebounced()">'
+    + '<div id="hwq-doenca-resultados" style="display:none;max-height:180px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:6px;margin-top:6px"></div>'
+    + '<div class="chips" id="hwq-doencas" style="margin-top:6px"></div>'
     + '<div class="form-row" style="margin-top:14px"><div><span class="sim-label">Quantidade máxima</span>'
     + '<select id="hwq-qtd" class="sim-select"><option>10</option><option>20</option><option>50</option><option selected>100</option><option>200</option><option>500</option><option>1000</option><option value="99999">Tudo (sem limite)</option></select></div></div>'
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5">O gabarito vem junto no feed da API. Duplicadas são ignoradas e questões já existentes são atualizadas. O servidor faz login sozinho com <b>HARDWORQ_EMAIL</b>/<b>HARDWORQ_SENHA</b> no .env e renova o token automaticamente.</div>'
@@ -2835,6 +2891,7 @@ async function runHardworqSync() {
     areas: activeChips('hwq-areas'),
     grupos_prova: activeChips('hwq-grupos'),
     anos: activeChips('hwq-anos').map(Number).filter(n => n > 0),
+    ids_doencas: hwqDoencasSelecionadas(),
     qtd_maxima: +($('hwq-qtd') && $('hwq-qtd').value || 100)
   };
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph ph-circle-notch"></i> Buscando…'; }

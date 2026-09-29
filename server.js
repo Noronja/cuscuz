@@ -526,7 +526,7 @@ const HWQ = {
   syncIntervalHours: Math.max(1, parseInt(process.env.HARDWORQ_SYNC_INTERVAL_H, 10) || 6),
   maxBankSize: Math.max(50, parseInt(process.env.HARDWORQ_MAX_BANK, 10) || 400)
 };
-const HWQ_STATE = { userToken: null, lastLoginAt: null, lastLoginOk: null, lastSyncAt: null, lastSyncOk: null, lastSyncResult: null };
+const HWQ_STATE = { userToken: null, lastLoginAt: null, lastLoginOk: null, lastSyncAt: null, lastSyncOk: null, lastSyncResult: null, doencas: null, doencasAt: 0 };
 
 // Login contínuo: o token do aluno é persistido em disco e sobrevive a restarts.
 // Só refaz o login de verdade quando a API recusar o token (auth:false) — relogin automático.
@@ -676,6 +676,44 @@ async function hwqFetchAll(opts = {}) {
   }
   return { ok: true, status: 200, authFailed: false, error: null, msg: '', questions: [...seen.values()].slice(0, target), rounds };
 }
+
+// Normaliza para busca sem acento/caixa (ex.: "esquizofrenia" == "Esquizofrenia")
+function hwqNorm(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+// Catálogo de doenças/temas (GET /doencas — ~358 entradas) com cache de 24h
+async function hwqListarDoencas() {
+  if (Array.isArray(HWQ_STATE.doencas) && HWQ_STATE.doencas.length && Date.now() - HWQ_STATE.doencasAt < 24 * 60 * 60 * 1000) {
+    return HWQ_STATE.doencas;
+  }
+  const r = await hwqRequest(`${HWQ.apiBase}/doencas`);
+  const list = r.data && Array.isArray(r.data.obj) ? r.data.obj : [];
+  if (list.length) {
+    HWQ_STATE.doencas = list;
+    HWQ_STATE.doencasAt = Date.now();
+  }
+  return list;
+}
+
+// Busca doenças por nome/especialidade para o filtro do painel (?q=esquizofrenia)
+app.get('/api/questions/hardworq/doencas', async (req, res) => {
+  try {
+    const q = hwqNorm(req.query.q || '');
+    const todas = await hwqListarDoencas();
+    const filtradas = q
+      ? todas.filter(d => hwqNorm(d.nome).includes(q) || hwqNorm(d.especialidade || d.area || '').includes(q))
+      : todas;
+    res.json({
+      success: true,
+      total: todas.length,
+      doencas: filtradas.slice(0, 30).map(d => ({ id: d.id, nome: d.nome, especialidade: d.especialidade || d.area || '' }))
+    });
+  } catch (err) {
+    console.error('Erro ao buscar doenças Hardworq:', err.message);
+    res.status(500).json({ success: false, msg: err.message || 'Erro ao buscar doenças' });
+  }
+});
 
 // Registra a resposta do aluno na API (doc §9) — exige UserToken válido (login email/senha)
 async function hwqAnswerQuestion({ remoteId, alternativeId, idTurma } = {}) {
@@ -914,13 +952,13 @@ app.get('/api/questions/hardworq/status', (req, res) => {
 // Sincronização com a API do Hardworq (botão "Sincronizar Hardworq" do app)
 app.post('/api/questions/hardworq/sync', async (req, res) => {
   try {
-    const { areas, anos, grupos_prova, qtd_maxima, cookie, email, senha, idTurma, salvar = true } = req.body || {};
+    const { areas, anos, grupos_prova, qtd_maxima, cookie, email, senha, idTurma, ids_doencas, salvar = true } = req.body || {};
     if (email && senha) { HWQ.email = String(email).trim(); HWQ.senha = String(senha); HWQ_STATE.userToken = null; } // sessão avulsa (não persiste)
     if (cookie) HWQ.cookie = String(cookie).trim(); // legado
 
     if (salvar === false) {
       if (!HWQ_STATE.userToken) await hwqLogin();
-      const search = await hwqFetchAll({ areas, anos, grupos_prova, qtd_maxima, idTurma });
+      const search = await hwqFetchAll({ areas, anos, grupos_prova, qtd_maxima, ids_doencas, idTurma });
       if (search.error || search.authFailed || search.status >= 400) {
         return res.status(search.authFailed ? 401 : 502).json({
           success: false, authFailed: !!search.authFailed, status: search.status,
@@ -931,7 +969,7 @@ app.post('/api/questions/hardworq/sync', async (req, res) => {
       return res.json({ success: true, fetched: search.questions.length, imported: 0, updated: 0, questions: parsed });
     }
 
-    const result = await runHardworqSync({ areas, anos, grupos_prova, qtd_maxima, idTurma });
+    const result = await runHardworqSync({ areas, anos, grupos_prova, qtd_maxima, ids_doencas, idTurma });
     res.status(result.ok ? 200 : (result.authFailed ? 401 : 502)).json(result);
   } catch (err) {
     console.error('Erro na sincronização Hardworq:', err);
@@ -959,7 +997,7 @@ app.get('/api/questions/hardworq/aluno', async (req, res) => {
 // Importação manual (compatibilidade): aceita jsonText/payload colado OU idTurma para buscar na API
 app.post('/api/questions/import-hardworq', async (req, res) => {
   try {
-    const { idTurma, cookie, email, senha, jsonText, payload, qtd_maxima = 20, areas, anos, grupos_prova } = req.body || {};
+    const { idTurma, cookie, email, senha, jsonText, payload, qtd_maxima = 20, areas, anos, grupos_prova, ids_doencas } = req.body || {};
     let parsedQuestions = [];
 
     if (email && senha) { HWQ.email = String(email).trim(); HWQ.senha = String(senha); HWQ_STATE.userToken = null; }
@@ -969,7 +1007,7 @@ app.post('/api/questions/import-hardworq', async (req, res) => {
       parsedQuestions = parseHardworqPayload(payload || jsonText);
     } else if (idTurma || HWQ.email || HWQ.cookie) {
       if (!HWQ_STATE.userToken) await hwqLogin();
-      const search = await hwqFetchAll({ idTurma, areas, anos, grupos_prova, qtd_maxima });
+      const search = await hwqFetchAll({ idTurma, areas, anos, grupos_prova, qtd_maxima, ids_doencas });
       if (search.error || search.authFailed || search.status >= 400) {
         return res.status(search.authFailed ? 401 : 502).json({
           error: search.authFailed
