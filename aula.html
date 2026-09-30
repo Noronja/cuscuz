@@ -19,96 +19,42 @@
     --accent-hover: #0a635f;
     --danger: #d64545;
     --ok: #1a9a55;
+    --amber: #b97a0a;
     --radius: 12px;
     --shadow: 0 1px 2px rgba(16, 24, 40, .05);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Inter', system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
+  body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
   button { font-family: inherit; cursor: pointer; }
   a { color: inherit; }
 
-  /* ── Topbar ── */
-  .topbar {
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 24px;
-    display: flex; align-items: center; gap: 12px;
-    position: sticky; top: 0; z-index: 20;
-  }
-  .topbar .voltar {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 14px; font-weight: 500; color: var(--muted);
-    text-decoration: none; padding: 8px 12px; border-radius: 10px;
-    transition: background .15s, color .15s;
-  }
+  .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 20; }
+  .topbar .voltar { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; color: var(--muted); text-decoration: none; padding: 8px 12px; border-radius: 10px; transition: background .15s, color .15s; }
   .topbar .voltar:hover { background: var(--bg); color: var(--text); }
   .topbar .logo { font-weight: 800; font-size: 16px; letter-spacing: -.2px; }
   .topbar .logo span { color: var(--accent); }
-  .topbar .curso-nome {
-    margin-left: auto; font-size: 13px; color: var(--muted);
-    max-width: 40vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
+  .topbar .curso-nome { margin-left: auto; font-size: 13px; color: var(--muted); max-width: 40vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* ── Layout principal: 70% / 30% ── */
-  .aula-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(320px, 3fr);
-    gap: 24px;
-    max-width: 1440px;
-    margin: 0 auto;
-    padding: 24px;
-    align-items: start;
-  }
+  .aula-layout { display: grid; grid-template-columns: minmax(0, 7fr) minmax(330px, 3fr); gap: 24px; max-width: 1440px; margin: 0 auto; padding: 24px; align-items: start; }
 
-  /* ── Coluna principal ── */
-  .player-wrap {
-    background: #000; border-radius: var(--radius); overflow: hidden;
-    box-shadow: var(--shadow); aspect-ratio: 16 / 9; width: 100%;
-  }
+  .player-wrap { background: #000; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); aspect-ratio: 16 / 9; width: 100%; position: relative; }
   .player-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .player-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #9aa3ad; font-size: 14px; }
+  .player-placeholder i { font-size: 44px; }
 
-  .aula-card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow);
-    padding: 20px 22px; margin-top: 16px;
-  }
-
-  .breadcrumbs {
-    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
-    font-size: 12.5px; color: var(--muted); margin-bottom: 10px;
-  }
+  .aula-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; margin-top: 16px; }
+  .breadcrumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
   .breadcrumbs a { text-decoration: none; font-weight: 500; }
   .breadcrumbs a:hover { color: var(--accent); }
   .breadcrumbs i { font-size: 12px; opacity: .55; }
   .breadcrumbs .atual { color: var(--text); font-weight: 600; }
-
-  .aula-titulo { font-size: 22px; font-weight: 800; letter-spacing: -.4px; line-height: 1.25; }
-
-  .aula-meta {
-    display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px;
-    font-size: 13px; color: var(--muted);
-  }
+  .aula-titulo { font-size: 21px; font-weight: 800; letter-spacing: -.4px; line-height: 1.25; }
+  .aula-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: 13px; color: var(--muted); }
   .aula-meta span { display: inline-flex; align-items: center; gap: 5px; }
   .aula-meta i { font-size: 15px; }
 
-  /* Barra de ações */
-  .acoes {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
-    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
-  }
-  .btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    border: 1px solid var(--border); background: var(--card);
-    color: var(--text); font-size: 13.5px; font-weight: 600;
-    padding: 9px 14px; border-radius: 10px;
-    transition: background .15s, border-color .15s, color .15s, transform .05s;
-    user-select: none;
-  }
+  .acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 13.5px; font-weight: 600; padding: 9px 14px; border-radius: 10px; transition: background .15s, border-color .15s, color .15s, transform .05s; user-select: none; }
   .btn i { font-size: 17px; }
   .btn:hover { background: var(--bg); }
   .btn:active { transform: translateY(1px); }
@@ -120,121 +66,88 @@
   .grupo-votos .btn:first-child { border-radius: 10px 0 0 10px; }
   .grupo-votos .btn:last-child { border-radius: 0 10px 10px 0; border-left: 0; }
   .btn.votado { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
-  .grupo-votos .btn.votado:last-child { border-left-color: var(--accent); }
-  .btn .contador { font-size: 12.5px; color: var(--muted); font-weight: 600; }
-  .btn.votado .contador { color: var(--accent); }
   .btn.salvo { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .btn.vista { background: #eaf7ef; border-color: var(--ok); color: var(--ok); }
   .btn.espaco { margin-left: auto; }
 
-  /* Materiais */
-  .materiais h3 {
-    font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;
-    margin-bottom: 12px;
-  }
+  .materiais h3 { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
   .materiais h3 i { color: var(--accent); font-size: 17px; }
   .materiais-lista { display: flex; flex-wrap: wrap; gap: 10px; }
-  .material-chip {
-    display: inline-flex; align-items: center; gap: 9px;
-    border: 1px solid var(--border); border-radius: 10px;
-    padding: 9px 13px; background: var(--card);
-    font-size: 13px; font-weight: 500; text-decoration: none;
-    transition: border-color .15s, background .15s, box-shadow .15s;
-  }
+  .material-chip { display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--border); border-radius: 10px; padding: 9px 13px; background: var(--card); font-size: 13px; font-weight: 500; text-decoration: none; transition: border-color .15s, background .15s, box-shadow .15s; max-width: 320px; }
   .material-chip:hover { border-color: var(--accent); background: var(--accent-soft); box-shadow: var(--shadow); }
-  .material-chip .pdf {
-    width: 30px; height: 30px; border-radius: 8px; flex: none;
-    background: #fdecec; color: var(--danger);
-    display: inline-flex; align-items: center; justify-content: center; font-size: 17px;
-  }
-  .material-chip .nome { display: flex; flex-direction: column; line-height: 1.25; }
+  .material-chip .pdf { width: 30px; height: 30px; border-radius: 8px; flex: none; background: #fdecec; color: var(--danger); display: inline-flex; align-items: center; justify-content: center; font-size: 17px; }
+  .material-chip .nome { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+  .material-chip .nome span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 230px; }
   .material-chip .nome small { color: var(--muted); font-size: 11.5px; font-weight: 400; }
   .material-chip > i { color: var(--muted); font-size: 16px; }
 
-  /* ── Sidebar ── */
-  .sidebar {
-    position: sticky; top: 76px;
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow);
-    display: flex; flex-direction: column;
-    max-height: calc(100vh - 100px);
-    overflow: hidden;
-  }
-  .sidebar-head { padding: 18px 18px 12px; border-bottom: 1px solid var(--border); }
+  .sidebar { position: sticky; top: 76px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); display: flex; flex-direction: column; max-height: calc(100vh - 100px); overflow: hidden; }
+  .sidebar-head { padding: 16px 18px 10px; border-bottom: 1px solid var(--border); }
   .sidebar-head h2 { font-size: 16px; font-weight: 800; letter-spacing: -.3px; }
-  .sidebar-stats { display: flex; gap: 14px; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+  .sidebar-stats { display: flex; gap: 14px; margin-top: 6px; font-size: 12.5px; color: var(--muted); flex-wrap: wrap; }
   .sidebar-stats span { display: inline-flex; align-items: center; gap: 5px; }
   .sidebar-stats i { font-size: 14px; }
-  .progresso { margin-top: 10px; }
-  .progresso .rotulo { font-size: 11.5px; color: var(--muted); margin-bottom: 5px; display: flex; justify-content: space-between; }
-  .progresso .barra { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; }
-  .progresso .barra div { height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
+
+  /* Progresso retrátil */
+  .prog-toggle { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; padding: 6px 8px; border-radius: 8px; background: var(--bg); user-select: none; }
+  .prog-toggle:hover { color: var(--text); }
+  .prog-toggle .pct { margin-left: auto; font-weight: 800; color: var(--accent); }
+  .prog-toggle .caret { transition: transform .25s; font-size: 13px; }
+  .prog-toggle.aberto .caret { transform: rotate(180deg); }
+  .prog-body { display: none; padding: 10px 8px 4px; }
+  .prog-body.aberto { display: block; }
+  .prog-body .barra { height: 7px; border-radius: 99px; background: var(--border); overflow: hidden; }
+  .prog-body .barra div { height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
+  .prog-body .rotulo { font-size: 11.5px; color: var(--muted); display: flex; justify-content: space-between; margin-bottom: 5px; }
 
   .busca { padding: 12px 14px; border-bottom: 1px solid var(--border); position: relative; }
-  .busca input {
-    width: 100%; font-family: inherit; font-size: 13.5px;
-    padding: 9px 12px 9px 36px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--bg); color: var(--text);
-    outline: none; transition: border-color .15s, box-shadow .15s;
-  }
+  .busca input { width: 100%; font-family: inherit; font-size: 13.5px; padding: 9px 12px 9px 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); outline: none; transition: border-color .15s, box-shadow .15s; }
   .busca input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(13, 125, 120, .12); background: #fff; }
   .busca > i { position: absolute; left: 26px; top: 50%; transform: translateY(calc(-50% - 6px)); color: var(--muted); font-size: 16px; }
 
-  /* Accordion com rolagem independente */
   .menu-aulas { overflow-y: auto; flex: 1; padding: 8px 10px 14px; scrollbar-width: thin; }
   .menu-aulas::-webkit-scrollbar { width: 8px; }
   .menu-aulas::-webkit-scrollbar-thumb { background: #d7dbe0; border-radius: 99px; }
 
   .modulo { border: 1px solid var(--border); border-radius: 10px; margin-top: 8px; overflow: hidden; background: var(--card); }
-  .modulo-cabecalho {
-    width: 100%; display: flex; align-items: center; gap: 10px;
-    padding: 12px 13px; border: 0; background: transparent; text-align: left;
-    font-size: 13.5px; font-weight: 700; color: var(--text);
-  }
+  .modulo-cabecalho { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 13px; border: 0; background: transparent; text-align: left; font-size: 13.5px; font-weight: 700; color: var(--text); }
   .modulo-cabecalho:hover { background: var(--bg); }
   .modulo-cabecalho .seta { margin-left: auto; transition: transform .25s; font-size: 15px; color: var(--muted); }
   .modulo.aberto .modulo-cabecalho .seta { transform: rotate(90deg); }
-  .modulo-cabecalho .contagem {
-    font-size: 11px; font-weight: 600; color: var(--muted);
-    background: var(--bg); border: 1px solid var(--border);
-    padding: 2px 8px; border-radius: 99px;
-  }
-  .modulo-corpo {
-    display: grid; grid-template-rows: 0fr;
-    transition: grid-template-rows .3s ease;
-  }
+  .modulo-cabecalho .contagem { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 99px; }
+  .modulo-corpo { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ease; }
   .modulo.aberto .modulo-corpo { grid-template-rows: 1fr; }
   .modulo-corpo > div { overflow: hidden; }
-  .aula-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 13px 9px 15px; font-size: 13px;
-    cursor: pointer; border-top: 1px solid var(--border);
-    transition: background .15s;
-  }
+  .submodulo { border-top: 1px solid var(--border); }
+  .sub-cabecalho { width: 100%; display: flex; align-items: center; gap: 8px; padding: 9px 13px 9px 20px; border: 0; background: transparent; font-size: 12.5px; font-weight: 600; color: var(--text); text-align: left; }
+  .sub-cabecalho:hover { background: var(--bg); }
+  .sub-cabecalho .contagem { margin-left: auto; font-size: 10.5px; color: var(--muted); }
+  .sub-cabecalho .seta { transition: transform .25s; font-size: 12px; color: var(--muted); }
+  .submodulo.aberto .sub-cabecalho .seta { transform: rotate(90deg); }
+  .sub-corpo { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
+  .submodulo.aberto .sub-corpo { grid-template-rows: 1fr; }
+  .sub-corpo > div { overflow: hidden; }
+  .aula-item { display: flex; align-items: center; gap: 10px; padding: 8px 13px 8px 28px; font-size: 12.5px; cursor: pointer; border-top: 1px solid var(--border); transition: background .15s; }
   .aula-item:hover { background: var(--bg); }
   .aula-item.ativa { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
-  .aula-item .play { color: var(--muted); font-size: 16px; flex: none; }
+  .aula-item .play { color: var(--muted); font-size: 15px; flex: none; }
   .aula-item.ativa .play { color: var(--accent); }
   .aula-item .titulo-aula { flex: 1; min-width: 0; line-height: 1.3; }
-  .aula-item .dur { font-size: 11.5px; color: var(--muted); flex: none; }
-  .aula-item .check { color: var(--ok); font-size: 16px; flex: none; }
+  .aula-item .check { color: var(--ok); font-size: 15px; flex: none; }
+  .resultado-busca .aula-item { padding-left: 13px; }
+  .resultado-busca .curso-tag { font-size: 10px; color: var(--muted); font-weight: 600; flex: none; }
   .sem-resultado { padding: 18px 14px; font-size: 13px; color: var(--muted); text-align: center; display: none; }
+  .carregando { padding: 30px 14px; text-align: center; color: var(--muted); font-size: 13.5px; }
+  .carregando i { font-size: 26px; display: block; margin-bottom: 10px; animation: girar 1s linear infinite; }
+  @keyframes girar { to { transform: rotate(360deg); } }
 
-  /* Toast */
-  .toast {
-    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px);
-    background: var(--text); color: #fff; font-size: 13.5px; font-weight: 500;
-    padding: 11px 18px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18);
-    opacity: 0; transition: opacity .25s, transform .25s; z-index: 50;
-    display: flex; align-items: center; gap: 8px;
-  }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: #fff; font-size: 13.5px; font-weight: 500; padding: 11px 18px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18); opacity: 0; transition: opacity .25s, transform .25s; z-index: 50; display: flex; align-items: center; gap: 8px; }
   .toast.visivel { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast i { color: #7fe0c2; font-size: 17px; }
 
-  /* Responsivo */
   @media (max-width: 1020px) {
     .aula-layout { grid-template-columns: 1fr; }
-    .sidebar { position: static; max-height: 520px; }
+    .sidebar { position: static; max-height: 560px; }
     .topbar .curso-nome { display: none; }
   }
 </style>
@@ -244,41 +157,41 @@
 <header class="topbar">
   <a class="voltar" href="/"><i class="ph ph-arrow-left"></i> Voltar</a>
   <div class="logo">Cuscuz<span>-MED</span></div>
-  <div class="curso-nome" id="curso-nome-topo"></div>
+  <div class="curso-nome" id="curso-nome-topo">Acervo de videoaulas — Google Drive</div>
 </header>
 
 <main class="aula-layout">
   <!-- ══ Coluna principal (~70%) ══ -->
   <section class="coluna-principal">
     <div class="player-wrap">
-      <iframe id="player" src="" title="Player da aula"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen></iframe>
+      <div class="player-placeholder" id="player-placeholder"><i class="ph ph-play-circle"></i><span>Selecione uma videoaula no menu ao lado</span></div>
+      <iframe id="player" src="" title="Player da aula" allow="autoplay; encrypted-media; fullscreen" allowfullscreen style="display:none"></iframe>
     </div>
 
     <div class="aula-card">
       <nav class="breadcrumbs" id="breadcrumbs" aria-label="Caminho de navegação"></nav>
-      <h1 class="aula-titulo" id="aula-titulo"></h1>
+      <h1 class="aula-titulo" id="aula-titulo">Carregando acervo…</h1>
       <div class="aula-meta">
-        <span><i class="ph ph-eye"></i> <b id="meta-views"></b>&nbsp;visualizações</span>
-        <span><i class="ph ph-timer"></i> duração <b id="meta-duracao"></b></span>
-        <span><i class="ph ph-calendar-blank"></i> atualizada em <b id="meta-data"></b></span>
+        <span><i class="ph ph-graduation-cap"></i> <b id="meta-curso">—</b></span>
+        <span><i class="ph ph-folder-open"></i> <b id="meta-disc">—</b></span>
+        <span><i class="ph ph-hard-drives"></i> <b id="meta-fonte">Google Drive</b></span>
       </div>
 
       <div class="acoes">
         <div class="grupo-votos" role="group" aria-label="Avaliar aula">
-          <button class="btn" id="btn-gostei" title="Gostei"><i class="ph ph-thumbs-up"></i><span class="contador" id="count-gostei"></span></button>
-          <button class="btn" id="btn-nao-gostei" title="Não gostei"><i class="ph ph-thumbs-down"></i><span class="contador" id="count-naogostei"></span></button>
+          <button class="btn" id="btn-gostei" title="Gostei"><i class="ph ph-thumbs-up"></i><span class="contador" id="count-gostei">—</span></button>
+          <button class="btn" id="btn-nao-gostei" title="Não gostei"><i class="ph ph-thumbs-down"></i><span class="contador" id="count-naogostei">—</span></button>
         </div>
         <button class="btn" id="btn-salvar"><i class="ph ph-bookmark-simple"></i> Salvar</button>
         <button class="btn" id="btn-vista" role="checkbox" aria-checked="false"><i class="ph ph-check-circle"></i> Marcar como vista</button>
+        <a class="btn" id="btn-drive" href="#" target="_blank" rel="noopener" title="Abrir no Drive"><i class="ph ph-arrow-square-out"></i> Drive</a>
         <button class="btn primario espaco" id="btn-proxima"><i class="ph ph-skip-forward"></i> Próxima aula</button>
       </div>
     </div>
 
     <div class="aula-card materiais">
       <h3><i class="ph ph-folder-notch-open"></i> Materiais desta aula</h3>
-      <div class="materiais-lista" id="materiais-lista"></div>
+      <div class="materiais-lista" id="materiais-lista"><span style="font-size:13px;color:var(--muted)">Carregando…</span></div>
     </div>
   </section>
 
@@ -287,255 +200,264 @@
     <div class="sidebar-head">
       <h2>Conteúdo do curso</h2>
       <div class="sidebar-stats" id="curso-stats"></div>
-      <div class="progresso">
-        <div class="rotulo"><span>Seu progresso</span><b id="progresso-pct">0%</b></div>
-        <div class="barra"><div id="progresso-barra" style="width:0%"></div></div>
+      <div class="prog-toggle" id="prog-toggle" onclick="toggleProg()" title="Abrir/fechar progresso">
+        <i class="ph ph-chart-line-up"></i> Progresso <span class="pct" id="prog-pct-mini">0%</span> <i class="ph ph-caret-down caret"></i>
+      </div>
+      <div class="prog-body" id="prog-body">
+        <div class="rotulo"><span>Videoaulas assistidas</span><b id="prog-contagem">0/0</b></div>
+        <div class="barra"><div id="prog-barra" style="width:0%"></div></div>
       </div>
     </div>
     <div class="busca">
       <i class="ph ph-magnifying-glass"></i>
-      <input type="search" id="busca-aulas" placeholder="Buscar aula no curso…" autocomplete="off">
+      <input type="search" id="busca-aulas" placeholder="Buscar videoaula…" autocomplete="off">
     </div>
-    <nav class="menu-aulas" id="menu-aulas" aria-label="Módulos do curso"></nav>
-    <div class="sem-resultado" id="sem-resultado">Nenhuma aula encontrada com esse termo.</div>
+    <nav class="menu-aulas" id="menu-aulas"><div class="carregando"><i class="ph ph-circle-notch"></i>Carregando cursos do Drive…</div></nav>
+    <div class="sem-resultado" id="sem-resultado">Nenhuma videoaula encontrada com esse termo.</div>
   </aside>
 </main>
 
 <div class="toast" id="toast"><i class="ph ph-check-circle"></i><span id="toast-msg"></span></div>
 
 <script>
-/* ════════════ Dados do curso (placeholder — depois troque pelo acervo real) ════════════ */
-const CURSO = {
-  nome: 'MEDCURSO — Extensivo 2026',
-  videoId: 'aqz-KE-bpKQ', // placeholder YouTube — troque pelo vídeo da aula
-  modulos: [
-    { nome: 'Comece Aqui', aulas: [
-      { id: 'a1', titulo: 'Orientações Iniciais', duracao: '12:34', views: '18,2 mil', data: '05/01/2026', materiais: [
-        { nome: 'Cronograma de Estudos.pdf', tamanho: '1,2 MB' },
-        { nome: 'Guia de Sobrevivência do Internato.pdf', tamanho: '820 KB' } ] },
-      { id: 'a2', titulo: 'Como usar a plataforma e o acervo', duracao: '08:10', views: '15,7 mil', data: '05/01/2026', materiais: [
-        { nome: 'Passo a passo do Acervo.pdf', tamanho: '640 KB' } ] },
-      { id: 'a3', titulo: 'Método de estudo: como revisar', duracao: '21:47', views: '12,9 mil', data: '06/01/2026', materiais: [] }
-    ]},
-    { nome: 'Anatomia', aulas: [
-      { id: 'an1', titulo: 'Anatomia do coração: câmaras e valvas', duracao: '34:05', views: '9,8 mil', data: '12/01/2026', materiais: [
-        { nome: 'Resumo — Anatomia cardíaca.pdf', tamanho: '2,1 MB' } ] },
-      { id: 'an2', titulo: 'Círculo menor e maior da circulação', duracao: '27:18', views: '8,1 mil', data: '12/01/2026', materiais: [] },
-      { id: 'an3', titulo: 'Anatomia do peritônio', duracao: '30:52', views: '7,4 mil', data: '19/01/2026', materiais: [
-        { nome: 'Resumo — Peritônio.pdf', tamanho: '1,4 MB' },
-        { nome: 'Esquemas ilustrados.pdf', tamanho: '3,3 MB' } ] }
-    ]},
-    { nome: 'Cardiologia', aulas: [
-      { id: 'cd1', titulo: 'Insuficiência cardíaca: diagnóstico', duracao: '41:22', views: '11,3 mil', data: '02/02/2026', materiais: [
-        { nome: 'Resumo — IC aguda e crônica.pdf', tamanho: '2,8 MB' } ] },
-      { id: 'cd2', titulo: 'Síndromes coronarianas agudas', duracao: '52:11', views: '14,6 mil', data: '09/02/2026', materiais: [
-        { nome: 'Fluxograma SCA.pdf', tamanho: '980 KB' },
-        { nome: 'Tabela de medicações.pdf', tamanho: '720 KB' } ] },
-      { id: 'cd3', titulo: 'Hipertensão arterial: conduta', duracao: '38:45', views: '10,2 mil', data: '16/02/2026', materiais: [] },
-      { id: 'cd4', titulo: 'Arritmias na emergência', duracao: '45:30', views: '9,9 mil', data: '23/02/2026', materiais: [
-        { nome: 'Resumo — Arritmias.pdf', tamanho: '1,9 MB' } ] }
-    ]},
-    { nome: 'Cirurgia Geral', aulas: [
-      { id: 'cg1', titulo: 'Abdome agudo obstrutivo', duracao: '47:12', views: '8,7 mil', data: '02/03/2026', materiais: [
-        { nome: 'Resumo — Abdome agudo.pdf', tamanho: '2,4 MB' } ] },
-      { id: 'cg2', titulo: 'Trauma: ATLS resumido', duracao: '55:03', views: '13,1 mil', data: '09/03/2026', materiais: [] },
-      { id: 'cg3', titulo: 'Hérnias da parede abdominal', duracao: '33:40', views: '7,8 mil', data: '16/03/2026', materiais: [
-        { nome: 'Resumo — Hérnias.pdf', tamanho: '1,1 MB' } ] }
-    ]},
-    { nome: 'Pediatria', aulas: [
-      { id: 'pd1', titulo: 'Puericultura: consultas do bebê', duracao: '29:55', views: '6,9 mil', data: '23/03/2026', materiais: [
-        { nome: 'Calendário vacinal.pdf', tamanho: '540 KB' } ] },
-      { id: 'pd2', titulo: 'Desidratação: cálculo e reposição', duracao: '36:27', views: '8,4 mil', data: '30/03/2026', materiais: [
-        { nome: 'Resumo — Hidratação.pdf', tamanho: '1,3 MB' } ] },
-      { id: 'pd3', titulo: 'Exantemas na infância', duracao: '31:14', views: '7,7 mil', data: '06/04/2026', materiais: [] }
-    ]}
-  ]
+/* ════════════ Acervo real do Drive (acervo-manifest.json) ════════════ */
+const ARVORE = new Map();     // curso -> Map(disciplina -> videos[])
+const MATERIAIS = new Map();  // "curso||disciplina" -> materials[]
+const ORDEM_CURSOS = [];
+let LISTA = [];               // [{id, titulo, disc, curso}] em ordem
+let ATUAL = null;
+
+const $ = id => document.getElementById(id);
+const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const limparDisc = s => String(s || '').replace(/\.(mp4|webm|mkv|mov|pdf)$/i, '').trim() || 'Geral';
+
+/* Estado persistido */
+const VISTAS = new Set(JSON.parse(localStorage.getItem('aula-vistas') || '[]'));
+const SALVAS = new Set(JSON.parse(localStorage.getItem('aula-salvas') || '[]'));
+const VOTOS = JSON.parse(localStorage.getItem('aula-votos') || '{}');
+const persistir = () => {
+  localStorage.setItem('aula-vistas', JSON.stringify([...VISTAS]));
+  localStorage.setItem('aula-salvas', JSON.stringify([...SALVAS]));
+  localStorage.setItem('aula-votos', JSON.stringify(VOTOS));
 };
 
-/* ════════════ Estado (persistido por curso) ════════════ */
-const CHAVE = 'cuscuz-aula-' + slug(CURSO.nome);
-function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
-const state = JSON.parse(localStorage.getItem(CHAVE) || '{}');
-state.vistas    = state.vistas    || [];
-state.salvas    = state.salvas    || [];
-state.votos     = state.votos     || {};
-state.aulaAtual = state.aulaAtual || CURSO.modulos[0].aulas[0].id;
-const persistir = () => localStorage.setItem(CHAVE, JSON.stringify(state));
+async function carregarAcervo() {
+  const resp = await fetch('/acervo-manifest.json');
+  const data = await resp.json();
+  const videos = data.videos || [], mats = data.materials || [];
 
-const lista = [];
-CURSO.modulos.forEach(m => m.aulas.forEach(a => lista.push({ ...a, modulo: m.nome })));
-const $ = id => document.getElementById(id);
+  for (const v of videos) {
+    const curso = v.course || 'Geral';
+    const disc = limparDisc(v.d);
+    if (!ARVORE.has(curso)) { ARVORE.set(curso, new Map()); ORDEM_CURSOS.push(curso); }
+    const discs = ARVORE.get(curso);
+    if (!discs.has(disc)) discs.set(disc, []);
+    const item = { id: v.id, titulo: v.t || '(sem título)', disc, curso };
+    discs.get(disc).push(item);
+    LISTA.push(item);
+  }
+  for (const m of mats) {
+    const k = (m.course || 'Geral') + '||' + limparDisc(m.d);
+    if (!MATERIAIS.has(k)) MATERIAIS.set(k, []);
+    MATERIAIS.get(k).push({ id: m.id, nome: m.t || 'Material' });
+  }
+  LISTA.forEach(v => { if (!ARVORE.get(v.curso).get(v.disc)) ARVORE.get(v.curso).set(v.disc, []); });
 
-/* ════════════ Renderização ════════════ */
-function acharAula(id) { return lista.find(a => a.id === id); }
-
-function duracaoEmMin(s) {
-  const p = String(s).split(':').map(Number);
-  return p.length === 3 ? p[0] * 60 + p[1] + p[2] / 60 : p[0] + p[1] / 60;
-}
-
-function renderStats() {
-  const totalMin = lista.reduce((t, a) => t + duracaoEmMin(a.duracao), 0);
-  const h = Math.floor(totalMin / 60), min = Math.round(totalMin % 60);
+  const totalH = 0;
   $('curso-stats').innerHTML =
-    '<span><i class="ph ph-play-circle"></i> ' + lista.length + ' aulas</span>' +
-    '<span><i class="ph ph-clock"></i> ' + h + 'h ' + min + 'min</span>';
-  $('curso-nome-topo').textContent = CURSO.nome;
+    '<span><i class="ph ph-play-circle"></i> ' + LISTA.length.toLocaleString('pt-BR') + ' videoaulas</span>' +
+    '<span><i class="ph ph-folder-simple"></i> ' + ORDEM_CURSOS.length + ' cursos</span>' +
+    '<span><i class="ph ph-file-text"></i> ' + mats.length.toLocaleString('pt-BR') + ' materiais</span>';
+  renderMenu();
+  atualizarProgresso();
+  const primeira = LISTA[0];
+  if (primeira) abrirAula(primeira.id);
 }
 
-function renderMenu(filtro = '') {
-  const q = filtro.trim().toLowerCase();
+/* ════════════ Sidebar: accordion cursos → disciplinas → aulas ════════════ */
+function renderMenu() {
   const menu = $('menu-aulas');
-  let visiveis = 0;
-  menu.innerHTML = CURSO.modulos.map(m => {
-    const aulasFiltradas = m.aulas.filter(a => !q || (a.titulo + ' ' + m.nome).toLowerCase().includes(q));
-    if (q && !aulasFiltradas.length) return '';
-    visiveis += aulasFiltradas.length;
-    const temAtiva = aulasFiltradas.some(a => a.id === state.aulaAtual);
-    const aberta = q ? true : m.aulas.some(a => a.id === state.aulaAtual);
-    return '<div class="modulo' + (aberta ? ' aberto' : '') + '" data-modulo="' + m.nome + '">' +
+  let html = '';
+  ORDEM_CURSOS.forEach((curso, ci) => {
+    const discs = ARVORE.get(curso);
+    let total = 0; discs.forEach(list => total += list.length);
+    html += '<div class="modulo" data-curso="' + esc(curso) + '">' +
       '<button class="modulo-cabecalho" onclick="toggleModulo(this)">' +
-        '<i class="ph ph-folder-simple"></i> ' + m.nome +
-        '<span class="contagem">' + m.aulas.length + ' aulas</span>' +
-        '<i class="ph ph-caret-right seta"></i>' +
-      '</button>' +
+        '<i class="ph ph-folder-simple"></i> ' + esc(curso) +
+        '<span class="contagem">' + total.toLocaleString('pt-BR') + '</span>' +
+        '<i class="ph ph-caret-right seta"></i></button>' +
       '<div class="modulo-corpo"><div>' +
-        aulasFiltradas.map(a => itemAula(a, m)).join('') +
-      '</div></div>' +
-    '</div>';
-  }).join('');
-  $('sem-resultado').style.display = (q && !visiveis) ? 'block' : 'none';
+        [...discs.entries()].map(([disc, aulas]) =>
+          '<div class="submodulo" data-disc="' + esc(disc) + '">' +
+            '<button class="sub-cabecalho" onclick="toggleSub(this)">' +
+              '<i class="ph ph-caret-right seta"></i> ' + esc(disc) +
+              '<span class="contagem">' + aulas.length + '</span></button>' +
+            '<div class="sub-corpo"><div data-lista="' + esc(curso) + '||' + esc(disc) + '"></div></div>' +
+          '</div>').join('') +
+      '</div></div></div>';
+  });
+  menu.innerHTML = html;
+  // abre o primeiro curso por padrão
+  const primeiro = menu.querySelector('.modulo');
+  if (primeiro) primeiro.classList.add('aberto');
 }
 
-function itemAula(a, m) {
-  const vista = state.vistas.includes(a.id);
-  return '<div class="aula-item' + (a.id === state.aulaAtual ? ' ativa' : '') + '" data-id="' + a.id + '" onclick="abrirAula(\'' + a.id + '\')" title="' + (m ? m.nome + ' — ' : '') + a.titulo + '">' +
-    '<i class="ph ' + (vista ? 'ph-check-circle check' : 'ph-play-circle play') + '"></i>' +
-    '<span class="titulo-aula">' + a.titulo + '</span>' +
-    '<span class="dur">' + a.duracao + '</span>' +
-  '</div>';
+function preencherLista(curso, disc) {
+  const alvo = document.querySelector('[data-lista="' + CSS.escape(curso) + '||' + CSS.escape(disc) + '"]');
+  if (!alvo || alvo.dataset.preenchido) return;
+  const aulas = ARVORE.get(curso).get(disc) || [];
+  alvo.innerHTML = aulas.map(v => itemAula(v)).join('');
+  alvo.dataset.preenchido = '1';
 }
 
-function renderAula() {
-  const a = acharAula(state.aulaAtual) || lista[0];
-  state.aulaAtual = a.id;
+function itemAula(v) {
+  return '<div class="aula-item' + (ATUAL && ATUAL.id === v.id ? ' ativa' : '') + '" data-id="' + v.id + '" onclick="abrirAula(\'' + v.id + '\')" title="' + esc(v.titulo) + '">' +
+    '<i class="ph ' + (VISTAS.has(v.id) ? 'ph-check-circle check' : 'ph-play-circle play') + '"></i>' +
+    '<span class="titulo-aula">' + esc(v.titulo) + '</span></div>';
+}
+
+window.toggleModulo = function (btn) {
+  const m = btn.closest('.modulo');
+  m.classList.toggle('aberto');
+  if (m.classList.contains('aberto')) m.querySelectorAll('.submodulo.aberto').forEach(s => preencherLista(s.dataset.disc && s.closest('[data-curso]').dataset.curso, s.dataset.disc));
+};
+window.toggleSub = function (btn) {
+  const sub = btn.closest('.submodulo');
+  sub.classList.toggle('aberto');
+  if (sub.classList.contains('aberto')) preencherLista(sub.closest('[data-curso]').dataset.curso, sub.dataset.disc);
+};
+
+/* Busca: resultados achatados com tag do curso */
+$('busca-aulas').addEventListener('input', e => {
+  const q = norm(e.target.value).trim();
+  const menu = $('menu-aulas');
+  if (!q) { renderMenu(); return; }
+  const hits = LISTA.filter(v => norm(v.titulo + ' ' + v.disc + ' ' + v.curso).includes(q)).slice(0, 80);
+  $('sem-resultado').style.display = hits.length ? 'none' : 'block';
+  menu.innerHTML = '<div class="resultado-busca">' + hits.map(v =>
+    '<div class="aula-item' + (ATUAL && ATUAL.id === v.id ? ' ativa' : '') + '" data-id="' + v.id + '" onclick="abrirAula(\'' + v.id + '\')">' +
+      '<i class="ph ph-play-circle play"></i><span class="titulo-aula">' + esc(v.titulo) + '</span>' +
+      '<span class="curso-tag">' + esc(v.curso) + '</span></div>').join('') + '</div>';
+});
+
+/* ════════════ Player e ações ════════════ */
+window.abrirAula = function (id) {
+  const v = LISTA.find(x => x.id === id);
+  if (!v) return;
+  ATUAL = v;
+  $('player-placeholder').style.display = 'none';
+  const player = $('player');
+  player.style.display = 'block';
+  player.src = 'https://drive.google.com/file/d/' + v.id + '/preview';
 
   $('breadcrumbs').innerHTML =
-    '<a href="#" onclick="return false">' + a.modulo + '</a>' +
-    '<i class="ph ph-caret-right"></i>' +
-    '<span class="atual">' + a.titulo + '</span>';
-  $('aula-titulo').textContent = a.titulo;
-  $('meta-views').textContent = a.views;
-  $('meta-duracao').textContent = a.duracao;
-  $('meta-data').textContent = a.data;
-  $('player').src = 'https://www.youtube-nocookie.com/embed/' + CURSO.videoId + '?rel=0';
+    '<a href="#" onclick="return false">' + esc(v.curso) + '</a><i class="ph ph-caret-right"></i>' +
+    '<a href="#" onclick="return false">' + esc(v.disc) + '</a><i class="ph ph-caret-right"></i>' +
+    '<span class="atual">' + esc(v.titulo) + '</span>';
+  $('aula-titulo').textContent = v.titulo;
+  $('meta-curso').textContent = v.curso;
+  $('meta-disc').textContent = v.disc;
+  $('btn-drive').href = 'https://drive.google.com/file/d/' + v.id + '/view';
+  renderAcoes();
+  renderMateriais(v);
+  marcarAtivoNaArvore(v);
+};
 
-  renderMateriais(a);
-  renderAcoes(a);
-  renderProgresso();
-
-  document.querySelectorAll('.aula-item').forEach(el => el.classList.toggle('ativa', el.dataset.id === a.id));
-  const item = document.querySelector('.aula-item[data-id="' + a.id + '"]');
-  if (item) item.scrollIntoView({ block: 'nearest' });
+function marcarAtivoNaArvore(v) {
+  document.querySelectorAll('.aula-item').forEach(el => el.classList.toggle('ativa', el.dataset.id === v.id));
+  // garante curso/disciplina abertos e visíveis
+  const mod = document.querySelector('.modulo[data-curso="' + CSS.escape(v.curso) + '"]');
+  if (mod && !mod.classList.contains('aberto')) { mod.classList.add('aberto'); }
+  const sub = mod && mod.querySelector('.submodulo[data-disc="' + CSS.escape(v.disc) + '"]');
+  if (sub) {
+    sub.classList.add('aberto');
+    preencherLista(v.curso, v.disc);
+    const item = sub.querySelector('.aula-item[data-id="' + v.id + '"]');
+    if (item) item.scrollIntoView({ block: 'nearest' });
+  }
 }
 
-function renderMateriais(a) {
+function renderMateriais(v) {
   const box = $('materiais-lista');
-  if (!a.materiais || !a.materiais.length) {
-    box.innerHTML = '<span style="font-size:13px;color:var(--muted)">Esta aula ainda não tem materiais anexados.</span>';
+  let mats = MATERIAIS.get(v.curso + '||' + v.disc) || [];
+  let origem = v.disc;
+  if (!mats.length) { mats = MATERIAIS.get(v.curso + '||Geral') || []; origem = 'Geral'; }
+  if (!mats.length) { mats = (MATERIAIS.get(v.curso + '||') || []); }
+  if (!mats.length) {
+    box.innerHTML = '<span style="font-size:13px;color:var(--muted)">Nenhum material PDF nesta disciplina (' + esc(v.curso) + ' — ' + esc(origem) + '). Explore a aba Cursos & Acervo para as apostilas completas.</span>';
     return;
   }
-  box.innerHTML = a.materiais.map(m =>
-    '<a class="material-chip" href="#" onclick="baixarMaterial(event, \'' + m.nome.replace(/'/g, "\\'") + '\')">' +
-      '<span class="pdf"><i class="ph ph-file-pdf"></i></span>' +
-      '<span class="nome">' + m.nome + '<small>PDF · ' + (m.tamanho || '') + '</small></span>' +
-      '<i class="ph ph-download-simple"></i>' +
-    '</a>').join('');
+  box.innerHTML = '<span style="font-size:11.5px;color:var(--muted);width:100%;margin-bottom:-4px">' + mats.length + ' material(is) de ' + esc(v.curso) + ' · ' + esc(origem) + '</span>' +
+    mats.slice(0, 12).map(m =>
+      '<a class="material-chip" href="https://drive.google.com/file/d/' + m.id + '/view" target="_blank" rel="noopener">' +
+        '<span class="pdf"><i class="ph ph-file-pdf"></i></span>' +
+        '<span class="nome"><span>' + esc(m.nome) + '</span><small>PDF · Google Drive</small></span>' +
+        '<i class="ph ph-download-simple"></i></a>').join('');
 }
 
-function renderAcoes(a) {
-  const voto = state.votos[a.id];
-  const likes = aulaLikes(a, voto);
+function renderAcoes() {
+  const v = ATUAL; if (!v) return;
+  const voto = VOTOS[v.id];
+  const base = 80 + (v.id.charCodeAt(0) * 13 + v.id.length) % 250;
   $('btn-gostei').className = 'btn' + (voto === 'up' ? ' votado' : '');
   $('btn-nao-gostei').className = 'btn' + (voto === 'down' ? ' votado' : '');
-  $('count-gostei').textContent = likes.up;
-  $('count-naogostei').textContent = likes.down;
-
-  const salva = state.salvas.includes(a.id);
+  $('count-gostei').textContent = (base + (voto === 'up' ? 1 : 0)).toLocaleString('pt-BR');
+  $('count-naogostei').textContent = 1 + (voto === 'down' ? 1 : 0);
+  const salva = SALVAS.has(v.id);
   $('btn-salvar').className = 'btn' + (salva ? ' salvo' : '');
   $('btn-salvar').innerHTML = '<i class="ph ' + (salva ? 'ph-bookmark-simple-fill' : 'ph-bookmark-simple') + '"></i> ' + (salva ? 'Salvo' : 'Salvar');
-
-  const vista = state.vistas.includes(a.id);
+  const vista = VISTAS.has(v.id);
   $('btn-vista').className = 'btn' + (vista ? ' vista' : '');
   $('btn-vista').setAttribute('aria-checked', vista ? 'true' : 'false');
   $('btn-vista').innerHTML = '<i class="ph ' + (vista ? 'ph-check-circle ph-fill' : 'ph-check-circle') + '"></i> ' + (vista ? 'Aula concluída' : 'Marcar como vista');
-
-  $('btn-proxima').disabled = lista.findIndex(x => x.id === a.id) >= lista.length - 1;
+  const i = LISTA.findIndex(x => x.id === v.id);
+  $('btn-proxima').disabled = i >= LISTA.length - 1;
 }
-
-function aulaLikes(a, votoAtual) {
-  const base = 120 + (a.id.charCodeAt(1) * 7 + a.id.charCodeAt(a.id.length - 1)) % 300;
-  return { up: (base + (votoAtual === 'up' ? 1 : 0)).toLocaleString('pt-BR'), down: 3 + (votoAtual === 'down' ? 1 : 0) };
-}
-
-function renderProgresso() {
-  const pct = Math.round(state.vistas.length / lista.length * 100);
-  $('progresso-pct').textContent = pct + '% · ' + state.vistas.length + '/' + lista.length;
-  $('progresso-barra').style.width = pct + '%';
-}
-
-/* ════════════ Ações ════════════ */
-window.toggleModulo = function (btn) { btn.closest('.modulo').classList.toggle('aberto'); };
-
-window.abrirAula = function (id) {
-  state.aulaAtual = id;
-  persistir();
-  renderAula();
-  renderMenu($('busca-aulas').value);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-};
-
-window.baixarMaterial = function (ev, nome) {
-  ev.preventDefault();
-  toast('Download iniciado: ' + nome);
-};
 
 $('btn-gostei').onclick = () => votar('up');
 $('btn-nao-gostei').onclick = () => votar('down');
 function votar(tipo) {
-  const a = acharAula(state.aulaAtual);
-  state.votos[a.id] = state.votos[a.id] === tipo ? null : tipo;
-  persistir();
-  renderAcoes(a);
-  if (state.votos[a.id]) toast(tipo === 'up' ? 'Você curtiu esta aula' : 'Feedback registrado');
+  if (!ATUAL) return;
+  VOTOS[ATUAL.id] = VOTOS[ATUAL.id] === tipo ? null : tipo;
+  persistir(); renderAcoes();
+  if (VOTOS[ATUAL.id]) toast(tipo === 'up' ? 'Você curtiu esta aula' : 'Feedback registrado');
+}
+$('btn-salvar').onclick = () => {
+  if (!ATUAL) return;
+  if (SALVAS.has(ATUAL.id)) { SALVAS.delete(ATUAL.id); toast('Removida das salvas'); }
+  else { SALVAS.add(ATUAL.id); toast('Aula salva para depois'); }
+  persistir(); renderAcoes();
+};
+$('btn-vista').onclick = () => {
+  if (!ATUAL) return;
+  if (VISTAS.has(ATUAL.id)) { VISTAS.delete(ATUAL.id); toast('Marcada como não vista'); }
+  else { VISTAS.add(ATUAL.id); toast('Aula marcada como vista ✓'); }
+  persistir(); renderAcoes(); atualizarProgresso();
+  atualizarItensVista();
+};
+$('btn-proxima').onclick = () => {
+  if (!ATUAL) return;
+  const i = LISTA.findIndex(x => x.id === ATUAL.id);
+  if (i >= 0 && i < LISTA.length - 1) abrirAula(LISTA[i + 1].id);
+};
+function atualizarItensVista() {
+  document.querySelectorAll('.aula-item').forEach(el => {
+    const icone = el.querySelector('i');
+    if (icone) icone.className = VISTAS.has(el.dataset.id) ? 'ph ph-check-circle check' : 'ph ph-play-circle play';
+  });
 }
 
-$('btn-salvar').onclick = () => {
-  const a = acharAula(state.aulaAtual);
-  const i = state.salvas.indexOf(a.id);
-  if (i >= 0) { state.salvas.splice(i, 1); toast('Removida das salvas'); }
-  else { state.salvas.push(a.id); toast('Aula salva para depois'); }
-  persistir();
-  renderAcoes(a);
+/* Progresso retrátil */
+window.toggleProg = function () {
+  $('prog-toggle').classList.toggle('aberto');
+  $('prog-body').classList.toggle('aberto');
 };
-
-$('btn-vista').onclick = () => {
-  const a = acharAula(state.aulaAtual);
-  const i = state.vistas.indexOf(a.id);
-  if (i >= 0) { state.vistas.splice(i, 1); toast('Marcada como não vista'); }
-  else { state.vistas.push(a.id); toast('Aula marcada como vista ✓'); }
-  persistir();
-  renderAcoes(a);
-  renderProgresso();
-  renderMenu($('busca-aulas').value);
-};
-
-$('btn-proxima').onclick = () => {
-  const i = lista.findIndex(x => x.id === state.aulaAtual);
-  if (i < lista.length - 1) abrirAula(lista[i + 1].id);
-};
-
-$('busca-aulas').addEventListener('input', e => renderMenu(e.target.value));
+function atualizarProgresso() {
+  const pct = LISTA.length ? Math.round(VISTAS.size / LISTA.length * 100) : 0;
+  $('prog-pct-mini').textContent = pct + '%';
+  $('prog-contagem').textContent = VISTAS.size.toLocaleString('pt-BR') + '/' + LISTA.length.toLocaleString('pt-BR');
+  $('prog-barra').style.width = pct + '%';
+}
 
 /* Toast */
 let toastTimer = null;
@@ -546,10 +468,12 @@ function toast(msg) {
   toastTimer = setTimeout(() => $('toast').classList.remove('visivel'), 2400);
 }
 
-/* Boot */
-renderStats();
-renderMenu();
-renderAula();
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+carregarAcervo().catch(() => {
+  $('menu-aulas').innerHTML = '<div class="carregando"><i class="ph ph-wifi-slash"></i>Não foi possível carregar o acervo.<br>Verifique se o servidor está rodando.</div>';
+  $('aula-titulo').textContent = 'Acervo indisponível';
+});
 </script>
 </body>
 </html>
