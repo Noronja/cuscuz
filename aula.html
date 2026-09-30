@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aula — Cuscuz-MED</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script defer src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --border: #e6e8ec;
+    --text: #1a1d21;
+    --muted: #697079;
+    --accent: #0d7d78;
+    --accent-soft: #e6f4f3;
+    --accent-hover: #0a635f;
+    --danger: #d64545;
+    --ok: #1a9a55;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(16, 24, 40, .05);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  a { color: inherit; }
+
+  /* ── Topbar ── */
+  .topbar {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 20;
+  }
+  .topbar .voltar {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 14px; font-weight: 500; color: var(--muted);
+    text-decoration: none; padding: 8px 12px; border-radius: 10px;
+    transition: background .15s, color .15s;
+  }
+  .topbar .voltar:hover { background: var(--bg); color: var(--text); }
+  .topbar .logo { font-weight: 800; font-size: 16px; letter-spacing: -.2px; }
+  .topbar .logo span { color: var(--accent); }
+  .topbar .curso-nome {
+    margin-left: auto; font-size: 13px; color: var(--muted);
+    max-width: 40vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ── Layout principal: 70% / 30% ── */
+  .aula-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(320px, 3fr);
+    gap: 24px;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 24px;
+    align-items: start;
+  }
+
+  /* ── Coluna principal ── */
+  .player-wrap {
+    background: #000; border-radius: var(--radius); overflow: hidden;
+    box-shadow: var(--shadow); aspect-ratio: 16 / 9; width: 100%;
+  }
+  .player-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+  .aula-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 20px 22px; margin-top: 16px;
+  }
+
+  .breadcrumbs {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    font-size: 12.5px; color: var(--muted); margin-bottom: 10px;
+  }
+  .breadcrumbs a { text-decoration: none; font-weight: 500; }
+  .breadcrumbs a:hover { color: var(--accent); }
+  .breadcrumbs i { font-size: 12px; opacity: .55; }
+  .breadcrumbs .atual { color: var(--text); font-weight: 600; }
+
+  .aula-titulo { font-size: 22px; font-weight: 800; letter-spacing: -.4px; line-height: 1.25; }
+
+  .aula-meta {
+    display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px;
+    font-size: 13px; color: var(--muted);
+  }
+  .aula-meta span { display: inline-flex; align-items: center; gap: 5px; }
+  .aula-meta i { font-size: 15px; }
+
+  /* Barra de ações */
+  .acoes {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 1px solid var(--border); background: var(--card);
+    color: var(--text); font-size: 13.5px; font-weight: 600;
+    padding: 9px 14px; border-radius: 10px;
+    transition: background .15s, border-color .15s, color .15s, transform .05s;
+    user-select: none;
+  }
+  .btn i { font-size: 17px; }
+  .btn:hover { background: var(--bg); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primario { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primario:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn.primario:disabled { opacity: .45; cursor: not-allowed; }
+  .grupo-votos { display: inline-flex; }
+  .grupo-votos .btn { border-radius: 0; }
+  .grupo-votos .btn:first-child { border-radius: 10px 0 0 10px; }
+  .grupo-votos .btn:last-child { border-radius: 0 10px 10px 0; border-left: 0; }
+  .btn.votado { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .grupo-votos .btn.votado:last-child { border-left-color: var(--accent); }
+  .btn .contador { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .btn.votado .contador { color: var(--accent); }
+  .btn.salvo { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .btn.vista { background: #eaf7ef; border-color: var(--ok); color: var(--ok); }
+  .btn.espaco { margin-left: auto; }
+
+  /* Materiais */
+  .materiais h3 {
+    font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px;
+  }
+  .materiais h3 i { color: var(--accent); font-size: 17px; }
+  .materiais-lista { display: flex; flex-wrap: wrap; gap: 10px; }
+  .material-chip {
+    display: inline-flex; align-items: center; gap: 9px;
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 13px; background: var(--card);
+    font-size: 13px; font-weight: 500; text-decoration: none;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  .material-chip:hover { border-color: var(--accent); background: var(--accent-soft); box-shadow: var(--shadow); }
+  .material-chip .pdf {
+    width: 30px; height: 30px; border-radius: 8px; flex: none;
+    background: #fdecec; color: var(--danger);
+    display: inline-flex; align-items: center; justify-content: center; font-size: 17px;
+  }
+  .material-chip .nome { display: flex; flex-direction: column; line-height: 1.25; }
+  .material-chip .nome small { color: var(--muted); font-size: 11.5px; font-weight: 400; }
+  .material-chip > i { color: var(--muted); font-size: 16px; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: sticky; top: 76px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 100px);
+    overflow: hidden;
+  }
+  .sidebar-head { padding: 18px 18px 12px; border-bottom: 1px solid var(--border); }
+  .sidebar-head h2 { font-size: 16px; font-weight: 800; letter-spacing: -.3px; }
+  .sidebar-stats { display: flex; gap: 14px; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+  .sidebar-stats span { display: inline-flex; align-items: center; gap: 5px; }
+  .sidebar-stats i { font-size: 14px; }
+  .progresso { margin-top: 10px; }
+  .progresso .rotulo { font-size: 11.5px; color: var(--muted); margin-bottom: 5px; display: flex; justify-content: space-between; }
+  .progresso .barra { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; }
+  .progresso .barra div { height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
+
+  .busca { padding: 12px 14px; border-bottom: 1px solid var(--border); position: relative; }
+  .busca input {
+    width: 100%; font-family: inherit; font-size: 13.5px;
+    padding: 9px 12px 9px 36px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .busca input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(13, 125, 120, .12); background: #fff; }
+  .busca > i { position: absolute; left: 26px; top: 50%; transform: translateY(calc(-50% - 6px)); color: var(--muted); font-size: 16px; }
+
+  /* Accordion com rolagem independente */
+  .menu-aulas { overflow-y: auto; flex: 1; padding: 8px 10px 14px; scrollbar-width: thin; }
+  .menu-aulas::-webkit-scrollbar { width: 8px; }
+  .menu-aulas::-webkit-scrollbar-thumb { background: #d7dbe0; border-radius: 99px; }
+
+  .modulo { border: 1px solid var(--border); border-radius: 10px; margin-top: 8px; overflow: hidden; background: var(--card); }
+  .modulo-cabecalho {
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    padding: 12px 13px; border: 0; background: transparent; text-align: left;
+    font-size: 13.5px; font-weight: 700; color: var(--text);
+  }
+  .modulo-cabecalho:hover { background: var(--bg); }
+  .modulo-cabecalho .seta { margin-left: auto; transition: transform .25s; font-size: 15px; color: var(--muted); }
+  .modulo.aberto .modulo-cabecalho .seta { transform: rotate(90deg); }
+  .modulo-cabecalho .contagem {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    background: var(--bg); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 99px;
+  }
+  .modulo-corpo {
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows .3s ease;
+  }
+  .modulo.aberto .modulo-corpo { grid-template-rows: 1fr; }
+  .modulo-corpo > div { overflow: hidden; }
+  .aula-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 13px 9px 15px; font-size: 13px;
+    cursor: pointer; border-top: 1px solid var(--border);
+    transition: background .15s;
+  }
+  .aula-item:hover { background: var(--bg); }
+  .aula-item.ativa { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+  .aula-item .play { color: var(--muted); font-size: 16px; flex: none; }
+  .aula-item.ativa .play { color: var(--accent); }
+  .aula-item .titulo-aula { flex: 1; min-width: 0; line-height: 1.3; }
+  .aula-item .dur { font-size: 11.5px; color: var(--muted); flex: none; }
+  .aula-item .check { color: var(--ok); font-size: 16px; flex: none; }
+  .sem-resultado { padding: 18px 14px; font-size: 13px; color: var(--muted); text-align: center; display: none; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--text); color: #fff; font-size: 13.5px; font-weight: 500;
+    padding: 11px 18px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    opacity: 0; transition: opacity .25s, transform .25s; z-index: 50;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.visivel { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast i { color: #7fe0c2; font-size: 17px; }
+
+  /* Responsivo */
+  @media (max-width: 1020px) {
+    .aula-layout { grid-template-columns: 1fr; }
+    .sidebar { position: static; max-height: 520px; }
+    .topbar .curso-nome { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="voltar" href="/"><i class="ph ph-arrow-left"></i> Voltar</a>
+  <div class="logo">Cuscuz<span>-MED</span></div>
+  <div class="curso-nome" id="curso-nome-topo"></div>
+</header>
+
+<main class="aula-layout">
+  <!-- ══ Coluna principal (~70%) ══ -->
+  <section class="coluna-principal">
+    <div class="player-wrap">
+      <iframe id="player" src="" title="Player da aula"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen></iframe>
+    </div>
+
+    <div class="aula-card">
+      <nav class="breadcrumbs" id="breadcrumbs" aria-label="Caminho de navegação"></nav>
+      <h1 class="aula-titulo" id="aula-titulo"></h1>
+      <div class="aula-meta">
+        <span><i class="ph ph-eye"></i> <b id="meta-views"></b>&nbsp;visualizações</span>
+        <span><i class="ph ph-timer"></i> duração <b id="meta-duracao"></b></span>
+        <span><i class="ph ph-calendar-blank"></i> atualizada em <b id="meta-data"></b></span>
+      </div>
+
+      <div class="acoes">
+        <div class="grupo-votos" role="group" aria-label="Avaliar aula">
+          <button class="btn" id="btn-gostei" title="Gostei"><i class="ph ph-thumbs-up"></i><span class="contador" id="count-gostei"></span></button>
+          <button class="btn" id="btn-nao-gostei" title="Não gostei"><i class="ph ph-thumbs-down"></i><span class="contador" id="count-naogostei"></span></button>
+        </div>
+        <button class="btn" id="btn-salvar"><i class="ph ph-bookmark-simple"></i> Salvar</button>
+        <button class="btn" id="btn-vista" role="checkbox" aria-checked="false"><i class="ph ph-check-circle"></i> Marcar como vista</button>
+        <button class="btn primario espaco" id="btn-proxima"><i class="ph ph-skip-forward"></i> Próxima aula</button>
+      </div>
+    </div>
+
+    <div class="aula-card materiais">
+      <h3><i class="ph ph-folder-notch-open"></i> Materiais desta aula</h3>
+      <div class="materiais-lista" id="materiais-lista"></div>
+    </div>
+  </section>
+
+  <!-- ══ Sidebar (~30%) ══ -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <h2>Conteúdo do curso</h2>
+      <div class="sidebar-stats" id="curso-stats"></div>
+      <div class="progresso">
+        <div class="rotulo"><span>Seu progresso</span><b id="progresso-pct">0%</b></div>
+        <div class="barra"><div id="progresso-barra" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="busca">
+      <i class="ph ph-magnifying-glass"></i>
+      <input type="search" id="busca-aulas" placeholder="Buscar aula no curso…" autocomplete="off">
+    </div>
+    <nav class="menu-aulas" id="menu-aulas" aria-label="Módulos do curso"></nav>
+    <div class="sem-resultado" id="sem-resultado">Nenhuma aula encontrada com esse termo.</div>
+  </aside>
+</main>
+
+<div class="toast" id="toast"><i class="ph ph-check-circle"></i><span id="toast-msg"></span></div>
+
+<script>
+/* ════════════ Dados do curso (placeholder — depois troque pelo acervo real) ════════════ */
+const CURSO = {
+  nome: 'MEDCURSO — Extensivo 2026',
+  videoId: 'aqz-KE-bpKQ', // placeholder YouTube — troque pelo vídeo da aula
+  modulos: [
+    { nome: 'Comece Aqui', aulas: [
+      { id: 'a1', titulo: 'Orientações Iniciais', duracao: '12:34', views: '18,2 mil', data: '05/01/2026', materiais: [
+        { nome: 'Cronograma de Estudos.pdf', tamanho: '1,2 MB' },
+        { nome: 'Guia de Sobrevivência do Internato.pdf', tamanho: '820 KB' } ] },
+      { id: 'a2', titulo: 'Como usar a plataforma e o acervo', duracao: '08:10', views: '15,7 mil', data: '05/01/2026', materiais: [
+        { nome: 'Passo a passo do Acervo.pdf', tamanho: '640 KB' } ] },
+      { id: 'a3', titulo: 'Método de estudo: como revisar', duracao: '21:47', views: '12,9 mil', data: '06/01/2026', materiais: [] }
+    ]},
+    { nome: 'Anatomia', aulas: [
+      { id: 'an1', titulo: 'Anatomia do coração: câmaras e valvas', duracao: '34:05', views: '9,8 mil', data: '12/01/2026', materiais: [
+        { nome: 'Resumo — Anatomia cardíaca.pdf', tamanho: '2,1 MB' } ] },
+      { id: 'an2', titulo: 'Círculo menor e maior da circulação', duracao: '27:18', views: '8,1 mil', data: '12/01/2026', materiais: [] },
+      { id: 'an3', titulo: 'Anatomia do peritônio', duracao: '30:52', views: '7,4 mil', data: '19/01/2026', materiais: [
+        { nome: 'Resumo — Peritônio.pdf', tamanho: '1,4 MB' },
+        { nome: 'Esquemas ilustrados.pdf', tamanho: '3,3 MB' } ] }
+    ]},
+    { nome: 'Cardiologia', aulas: [
+      { id: 'cd1', titulo: 'Insuficiência cardíaca: diagnóstico', duracao: '41:22', views: '11,3 mil', data: '02/02/2026', materiais: [
+        { nome: 'Resumo — IC aguda e crônica.pdf', tamanho: '2,8 MB' } ] },
+      { id: 'cd2', titulo: 'Síndromes coronarianas agudas', duracao: '52:11', views: '14,6 mil', data: '09/02/2026', materiais: [
+        { nome: 'Fluxograma SCA.pdf', tamanho: '980 KB' },
+        { nome: 'Tabela de medicações.pdf', tamanho: '720 KB' } ] },
+      { id: 'cd3', titulo: 'Hipertensão arterial: conduta', duracao: '38:45', views: '10,2 mil', data: '16/02/2026', materiais: [] },
+      { id: 'cd4', titulo: 'Arritmias na emergência', duracao: '45:30', views: '9,9 mil', data: '23/02/2026', materiais: [
+        { nome: 'Resumo — Arritmias.pdf', tamanho: '1,9 MB' } ] }
+    ]},
+    { nome: 'Cirurgia Geral', aulas: [
+      { id: 'cg1', titulo: 'Abdome agudo obstrutivo', duracao: '47:12', views: '8,7 mil', data: '02/03/2026', materiais: [
+        { nome: 'Resumo — Abdome agudo.pdf', tamanho: '2,4 MB' } ] },
+      { id: 'cg2', titulo: 'Trauma: ATLS resumido', duracao: '55:03', views: '13,1 mil', data: '09/03/2026', materiais: [] },
+      { id: 'cg3', titulo: 'Hérnias da parede abdominal', duracao: '33:40', views: '7,8 mil', data: '16/03/2026', materiais: [
+        { nome: 'Resumo — Hérnias.pdf', tamanho: '1,1 MB' } ] }
+    ]},
+    { nome: 'Pediatria', aulas: [
+      { id: 'pd1', titulo: 'Puericultura: consultas do bebê', duracao: '29:55', views: '6,9 mil', data: '23/03/2026', materiais: [
+        { nome: 'Calendário vacinal.pdf', tamanho: '540 KB' } ] },
+      { id: 'pd2', titulo: 'Desidratação: cálculo e reposição', duracao: '36:27', views: '8,4 mil', data: '30/03/2026', materiais: [
+        { nome: 'Resumo — Hidratação.pdf', tamanho: '1,3 MB' } ] },
+      { id: 'pd3', titulo: 'Exantemas na infância', duracao: '31:14', views: '7,7 mil', data: '06/04/2026', materiais: [] }
+    ]}
+  ]
+};
+
+/* ════════════ Estado (persistido por curso) ════════════ */
+const CHAVE = 'cuscuz-aula-' + slug(CURSO.nome);
+function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+const state = JSON.parse(localStorage.getItem(CHAVE) || '{}');
+state.vistas    = state.vistas    || [];
+state.salvas    = state.salvas    || [];
+state.votos     = state.votos     || {};
+state.aulaAtual = state.aulaAtual || CURSO.modulos[0].aulas[0].id;
+const persistir = () => localStorage.setItem(CHAVE, JSON.stringify(state));
+
+const lista = [];
+CURSO.modulos.forEach(m => m.aulas.forEach(a => lista.push({ ...a, modulo: m.nome })));
+const $ = id => document.getElementById(id);
+
+/* ════════════ Renderização ════════════ */
+function acharAula(id) { return lista.find(a => a.id === id); }
+
+function duracaoEmMin(s) {
+  const p = String(s).split(':').map(Number);
+  return p.length === 3 ? p[0] * 60 + p[1] + p[2] / 60 : p[0] + p[1] / 60;
+}
+
+function renderStats() {
+  const totalMin = lista.reduce((t, a) => t + duracaoEmMin(a.duracao), 0);
+  const h = Math.floor(totalMin / 60), min = Math.round(totalMin % 60);
+  $('curso-stats').innerHTML =
+    '<span><i class="ph ph-play-circle"></i> ' + lista.length + ' aulas</span>' +
+    '<span><i class="ph ph-clock"></i> ' + h + 'h ' + min + 'min</span>';
+  $('curso-nome-topo').textContent = CURSO.nome;
+}
+
+function renderMenu(filtro = '') {
+  const q = filtro.trim().toLowerCase();
+  const menu = $('menu-aulas');
+  let visiveis = 0;
+  menu.innerHTML = CURSO.modulos.map(m => {
+    const aulasFiltradas = m.aulas.filter(a => !q || (a.titulo + ' ' + m.nome).toLowerCase().includes(q));
+    if (q && !aulasFiltradas.length) return '';
+    visiveis += aulasFiltradas.length;
+    const temAtiva = aulasFiltradas.some(a => a.id === state.aulaAtual);
+    const aberta = q ? true : m.aulas.some(a => a.id === state.aulaAtual);
+    return '<div class="modulo' + (aberta ? ' aberto' : '') + '" data-modulo="' + m.nome + '">' +
+      '<button class="modulo-cabecalho" onclick="toggleModulo(this)">' +
+        '<i class="ph ph-folder-simple"></i> ' + m.nome +
+        '<span class="contagem">' + m.aulas.length + ' aulas</span>' +
+        '<i class="ph ph-caret-right seta"></i>' +
+      '</button>' +
+      '<div class="modulo-corpo"><div>' +
+        aulasFiltradas.map(a => itemAula(a, m)).join('') +
+      '</div></div>' +
+    '</div>';
+  }).join('');
+  $('sem-resultado').style.display = (q && !visiveis) ? 'block' : 'none';
+}
+
+function itemAula(a, m) {
+  const vista = state.vistas.includes(a.id);
+  return '<div class="aula-item' + (a.id === state.aulaAtual ? ' ativa' : '') + '" data-id="' + a.id + '" onclick="abrirAula(\'' + a.id + '\')" title="' + (m ? m.nome + ' — ' : '') + a.titulo + '">' +
+    '<i class="ph ' + (vista ? 'ph-check-circle check' : 'ph-play-circle play') + '"></i>' +
+    '<span class="titulo-aula">' + a.titulo + '</span>' +
+    '<span class="dur">' + a.duracao + '</span>' +
+  '</div>';
+}
+
+function renderAula() {
+  const a = acharAula(state.aulaAtual) || lista[0];
+  state.aulaAtual = a.id;
+
+  $('breadcrumbs').innerHTML =
+    '<a href="#" onclick="return false">' + a.modulo + '</a>' +
+    '<i class="ph ph-caret-right"></i>' +
+    '<span class="atual">' + a.titulo + '</span>';
+  $('aula-titulo').textContent = a.titulo;
+  $('meta-views').textContent = a.views;
+  $('meta-duracao').textContent = a.duracao;
+  $('meta-data').textContent = a.data;
+  $('player').src = 'https://www.youtube-nocookie.com/embed/' + CURSO.videoId + '?rel=0';
+
+  renderMateriais(a);
+  renderAcoes(a);
+  renderProgresso();
+
+  document.querySelectorAll('.aula-item').forEach(el => el.classList.toggle('ativa', el.dataset.id === a.id));
+  const item = document.querySelector('.aula-item[data-id="' + a.id + '"]');
+  if (item) item.scrollIntoView({ block: 'nearest' });
+}
+
+function renderMateriais(a) {
+  const box = $('materiais-lista');
+  if (!a.materiais || !a.materiais.length) {
+    box.innerHTML = '<span style="font-size:13px;color:var(--muted)">Esta aula ainda não tem materiais anexados.</span>';
+    return;
+  }
+  box.innerHTML = a.materiais.map(m =>
+    '<a class="material-chip" href="#" onclick="baixarMaterial(event, \'' + m.nome.replace(/'/g, "\\'") + '\')">' +
+      '<span class="pdf"><i class="ph ph-file-pdf"></i></span>' +
+      '<span class="nome">' + m.nome + '<small>PDF · ' + (m.tamanho || '') + '</small></span>' +
+      '<i class="ph ph-download-simple"></i>' +
+    '</a>').join('');
+}
+
+function renderAcoes(a) {
+  const voto = state.votos[a.id];
+  const likes = aulaLikes(a, voto);
+  $('btn-gostei').className = 'btn' + (voto === 'up' ? ' votado' : '');
+  $('btn-nao-gostei').className = 'btn' + (voto === 'down' ? ' votado' : '');
+  $('count-gostei').textContent = likes.up;
+  $('count-naogostei').textContent = likes.down;
+
+  const salva = state.salvas.includes(a.id);
+  $('btn-salvar').className = 'btn' + (salva ? ' salvo' : '');
+  $('btn-salvar').innerHTML = '<i class="ph ' + (salva ? 'ph-bookmark-simple-fill' : 'ph-bookmark-simple') + '"></i> ' + (salva ? 'Salvo' : 'Salvar');
+
+  const vista = state.vistas.includes(a.id);
+  $('btn-vista').className = 'btn' + (vista ? ' vista' : '');
+  $('btn-vista').setAttribute('aria-checked', vista ? 'true' : 'false');
+  $('btn-vista').innerHTML = '<i class="ph ' + (vista ? 'ph-check-circle ph-fill' : 'ph-check-circle') + '"></i> ' + (vista ? 'Aula concluída' : 'Marcar como vista');
+
+  $('btn-proxima').disabled = lista.findIndex(x => x.id === a.id) >= lista.length - 1;
+}
+
+function aulaLikes(a, votoAtual) {
+  const base = 120 + (a.id.charCodeAt(1) * 7 + a.id.charCodeAt(a.id.length - 1)) % 300;
+  return { up: (base + (votoAtual === 'up' ? 1 : 0)).toLocaleString('pt-BR'), down: 3 + (votoAtual === 'down' ? 1 : 0) };
+}
+
+function renderProgresso() {
+  const pct = Math.round(state.vistas.length / lista.length * 100);
+  $('progresso-pct').textContent = pct + '% · ' + state.vistas.length + '/' + lista.length;
+  $('progresso-barra').style.width = pct + '%';
+}
+
+/* ════════════ Ações ════════════ */
+window.toggleModulo = function (btn) { btn.closest('.modulo').classList.toggle('aberto'); };
+
+window.abrirAula = function (id) {
+  state.aulaAtual = id;
+  persistir();
+  renderAula();
+  renderMenu($('busca-aulas').value);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.baixarMaterial = function (ev, nome) {
+  ev.preventDefault();
+  toast('Download iniciado: ' + nome);
+};
+
+$('btn-gostei').onclick = () => votar('up');
+$('btn-nao-gostei').onclick = () => votar('down');
+function votar(tipo) {
+  const a = acharAula(state.aulaAtual);
+  state.votos[a.id] = state.votos[a.id] === tipo ? null : tipo;
+  persistir();
+  renderAcoes(a);
+  if (state.votos[a.id]) toast(tipo === 'up' ? 'Você curtiu esta aula' : 'Feedback registrado');
+}
+
+$('btn-salvar').onclick = () => {
+  const a = acharAula(state.aulaAtual);
+  const i = state.salvas.indexOf(a.id);
+  if (i >= 0) { state.salvas.splice(i, 1); toast('Removida das salvas'); }
+  else { state.salvas.push(a.id); toast('Aula salva para depois'); }
+  persistir();
+  renderAcoes(a);
+};
+
+$('btn-vista').onclick = () => {
+  const a = acharAula(state.aulaAtual);
+  const i = state.vistas.indexOf(a.id);
+  if (i >= 0) { state.vistas.splice(i, 1); toast('Marcada como não vista'); }
+  else { state.vistas.push(a.id); toast('Aula marcada como vista ✓'); }
+  persistir();
+  renderAcoes(a);
+  renderProgresso();
+  renderMenu($('busca-aulas').value);
+};
+
+$('btn-proxima').onclick = () => {
+  const i = lista.findIndex(x => x.id === state.aulaAtual);
+  if (i < lista.length - 1) abrirAula(lista[i + 1].id);
+};
+
+$('busca-aulas').addEventListener('input', e => renderMenu(e.target.value));
+
+/* Toast */
+let toastTimer = null;
+function toast(msg) {
+  $('toast-msg').textContent = msg;
+  $('toast').classList.add('visivel');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('toast').classList.remove('visivel'), 2400);
+}
+
+/* Boot */
+renderStats();
+renderMenu();
+renderAula();
+</script>
+</body>
+</html>
