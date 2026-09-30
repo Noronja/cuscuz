@@ -1747,11 +1747,11 @@ mark.exam-highlight {
         <!-- CONTEÚDO DA ABA 1: QUESTÕES PRONTAS -->
         <div id="treino-tab-prontas" class="treino-tab-content">
           <!-- Barra de Filtros e Busca -->
-          <div class="imp-box" style="margin-bottom:20px;padding:16px 20px">
+          <div class="imp-box" style="margin-bottom:16px;padding:16px 20px">
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
               <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex:1;min-width:280px">
-                <input type="text" id="bank-search-input" placeholder="🔎 Buscar por tema, doença ou sinal clínico..." style="flex:1;min-width:200px;padding:9px 14px;border-radius:10px;background:var(--bg-elevated);border:1px solid var(--border-muted);color:var(--text-primary);font-size:13px" oninput="filterBankQuestions()">
-                <select id="bank-spec-filter" class="sim-select" style="width:auto;min-width:160px;padding:8px 12px;font-size:13px" onchange="filterBankQuestions()">
+                <input type="text" id="bank-search-input" placeholder="🔎 Buscar por tema, doença ou sinal clínico..." style="flex:1;min-width:200px;padding:9px 14px;border-radius:10px;background:var(--bg-elevated);border:1px solid var(--border-muted);color:var(--text-primary);font-size:13px" oninput="onBankSearchInput()" onkeydown="if(event.key==='Enter'){bankCurrentPage=1;filterBankQuestions();}">
+                <select id="bank-spec-filter" class="sim-select" style="width:auto;min-width:160px;padding:8px 12px;font-size:13px" onchange="bankCurrentPage=1;filterBankQuestions()">
                   <option value="">Todas Especialidades</option>
                   <option value="Clínica Médica">Clínica Médica</option>
                   <option value="Cirurgia Geral">Cirurgia Geral</option>
@@ -1760,28 +1760,42 @@ mark.exam-highlight {
                   <option value="Medicina Preventiva e Social">Preventiva / SUS</option>
                   <option value="Perito Médico Federal">Perito Médico Federal</option>
                 </select>
-                <select id="bank-status-filter" class="sim-select" style="width:auto;min-width:140px;padding:8px 12px;font-size:13px" onchange="filterBankQuestions()">
+                <select id="bank-status-filter" class="sim-select" style="width:auto;min-width:140px;padding:8px 12px;font-size:13px" onchange="bankCurrentPage=1;filterBankQuestions()">
                   <option value="all">Todos os Status</option>
                   <option value="unanswered">Não resolvidas</option>
                   <option value="correct">Acertadas</option>
                   <option value="wrong">Erradas</option>
                 </select>
               </div>
-              <div style="display:flex;gap:8px">
+              <div style="display:flex;gap:8px;align-items:center">
                 <button class="filter-pill" onclick="refreshQuestionsBank()"><i class="ph ph-arrows-clockwise" style="color:var(--teal)"></i> Atualizar Banco</button>
               </div>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border-subtle);padding-top:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border-subtle);padding-top:10px;flex-wrap:wrap;gap:8px">
               <div>Exibindo <b id="bank-filtered-count" style="color:var(--teal)">0</b> questões disponíveis</div>
-              <div style="display:flex;gap:12px">
+              <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+                <label style="font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:5px">
+                  Por tela:
+                  <select id="bank-pagesize-select" class="sim-select" style="width:auto;padding:3px 8px;font-size:12px" onchange="setBankPageSize(this.value)">
+                    <option value="30" selected>30 questões</option>
+                    <option value="50">50 questões</option>
+                    <option value="100">100 questões</option>
+                  </select>
+                </label>
                 <span>Acertos: <b id="bank-correct-count" style="color:var(--green)">0</b></span>
                 <span>Erros: <b id="bank-wrong-count" style="color:var(--rose)">0</b></span>
               </div>
             </div>
           </div>
 
-          <!-- Feed de Questões Prontas -->
-          <div id="bank-questions-feed" style="display:flex;flex-direction:column;gap:12px;padding:0 20px 40px"></div>
+          <!-- Barra de Paginação Superior -->
+          <div id="bank-pagination-top" style="display:flex;justify-content:space-between;align-items:center;padding:0 20px 14px;flex-wrap:wrap;gap:10px"></div>
+
+          <!-- Feed de Questões Prontas (Virtual/Paginado com Alta Performance) -->
+          <div id="bank-questions-feed" style="display:flex;flex-direction:column;gap:12px;padding:0 20px 14px"></div>
+
+          <!-- Barra de Paginação Inferior & Carregar Mais -->
+          <div id="bank-pagination-bottom" style="display:flex;justify-content:center;align-items:center;padding:12px 20px 48px;flex-wrap:wrap;gap:8px"></div>
         </div>
 
         <!-- CONTEÚDO DA ABA 2: GERADOR GEMINI -->
@@ -3640,7 +3654,97 @@ function openFavorites(){
  +(body||'<div style="color:var(--text-muted);font-size:13px">Nenhum favorito salvo ainda.</div>'))}
 
 /* ═══ SISTEMA DE QUESTÕES (TREINO LIVRE, GERADOR GEMINI & TUTOR) ═══ */
-let BANK_QUESTIONS = lsGet('cuscuz_questions_cache', []);
+/* Armazenamento Assíncrono de Alta Performance (IndexedDB)
+   Permite armazenar 5.000 a 50.000+ questões sem travar a interface ou violar a cota de 5MB do localStorage */
+const CUSCUZ_IDB_NAME = 'cuscuz_med_storage';
+const CUSCUZ_IDB_VER = 1;
+const CUSCUZ_IDB_STORE = 'questions_bank';
+
+function openQuestionsIDB() {
+  return new Promise((resolve) => {
+    if (!window.indexedDB) return resolve(null);
+    try {
+      const req = indexedDB.open(CUSCUZ_IDB_NAME, CUSCUZ_IDB_VER);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(CUSCUZ_IDB_STORE)) {
+          db.createObjectStore(CUSCUZ_IDB_STORE);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
+async function saveQuestionsToIDB(questions) {
+  if (!Array.isArray(questions)) return false;
+  try {
+    const db = await openQuestionsIDB();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      const tx = db.transaction(CUSCUZ_IDB_STORE, 'readwrite');
+      const store = tx.objectStore(CUSCUZ_IDB_STORE);
+      store.put(questions, 'all_questions');
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
+async function loadQuestionsFromIDB() {
+  try {
+    const db = await openQuestionsIDB();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      const tx = db.transaction(CUSCUZ_IDB_STORE, 'readonly');
+      const store = tx.objectStore(CUSCUZ_IDB_STORE);
+      const req = store.get('all_questions');
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
+function prepareBankQuestionsSearchIndex(questions) {
+  if (!Array.isArray(questions)) return;
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    if (!q._hay) {
+      q._hay = normAcc(`${q.statement || ''} ${q.specialty || ''} ${q.subspecialty || ''} ${(q.tags || []).join(' ')} ${q.institution || ''}`);
+    }
+  }
+}
+
+function persistQuestionsCache(questions) {
+  if (!Array.isArray(questions)) return;
+  saveQuestionsToIDB(questions);
+  try {
+    if (questions.length <= 150) {
+      lsSet('cuscuz_questions_cache', questions);
+    } else {
+      // Para bancos grandes (ex: 5.000 questões), limpa o localStorage para evitar estouro da cota de 5MB
+      localStorage.removeItem('cuscuz_questions_cache');
+      lsSet('cuscuz_questions_meta', { count: questions.length, savedAt: Date.now() });
+    }
+  } catch (e) { /* silencia cota de localStorage */ }
+}
+
+let BANK_QUESTIONS = [];
+try {
+  const initialCache = lsGet('cuscuz_questions_cache', []);
+  if (Array.isArray(initialCache) && initialCache.length) {
+    BANK_QUESTIONS = initialCache;
+    prepareBankQuestionsSearchIndex(BANK_QUESTIONS);
+  }
+} catch (e) {}
+
 let BANK_ANSWERS = lsGet('cuscuz_exam_answers', {}); // qId -> { selectedIndex, isCorrect, answeredAt }
 let activeTreinoTab = 'prontas';
 let geminiGeneratedBuffer = [];
@@ -3667,18 +3771,28 @@ let activeQuestionForTutor = null;
 // Inicialização e Carregamento do Banco
 async function loadQuestionsBankFromAPI(silent = true) {
   try {
+    // 1) Se a memória está vazia, tenta restaurar imediatamente do IndexedDB sem lag
+    if (BANK_QUESTIONS.length === 0) {
+      const idbData = await loadQuestionsFromIDB();
+      if (Array.isArray(idbData) && idbData.length > 0) {
+        BANK_QUESTIONS = idbData;
+        prepareBankQuestionsSearchIndex(BANK_QUESTIONS);
+        updateBankBadges();
+        renderBankQuestionsFeed();
+      }
+    }
+
     const res = await fetch('/api/questions/bank');
     if (res.ok) {
       const data = await res.json();
       if (data && Array.isArray(data.questions)) {
-        // Salvamento automático: se o servidor tem menos questões que o espelho do navegador
-        // (hospedagem efêmera reiniciou), devolve o espelho ao servidor antes de carregar
-        const cache = lsGet('cuscuz_questions_cache', []);
-        if (Array.isArray(cache) && cache.length > data.questions.length) {
+        // Salvamento automático: se o servidor tem menos questões que o IndexedDB do navegador
+        // (ex: hospedagem efêmera reiniciou), devolve o espelho ao servidor
+        if (BANK_QUESTIONS.length > data.questions.length) {
           try {
             const r = await fetch('/api/questions/bank/restore', {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ questions: cache })
+              body: JSON.stringify({ questions: BANK_QUESTIONS })
             });
             const rd = await r.json();
             if (rd.success && rd.restaurado > 0) {
@@ -3688,12 +3802,12 @@ async function loadQuestionsBankFromAPI(silent = true) {
             }
           } catch (e) { /* segue com o que o servidor tem */ }
         }
+
         if (data.questions.length > 0) {
           BANK_QUESTIONS = data.questions;
-          lsSet('cuscuz_questions_cache', BANK_QUESTIONS);
-          if (!silent) toast(`📚 ${data.questions.length} questões carregadas do banco`, 'success');
-        } else if (Array.isArray(cache) && cache.length && !BANK_QUESTIONS.length) {
-          BANK_QUESTIONS = cache; // servidor ainda sem banco: usa o espelho local em memória
+          prepareBankQuestionsSearchIndex(BANK_QUESTIONS);
+          persistQuestionsCache(BANK_QUESTIONS);
+          if (!silent) toast(`📚 ${data.questions.length.toLocaleString('pt-BR')} questões carregadas do banco`, 'success');
         }
       }
     }
@@ -3875,19 +3989,66 @@ function reportHardworqAnswer(q, selectedIdx) {
   }).catch(() => {});
 }
 
+let bankCurrentPage = 1;
+let bankPageSize = 30; // 30 itens por página garante 60 FPS fluido sem travamentos
+let bankSearchDebounceTimer = null;
+
+function onBankSearchInput() {
+  clearTimeout(bankSearchDebounceTimer);
+  bankSearchDebounceTimer = setTimeout(() => {
+    bankCurrentPage = 1;
+    filterBankQuestions();
+  }, 200);
+}
+
+function setBankPageSize(newSize) {
+  bankPageSize = parseInt(newSize, 10) || 30;
+  bankCurrentPage = 1;
+  const sel = $('bank-pagesize-select');
+  if (sel && sel.value !== String(bankPageSize)) sel.value = String(bankPageSize);
+  renderBankQuestionsFeed();
+}
+
+function setBankPage(p) {
+  const total = getFilteredBankQuestions().length;
+  const totalPages = Math.ceil(total / bankPageSize) || 1;
+  bankCurrentPage = Math.max(1, Math.min(p, totalPages));
+  renderBankQuestionsFeed();
+  const topEl = $('bank-pagination-top') || $('bank-questions-feed');
+  if (topEl) {
+    topEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function loadMoreBankQuestions() {
+  bankPageSize += 30;
+  const sel = $('bank-pagesize-select');
+  if (sel) {
+    if (!Array.from(sel.options).some(o => o.value === String(bankPageSize))) {
+      const opt = document.createElement('option');
+      opt.value = String(bankPageSize);
+      opt.textContent = `${bankPageSize} questões`;
+      sel.appendChild(opt);
+    }
+    sel.value = String(bankPageSize);
+  }
+  renderBankQuestionsFeed();
+}
+
 function updateBankBadges() {
   const badge1 = $('prontas-badge-count');
-  if (badge1) badge1.textContent = BANK_QUESTIONS.length;
+  if (badge1) badge1.textContent = BANK_QUESTIONS.length.toLocaleString('pt-BR');
+  const filtered = getFilteredBankQuestions();
   const filteredEl = $('bank-filtered-count');
-  if (filteredEl) filteredEl.textContent = getFilteredBankQuestions().length;
+  if (filteredEl) filteredEl.textContent = filtered.length.toLocaleString('pt-BR');
 
   let correctCount = 0, wrongCount = 0;
   Object.values(BANK_ANSWERS).forEach(ans => {
     if (ans.isCorrect) correctCount++; else wrongCount++;
   });
   const cEl = $('bank-correct-count'), wEl = $('bank-wrong-count');
-  if (cEl) cEl.textContent = correctCount;
-  if (wEl) wEl.textContent = wrongCount;
+  if (cEl) cEl.textContent = correctCount.toLocaleString('pt-BR');
+  if (wEl) wEl.textContent = wrongCount.toLocaleString('pt-BR');
 }
 
 // Alternância entre as 3 Abas
@@ -3906,11 +4067,15 @@ function switchTreinoTab(tabName) {
   }
 }
 
-// Filtros do Feed de Questões Prontas (Aba 1)
+// Filtros de Alta Performance do Feed de Questões Prontas (Aba 1)
 function getFilteredBankQuestions() {
   const search = normAcc($('bank-search-input')?.value || '').trim();
   const spec = $('bank-spec-filter')?.value || '';
   const status = $('bank-status-filter')?.value || 'all';
+
+  if (!search && !spec && status === 'all') {
+    return BANK_QUESTIONS;
+  }
 
   return BANK_QUESTIONS.filter(q => {
     if (spec && q.specialty !== spec) return false;
@@ -3920,7 +4085,7 @@ function getFilteredBankQuestions() {
     if (status === 'wrong' && (!ans || ans.isCorrect)) return false;
 
     if (search) {
-      const hay = normAcc(`${q.statement} ${q.specialty} ${q.subspecialty || ''} ${(q.tags || []).join(' ')}`);
+      const hay = q._hay || (q._hay = normAcc(`${q.statement || ''} ${q.specialty || ''} ${q.subspecialty || ''} ${(q.tags || []).join(' ')} ${q.institution || ''}`));
       if (!hay.includes(search)) return false;
     }
     return true;
@@ -3932,12 +4097,78 @@ function filterBankQuestions() {
   renderBankQuestionsFeed();
 }
 
+function renderBankPaginationBar(totalItems, currentPage, pageSize) {
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  if (totalItems <= pageSize) {
+    return {
+      top: `<div style="font-size:12px;color:var(--text-muted)">Exibindo todas as <b style="color:var(--teal)">${totalItems.toLocaleString('pt-BR')}</b> questões encontradas</div>`,
+      bottom: ''
+    };
+  }
+
+  const startIdx = (currentPage - 1) * pageSize + 1;
+  const endIdx = Math.min(currentPage * pageSize, totalItems);
+
+  let pagesToShow = [];
+  const delta = 2;
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+      pagesToShow.push(i);
+    } else if (pagesToShow[pagesToShow.length - 1] !== '...') {
+      pagesToShow.push('...');
+    }
+  }
+
+  const pageBtnsHtml = pagesToShow.map(p => {
+    if (p === '...') return '<span style="color:var(--text-muted);padding:0 2px">…</span>';
+    const isAct = p === currentPage;
+    return `<button class="filter-pill ${isAct ? 'on' : ''}" style="padding:4px 10px;font-size:11.5px;min-width:32px;justify-content:center" onclick="setBankPage(${p})">${p}</button>`;
+  }).join('');
+
+  const navHtml = `
+    <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+      <button class="filter-pill" style="padding:4px 9px;font-size:11.5px" ${currentPage <= 1 ? 'disabled style="opacity:.35;pointer-events:none"' : ''} onclick="setBankPage(1)" title="Primeira página"><i class="ph ph-caret-double-left"></i></button>
+      <button class="filter-pill" style="padding:4px 9px;font-size:11.5px" ${currentPage <= 1 ? 'disabled style="opacity:.35;pointer-events:none"' : ''} onclick="setBankPage(${currentPage - 1})" title="Página anterior"><i class="ph ph-caret-left"></i></button>
+      ${pageBtnsHtml}
+      <button class="filter-pill" style="padding:4px 9px;font-size:11.5px" ${currentPage >= totalPages ? 'disabled style="opacity:.35;pointer-events:none"' : ''} onclick="setBankPage(${currentPage + 1})" title="Próxima página"><i class="ph ph-caret-right"></i></button>
+      <button class="filter-pill" style="padding:4px 9px;font-size:11.5px" ${currentPage >= totalPages ? 'disabled style="opacity:.35;pointer-events:none"' : ''} onclick="setBankPage(${totalPages})" title="Última página"><i class="ph ph-caret-double-right"></i></button>
+    </div>
+  `;
+
+  const top = `
+    <div style="font-size:12.5px;color:var(--text-muted)">
+      Mostrando <b style="color:var(--teal)">${startIdx.toLocaleString('pt-BR')}–${endIdx.toLocaleString('pt-BR')}</b> de <b style="color:var(--text-primary)">${totalItems.toLocaleString('pt-BR')}</b> questões (Página ${currentPage} de ${totalPages})
+    </div>
+    ${navHtml}
+  `;
+
+  const bottom = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%">
+      ${currentPage < totalPages ? `
+        <button class="btn-outline glass-shimmer" style="padding:8px 24px;font-size:12.5px" onclick="loadMoreBankQuestions()">
+          <i class="ph ph-arrow-circle-down" style="color:var(--teal)"></i> Carregar mais +30 questões nesta tela
+        </button>
+      ` : ''}
+      ${navHtml}
+    </div>
+  `;
+
+  return { top, bottom };
+}
+
 function renderBankQuestionsFeed() {
   const container = $('bank-questions-feed');
   if (!container) return;
 
+  const topPagEl = $('bank-pagination-top');
+  const btmPagEl = $('bank-pagination-bottom');
+
   const list = getFilteredBankQuestions();
-  if (list.length === 0) {
+  const total = list.length;
+
+  if (total === 0) {
+    if (topPagEl) topPagEl.innerHTML = '';
+    if (btmPagEl) btmPagEl.innerHTML = '';
     container.innerHTML = `
       <div class="drive-empty iridescent-border" style="padding:32px 20px;text-align:center;background:var(--bg-surface);border-radius:16px">
         <div style="font-size:32px;margin-bottom:8px">🔍</div>
@@ -3948,7 +4179,22 @@ function renderBankQuestionsFeed() {
     return;
   }
 
-  container.innerHTML = list.map((q) => {
+  // Ajusta a página atual se estiver além do total de páginas
+  const totalPages = Math.ceil(total / bankPageSize) || 1;
+  if (bankCurrentPage > totalPages) bankCurrentPage = totalPages;
+  if (bankCurrentPage < 1) bankCurrentPage = 1;
+
+  // Renderiza controles de paginação rápidos
+  const pag = renderBankPaginationBar(total, bankCurrentPage, bankPageSize);
+  if (topPagEl) topPagEl.innerHTML = pag.top;
+  if (btmPagEl) btmPagEl.innerHTML = pag.bottom;
+
+  // Fatiamento inteligente: renderiza apenas a página atual no DOM (evita travar o navegador)
+  const startIdx = (bankCurrentPage - 1) * bankPageSize;
+  const pageItems = list.slice(startIdx, startIdx + bankPageSize);
+
+  container.innerHTML = pageItems.map((q, localIdx) => {
+    const globalNum = startIdx + localIdx + 1;
     const ans = BANK_ANSWERS[q.id];
     let statusBadge = '<span class="chip" style="font-size:10px;color:var(--text-muted)"><i class="ph ph-circle"></i> Não respondida</span>';
     if (ans) {
@@ -3960,11 +4206,12 @@ function renderBankQuestionsFeed() {
     const snippet = q.statement.length > 220 ? q.statement.slice(0, 220) + '…' : q.statement;
 
     return `
-      <div class="imp-box glass-shimmer" style="margin:0;padding:18px 20px;transition:all .2s;cursor:pointer" onclick="startTreinoSingle('${q.id}')">
+      <div class="imp-box glass-shimmer" style="margin:0;padding:16px 20px;transition:all .18s;cursor:pointer" onclick="startTreinoSingle('${q.id}')">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted);font-family:var(--font-mono)">#${globalNum}</span>
             <span class="chip" style="background:var(--teal-dim);color:var(--teal);border-color:var(--teal-border);font-weight:700;font-size:11px">
-              ${esc(q.specialty)}
+              ${esc(q.specialty || 'Clínica Médica')}
             </span>
             ${q.subspecialty ? `<span class="chip" style="font-size:11px">${esc(q.subspecialty)}</span>` : ''}
             <span class="chip" style="font-size:11px;color:var(--text-muted)">${esc(q.institution || 'Oficial')} ${q.year || ''}</span>
@@ -3987,13 +4234,30 @@ function renderBankQuestionsFeed() {
   }).join('');
 }
 
-// Iniciar Simulado a partir da lista filtrada ou questão única
+// Iniciar Simulado a partir da lista filtrada com seletor ergonômico de bloco
 function startTreinoLivreFiltered() {
   const filtered = getFilteredBankQuestions();
   if (filtered.length === 0) {
     toast('Nenhuma questão para iniciar o simulador. Ajuste os filtros.', 'warning');
     return;
   }
+
+  // Se houver mais de 50 questões, oferece escolha do tamanho do bloco (evita fadiga e melhora desempenho)
+  if (filtered.length > 50) {
+    const totalFormatado = filtered.length.toLocaleString('pt-BR');
+    openModal(
+      '<div class="modal-title"><i class="ph ph-play-circle" style="color:var(--teal)"></i> Iniciar Simulado de Treino<button class="modal-close"><i class="ph ph-x"></i></button></div>' +
+      '<div style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Você filtrou <b>' + totalFormatado + ' questões</b>. Para melhor rendimento cognitivo e simulação realista de prova, escolha a quantidade:</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px">' +
+        '<button class="btn-primary" onclick="closeModals();startTreinoSimulator(shuffle([...getFilteredBankQuestions()]).slice(0, 20))"><i class="ph ph-lightning"></i> Sessão Rápida · 20 Questões (Sprint)</button>' +
+        '<button class="btn-outline" onclick="closeModals();startTreinoSimulator(shuffle([...getFilteredBankQuestions()]).slice(0, 50))"><i class="ph ph-target"></i> Bloco Médio · 50 Questões (Recomendado)</button>' +
+        '<button class="btn-outline" onclick="closeModals();startTreinoSimulator(shuffle([...getFilteredBankQuestions()]).slice(0, 100))"><i class="ph ph-exam"></i> Prova Completa Padrão ENARE / USP · 100 Questões</button>' +
+        '<button class="btn-outline btn-sm" style="color:var(--text-muted);margin-top:6px" onclick="closeModals();startTreinoSimulator(shuffle([...getFilteredBankQuestions()]))">Resolver todas as ' + totalFormatado + ' questões</button>' +
+      '</div>'
+    );
+    return;
+  }
+
   startTreinoSimulator(shuffle([...filtered]));
 }
 
@@ -4059,7 +4323,8 @@ async function submitGeminiGenerator() {
     data.questions.forEach(q => map.set(q.id, q));
     BANK_QUESTIONS.forEach(q => { if (!map.has(q.id)) map.set(q.id, q); });
     BANK_QUESTIONS = Array.from(map.values());
-    lsSet('cuscuz_questions_cache', BANK_QUESTIONS);
+    prepareBankQuestionsSearchIndex(BANK_QUESTIONS);
+    persistQuestionsCache(BANK_QUESTIONS);
     updateBankBadges();
 
     // Renderiza preview das geradas
