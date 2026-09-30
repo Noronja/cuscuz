@@ -82,6 +82,66 @@
 .pl-aula:hover{background:var(--accent-dim);color:var(--text-primary)}
 .pl-aula i{color:var(--teal);flex:none}
 .pl-aula span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ═══ Acervo LMS (substitui a navegação por pastas) ═══ */
+#view-acervo > *:not(#ac2-layout){display:none!important}
+.ac2-layout{display:grid;grid-template-columns:minmax(0,7fr) minmax(330px,3fr);gap:20px;max-width:1440px;margin:0 auto;padding:4px 20px 24px;align-items:start}
+.ac2-player{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:16/9;width:100%;background:#000;box-shadow:var(--shadow-glass),0 0 0 1px var(--border-muted)}
+.ac2-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:#000}
+.ac2-player iframe.ativo{display:block}
+.ac2-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-muted);font-size:14px;z-index:2}
+.ac2-ph i{font-size:46px;color:var(--teal)}
+.ac2-buffer{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text-muted);margin-top:9px;min-height:18px}
+.ac2-buffer i{font-size:14px}
+.ac2-buffer .ok{color:var(--green)}
+.ac2-buffer .carregando{color:var(--amber)}
+.ac2-card{background:var(--bg-surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--border-muted);border-radius:14px;padding:18px 20px;margin-top:14px}
+.ac2-bc{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:12.5px;color:var(--text-muted);margin-bottom:8px}
+.ac2-bc b{color:var(--text-primary);font-weight:600}
+.ac2-titulo{font-size:21px;font-weight:800;letter-spacing:-.4px;line-height:1.25;color:var(--text-primary)}
+.ac2-meta{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:10px;font-size:13px;color:var(--text-muted)}
+.ac2-meta span{display:inline-flex;align-items:center;gap:5px}
+.ac2-meta i{font-size:15px}
+.ac2-meta b{color:var(--text-primary);font-weight:600}
+.ac2-bmeta{color:var(--teal)!important}
+.ac2-bmeta.carregando{color:var(--text-muted)!important}
+.ac2-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border-muted)}
+.ac2-actions .btn-outline.fav-on{border-color:#FFC107;color:#FFC107;background:rgba(255,193,7,.08)}
+.ac2-actions .btn-outline.done-on{border-color:var(--green);color:var(--green);background:var(--green-dim)}
+.ac2-side{position:sticky;top:76px;background:var(--bg-surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--border-muted);border-radius:14px;display:flex;flex-direction:column;max-height:calc(100vh - 100px);overflow:hidden;box-shadow:var(--shadow-glass)}
+.ac2-side-head{padding:14px 16px 10px;border-bottom:1px solid var(--border-muted)}
+.ac2-side-head h2{font-size:15px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:8px}
+.ac2-stats{display:flex;gap:12px;margin-top:6px;font-size:12px;color:var(--text-muted);flex-wrap:wrap}
+.ac2-progt{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;padding:6px 8px;border-radius:8px;background:var(--bg-elevated);user-select:none}
+.ac2-progt:hover{color:var(--text-primary)}
+.ac2-progt .pct{margin-left:auto;font-weight:800;color:var(--teal)}
+.ac2-progt .caret{transition:transform .25s;font-size:12px}
+.ac2-progt.aberto .caret{transform:rotate(180deg)}
+.ac2-progb{display:none;padding:9px 8px 2px}
+.ac2-progb.aberto{display:block}
+.ac2-progb .rotulo{font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;margin-bottom:5px}
+.ac2-progb .barra{height:6px;border-radius:99px;background:var(--border-muted);overflow:hidden}
+.ac2-progb .barra div{height:100%;background:var(--teal);border-radius:99px;transition:width .3s}
+.ac2-arvore{overflow-y:auto;flex:1;padding:8px 10px 12px;scrollbar-width:thin;scrollbar-color:var(--border-muted) transparent}
+.ac2-arvore::-webkit-scrollbar{width:8px}
+.ac2-arvore::-webkit-scrollbar-thumb{background:var(--border-muted);border-radius:99px}
+.ac2-mod{border:1px solid var(--border-muted);border-radius:10px;margin-bottom:6px;overflow:hidden}
+.ac2-mod-btn,.ac2-sub-btn{width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;border:0;background:transparent;color:var(--text-primary);font-size:13px;font-weight:700;text-align:left;cursor:pointer}
+.ac2-mod-btn:hover,.ac2-sub-btn:hover{background:var(--bg-elevated)}
+.ac2-mod-btn i{color:var(--teal)}
+.ac2-mod-btn .cont,.ac2-sub-btn .cont{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--text-muted);background:var(--bg-elevated);border:1px solid var(--border-muted);border-radius:99px;padding:2px 8px}
+.ac2-mod-lista,.ac2-sub-lista{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease}
+.ac2-mod.aberto .ac2-mod-lista,.ac2-sub.aberto .ac2-sub-lista{grid-template-rows:1fr}
+.ac2-mod-lista>div,.ac2-sub-lista>div{overflow:hidden}
+.ac2-sub{border-top:1px solid var(--border-muted)}
+.ac2-sub-btn{padding:8px 12px 8px 22px;font-weight:600;font-size:12.5px}
+.ac2-aula{display:flex;align-items:center;gap:8px;padding:7px 12px 7px 30px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;border-top:1px solid var(--border-muted)}
+.ac2-aula:hover{background:var(--accent-dim);color:var(--text-primary)}
+.ac2-aula.ativa{background:var(--teal-dim);box-shadow:inset 3px 0 0 var(--teal);color:var(--text-primary)}
+.ac2-aula i{color:var(--text-muted);flex:none}
+.ac2-aula.ativa i{color:var(--teal)}
+.ac2-aula .ok-i{color:var(--green)}
+.ac2-aula span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+@media (max-width:1020px){.ac2-layout{grid-template-columns:1fr}.ac2-side{position:static;max-height:560px}}
 </style>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -1076,6 +1136,49 @@ mark.exam-highlight {
     </div>
 
     <div id="view-acervo" class="view-section" style="padding-top:20px">
+      <div id="ac2-layout">
+        <section class="ac2-main">
+          <div class="ac2-player" id="ac2-player">
+            <div class="ac2-ph" id="ac2-ph"><i class="ph ph-play-circle"></i><span>Selecione uma videoaula no menu ao lado</span></div>
+          </div>
+          <div class="ac2-buffer" id="ac2-buffer"></div>
+          <div class="ac2-card">
+            <div class="ac2-bc" id="ac2-bc"></div>
+            <h1 class="ac2-titulo" id="ac2-titulo">Carregando acervo…</h1>
+            <div class="ac2-meta">
+              <span><i class="ph ph-graduation-cap"></i> <b id="ac2-curso">—</b></span>
+              <span><i class="ph ph-folder-open"></i> <b id="ac2-disc">—</b></span>
+              <span class="ac2-bmeta" id="ac2-bmeta"><i class="ph ph-file-video"></i> <b id="ac2-buffer-txt">—</b></span>
+            </div>
+            <div class="ac2-actions">
+              <button class="btn-outline" id="ac2-fav"><i class="ph ph-star"></i> Favoritar</button>
+              <button class="btn-outline" id="ac2-done"><i class="ph ph-check-circle"></i> Marcar como concluída</button>
+              <a class="btn-outline" id="ac2-drive" href="#" target="_blank" rel="noopener"><i class="ph ph-arrow-square-out"></i> Drive</a>
+              <button class="btn-primary" id="ac2-next" style="margin-left:auto"><i class="ph ph-skip-forward"></i> Próxima aula</button>
+            </div>
+          </div>
+          <div class="ac2-card">
+            <h3 style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;margin-bottom:12px"><i class="ph ph-folder-notch-open" style="color:var(--teal)"></i> Materiais desta aula</h3>
+            <div id="ac2-materiais" style="display:flex;flex-wrap:wrap;gap:10px"><span style="font-size:13px;color:var(--text-muted)">Carregando…</span></div>
+          </div>
+        </section>
+        <aside class="ac2-side">
+          <div class="ac2-side-head">
+            <h2><i class="ph ph-graduation-cap" style="color:var(--teal)"></i> Conteúdo do curso</h2>
+            <div class="ac2-stats" id="ac2-stats"></div>
+            <div class="ac2-progt" id="ac2-progt" onclick="ac2ToggleProg()"><i class="ph ph-chart-line-up"></i> Progresso <span class="pct" id="ac2-pct-mini">0%</span> <i class="ph ph-caret-down caret"></i></div>
+            <div class="ac2-progb" id="ac2-progb">
+              <div class="rotulo"><span>Videoaulas concluídas</span><b id="ac2-contagem">0/0</b></div>
+              <div class="barra"><div id="ac2-barra" style="width:0%"></div></div>
+            </div>
+          </div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border-muted);position:relative">
+            <i class="ph ph-magnifying-glass" style="position:absolute;left:26px;top:50%;transform:translateY(calc(-50% - 6px));color:var(--text-muted)"></i>
+            <input type="search" id="ac2-busca" placeholder="Buscar videoaula…" autocomplete="off" style="width:100%;font-family:inherit;font-size:13.5px;padding:9px 12px 9px 36px;border-radius:10px;border:1px solid var(--border-muted);background:var(--bg-elevated);color:var(--text-primary);outline:none">
+          </div>
+          <div id="ac2-arvore" class="ac2-arvore"><div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px"><i class="ph ph-circle-notch" style="animation:spin 1s linear infinite;display:block;font-size:24px;margin-bottom:8px"></i>Carregando cursos do Drive…</div></div>
+        </aside>
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 20px 16px;flex-wrap:wrap;gap:12px">
         <div>
           <h1 class="section-title" style="margin:0 0 4px">Cursos & Acervo</h1>
@@ -2507,6 +2610,8 @@ function enterDriveCourse(folderId, folderName) {
 }
 
 function openDriveItemById(fileId) {
+  // Se o arquivo faz parte do acervo catalogado, abre na visão LMS (player + menu)
+  if (window.AC2 && AC2.indice && AC2.indice.has(fileId)) { go('view-acervo'); ac2Abrir(fileId); return; }
   let item = null;
   // Look in currentFolderItems first
   item = [...(currentFolderItems.videos || []), ...(currentFolderItems.pdfs || []), ...(currentFolderItems.other || [])].find(f => f.id === fileId);
@@ -4929,6 +5034,266 @@ window.plMenuAbrirEl = function (el) {
   const t = $('player-title');
   if (t) t.textContent = el.dataset.t || t.textContent;
 };
+
+/* ═══════════════════════════════════════════════════════════════
+   ACERVO LMS — substitui a navegação por pastas do "Cursos & Acervo"
+   Player 70% + menu 30% (curso → disciplina → aula), buffer inteligente,
+   integrado ao estado do app (DONE/FAV/XP/streak)
+   ═══════════════════════════════════════════════════════════════ */
+const AC2 = { pronto: false, carregando: null, LISTA: [], ARVORE: new Map(), ORDEM: [], MAT: new Map(), indice: new Map(), atualId: null, infoCache: new Map(), iframes: new Map(), ordem: [] };
+
+function ac2Init() {
+  if (AC2.pronto) return Promise.resolve();
+  if (AC2.carregando) return AC2.carregando;
+  AC2.carregando = fetch('/acervo-manifest.json').then(r => r.json()).then(data => {
+    (data.videos || []).forEach(v => {
+      const curso = v.course || 'Geral';
+      const disc = String(v.d || '').replace(/\.(mp4|webm|mkv|mov|pdf)$/i, '').trim() || 'Geral';
+      if (!AC2.ARVORE.has(curso)) { AC2.ARVORE.set(curso, new Map()); AC2.ORDEM.push(curso); }
+      if (!AC2.ARVORE.get(curso).has(disc)) AC2.ARVORE.get(curso).set(disc, []);
+      const item = { id: v.id, titulo: v.t || '(sem título)', disc, curso };
+      AC2.ARVORE.get(curso).get(disc).push(item);
+      AC2.LISTA.push(item);
+      AC2.indice.set(v.id, item);
+    });
+    (data.materials || []).forEach(m => {
+      const k = (m.course || 'Geral') + '||' + (String(m.d || '').replace(/\.(mp4|webm|mkv|mov|pdf)$/i, '').trim() || 'Geral');
+      if (!AC2.MAT.has(k)) AC2.MAT.set(k, []);
+      AC2.MAT.get(k).push({ id: m.id, nome: m.t || 'Material' });
+    });
+    AC2.pronto = true;
+    $('ac2-stats').innerHTML =
+      '<span><i class="ph ph-play-circle"></i> ' + AC2.LISTA.length.toLocaleString('pt-BR') + ' videoaulas</span>' +
+      '<span><i class="ph ph-folder-simple"></i> ' + AC2.ORDEM.length + ' cursos</span>' +
+      '<span><i class="ph ph-file-text"></i> ' + (data.materials || []).length.toLocaleString('pt-BR') + ' materiais</span>';
+    ac2RenderArvore();
+    ac2Progresso();
+  });
+  return AC2.carregando;
+}
+
+// Nova renderização do Acervo (sobrepõe a navegação por pastas)
+function renderAcervo() {
+  const arvore = $('ac2-arvore');
+  if (!arvore) return;
+  ac2Init().then(() => {
+    ac2RenderArvore();
+    ac2Progresso();
+    if (!AC2.atualId && AC2.LISTA.length) ac2Abrir(AC2.LISTA[0].id, true);
+  }).catch(() => {
+    arvore.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">Não foi possível carregar o acervo do Drive.</div>';
+  });
+}
+
+function ac2RenderArvore() {
+  const arvore = $('ac2-arvore'); if (!arvore || arvore.dataset.pronto) return;
+  arvore.dataset.pronto = '1';
+  let html = '';
+  AC2.ORDEM.forEach(curso => {
+    const discs = AC2.ARVORE.get(curso);
+    let total = 0; discs.forEach(l => total += l.length);
+    html += '<div class="ac2-mod" data-curso="' + esc(curso) + '">' +
+      '<button class="ac2-mod-btn" onclick="ac2ToggleMod(this)"><i class="ph ph-folder-simple"></i> ' + esc(curso) +
+      '<span class="cont">' + total.toLocaleString('pt-BR') + '</span></button>' +
+      '<div class="ac2-mod-lista"><div>' +
+      [...discs.keys()].map(disc =>
+        '<div class="ac2-sub" data-disc="' + esc(disc) + '">' +
+          '<button class="ac2-sub-btn" onclick="ac2ToggleSub(this)">' + esc(disc) + '<span class="cont">' + AC2.ARVORE.get(curso).get(disc).length + '</span></button>' +
+          '<div class="ac2-sub-lista"><div data-lista="' + esc(curso) + '||' + esc(disc) + '"></div></div></div>').join('') +
+      '</div></div></div>';
+  });
+  arvore.innerHTML = html || '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">Nenhuma videoaula no acervo.</div>';
+  const primeiro = arvore.querySelector('.ac2-mod');
+  if (primeiro) primeiro.classList.add('aberto');
+}
+window.ac2ToggleMod = function (btn) {
+  const m = btn.closest('.ac2-mod'); m.classList.toggle('aberto');
+  if (m.classList.contains('aberto')) m.querySelectorAll('.ac2-sub.aberto').forEach(s => ac2Preencher(m.dataset.curso, s.dataset.disc));
+};
+window.ac2ToggleSub = function (btn) {
+  const sub = btn.closest('.ac2-sub'); sub.classList.toggle('aberto');
+  if (sub.classList.contains('aberto')) ac2Preencher(sub.closest('.ac2-mod').dataset.curso, sub.dataset.disc);
+};
+window.ac2ToggleProg = function () { $('ac2-progt').classList.toggle('aberto'); $('ac2-progb').classList.toggle('aberto'); };
+
+function ac2Preencher(curso, disc) {
+  const alvo = document.querySelector('#ac2-arvore [data-lista="' + CSS.escape(curso) + '||' + CSS.escape(disc) + '"]');
+  if (!alvo || alvo.dataset.preenchido) return;
+  const aulas = (AC2.ARVORE.get(curso) || new Map()).get(disc) || [];
+  alvo.innerHTML = aulas.map(v => {
+    const feita = DONE.has('drive:' + v.id);
+    return '<div class="ac2-aula' + (AC2.atualId === v.id ? ' ativa' : '') + '" data-id="' + v.id + '" onclick="ac2Abrir(\'' + v.id + '\')" title="' + esc(v.titulo) + '">' +
+      '<i class="ph ' + (feita ? 'ph-check-circle ok-i' : 'ph-play-circle') + '"></i><span>' + esc(v.titulo) + '</span></div>';
+  }).join('');
+  alvo.dataset.preenchido = '1';
+}
+
+/* Buffer inteligente (metadados do Drive + pré-carregar a próxima aula) */
+function ac2Info(ids) {
+  const faltam = [...new Set(ids)].filter(id => id && !AC2.infoCache.has(id));
+  const p = faltam.length
+    ? fetch('/api/drive/video-info?ids=' + encodeURIComponent(faltam.join(','))).then(r => r.json())
+        .then(d => { Object.entries(d.info || {}).forEach(([id, info]) => AC2.infoCache.set(id, info)); }).catch(() => {})
+    : Promise.resolve();
+  return p.then(() => ids.map(id => AC2.infoCache.get(id) || null));
+}
+function ac2CriarIframe(v, ativo) {
+  const f = document.createElement('iframe');
+  f.src = 'https://drive.google.com/file/d/' + v.id + '/preview';
+  f.title = v.titulo; f.allow = 'autoplay; encrypted-media; fullscreen';
+  f.setAttribute('data-vid', v.id);
+  if (ativo) f.classList.add('ativo');
+  $('ac2-player').appendChild(f);
+  AC2.iframes.set(v.id, f); AC2.ordem.push(v.id);
+  ac2Trim(v.id);
+  return f;
+}
+function ac2Trim(idAtivo) {
+  while (AC2.ordem.length > 2) {
+    const velho = AC2.ordem.pop();
+    if (velho === idAtivo) continue;
+    const f = AC2.iframes.get(velho);
+    if (f) { f.remove(); AC2.iframes.delete(velho); }
+  }
+}
+function ac2Ativar(id) {
+  document.querySelectorAll('#ac2-player iframe.ativo').forEach(x => x.classList.remove('ativo'));
+  let f = AC2.iframes.get(id);
+  if (!f) { const v = AC2.indice.get(id); f = ac2CriarIframe(v, true); } else f.classList.add('ativo');
+  $('ac2-ph').style.display = 'none';
+  AC2.ordem = AC2.ordem.filter(x => x !== id); AC2.ordem.unshift(id);
+  ac2Trim(id);
+}
+function ac2Buffer() {
+  if (!AC2.atualId) return;
+  const atual = AC2.indice.get(AC2.atualId);
+  const i = AC2.LISTA.findIndex(x => x.id === AC2.atualId);
+  const prox = AC2.LISTA.slice(i + 1, i + 2);
+  const st = $('ac2-buffer');
+  ac2Info([AC2.atualId, ...prox.map(v => v.id)]).then(infos => {
+    const a = infos[0], mb = $('ac2-bmeta');
+    if (a && a.sizeMB) {
+      mb.classList.remove('carregando');
+      const partes = [a.sizeMB + ' MB'];
+      if (a.durLabel) partes.push(a.durLabel);
+      if (a.res && a.res !== '0p') partes.push(a.res);
+      partes.push('em buffer');
+      $('ac2-buffer-txt').textContent = partes.join(' · ');
+    } else $('ac2-buffer-txt').textContent = 'tamanho indisponível';
+    if (prox[0]) {
+      const tam = infos[1] && infos[1].sizeMB ? ' (' + infos[1].sizeMB + ' MB' + (infos[1].durLabel ? ', ' + infos[1].durLabel : '') + ')' : '';
+      st.innerHTML = '<i class="ph ph-lightning carregando"></i> Buffer inteligente: pré-carregando <b>&nbsp;' + esc(prox[0].titulo) + '&nbsp;</b>' + esc(tam) + '…';
+      setTimeout(() => { if (AC2.iframes.has(prox[0].id)) st.innerHTML = '<i class="ph ph-check-circle ok"></i> Buffer inteligente: <b>&nbsp;' + esc(prox[0].titulo) + '&nbsp;</b> pré-carregada — troque sem esperar.'; }, 5000);
+    } else st.innerHTML = '';
+  });
+  prox.forEach(v => { if (!AC2.iframes.has(v.id)) ac2CriarIframe(v, false); });
+}
+
+window.ac2Abrir = function (id, silencioso) {
+  const v = AC2.indice.get(id); if (!v) return;
+  AC2.atualId = id;
+  ac2Ativar(id);
+  $('ac2-bc').innerHTML = '<span>' + esc(v.curso) + '</span> › <span>' + esc(v.disc) + '</span> › <b>' + esc(v.titulo) + '</b>';
+  $('ac2-titulo').textContent = v.titulo;
+  $('ac2-curso').textContent = v.curso;
+  $('ac2-disc').textContent = v.disc;
+  $('ac2-bmeta').classList.add('carregando');
+  $('ac2-buffer-txt').textContent = 'calculando buffer…';
+  $('ac2-drive').href = 'https://drive.google.com/file/d/' + v.id + '/view';
+  ac2Acoes(); ac2Materiais(v); ac2Buffer();
+  document.querySelectorAll('#ac2-arvore .ac2-aula').forEach(el => el.classList.toggle('ativa', el.dataset.id === id));
+  const mod = document.querySelector('#ac2-arvore .ac2-mod[data-curso="' + CSS.escape(v.curso) + '"]');
+  if (mod && !mod.classList.contains('aberto')) mod.classList.add('aberto');
+  const sub = mod && mod.querySelector('.ac2-sub[data-disc="' + CSS.escape(v.disc) + '"]');
+  if (sub) { sub.classList.add('aberto'); ac2Preencher(v.curso, v.disc); }
+  const item = document.querySelector('#ac2-arvore .ac2-aula[data-id="' + id + '"]');
+  if (item) item.scrollIntoView({ block: 'nearest' });
+  if (!silencioso) window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+function ac2Acoes() {
+  const v = AC2.indice.get(AC2.atualId); if (!v) return;
+  const k = 'drive:' + v.id;
+  const fav = FAV.has(k);
+  $('ac2-fav').className = 'btn-outline' + (fav ? ' fav-on' : '');
+  $('ac2-fav').innerHTML = '<i class="ph ' + (fav ? 'ph-star-fill' : 'ph-star') + '"></i> ' + (fav ? 'Nos favoritos' : 'Favoritar');
+  const feita = DONE.has(k);
+  $('ac2-done').className = 'btn-outline' + (feita ? ' done-on' : '');
+  $('ac2-done').innerHTML = '<i class="ph ' + (feita ? 'ph-check-circle ph-fill' : 'ph-check-circle') + '"></i> ' + (feita ? 'Aula concluída' : 'Marcar como concluída');
+  const i = AC2.LISTA.findIndex(x => x.id === v.id);
+  $('ac2-next').disabled = i >= AC2.LISTA.length - 1;
+}
+$('ac2-fav').onclick = function () {
+  if (!AC2.atualId) return;
+  toggleDriveFav(AC2.atualId); ac2Acoes();
+  toast(FAV.has('drive:' + AC2.atualId) ? '⭐ Adicionada aos favoritos' : 'Removida dos favoritos');
+};
+$('ac2-done').onclick = function () {
+  if (!AC2.atualId) return;
+  const k = 'drive:' + AC2.atualId;
+  if (DONE.has(k)) { DONE.delete(k); toast('Marcada como não concluída'); }
+  else { DONE.add(k); lsSet('acv_done', [...DONE]); addXP(2, 'videoaula concluída'); touchStreak(); checkBadges(); toast('✅ Aula concluída +2 XP', 'success'); }
+  lsSet('acv_done', [...DONE]); saveDB();
+  ac2Acoes(); ac2Progresso(); ac2AtualizarItens();
+};
+$('ac2-next').onclick = function () {
+  const i = AC2.LISTA.findIndex(x => x.id === AC2.atualId);
+  if (i >= 0 && i < AC2.LISTA.length - 1) ac2Abrir(AC2.LISTA[i + 1].id);
+};
+function ac2AtualizarItens() {
+  document.querySelectorAll('#ac2-arvore .ac2-aula').forEach(el => {
+    const ic = el.querySelector('i');
+    if (ic) ic.className = DONE.has('drive:' + el.dataset.id) ? 'ph ph-check-circle ok-i' : 'ph ph-play-circle';
+  });
+}
+function ac2Materiais(v) {
+  const box = $('ac2-materiais');
+  let mats = AC2.MAT.get(v.curso + '||' + v.disc) || [];
+  let origem = v.disc;
+  if (!mats.length) { mats = AC2.MAT.get(v.curso + '||Geral') || []; origem = 'Geral'; }
+  if (!mats.length) { box.innerHTML = '<span style="font-size:13px;color:var(--text-muted)">Nenhum material PDF nesta disciplina (' + esc(v.curso) + ' — ' + esc(origem) + ').</span>'; return; }
+  box.innerHTML = '<span style="font-size:11.5px;color:var(--text-muted);width:100%;margin-bottom:-4px">' + mats.length + ' material(is) de ' + esc(v.curso) + ' · ' + esc(origem) + '</span>' +
+    mats.slice(0, 12).map(m =>
+      '<a class="material-chip" href="https://drive.google.com/file/d/' + m.id + '/view" target="_blank" rel="noopener">' +
+        '<span class="pdf" style="width:30px;height:30px;border-radius:8px;flex:none;background:rgba(248,113,113,.15);color:var(--rose);display:inline-flex;align-items:center;justify-content:center;font-size:17px"><i class="ph ph-file-pdf"></i></span>' +
+        '<span style="display:flex;flex-direction:column;line-height:1.25;min-width:0"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px;font-size:13px;font-weight:500">' + esc(m.nome) + '</span>' +
+        '<small style="color:var(--text-muted);font-size:11.5px">PDF · Google Drive</small></span>' +
+        '<i class="ph ph-download-simple" style="color:var(--text-muted)"></i></a>').join('');
+}
+function ac2Progresso() {
+  const feitas = AC2.LISTA.filter(v => DONE.has('drive:' + v.id)).length;
+  const pct = AC2.LISTA.length ? Math.round(feitas / AC2.LISTA.length * 100) : 0;
+  $('ac2-pct-mini').textContent = pct + '%';
+  $('ac2-contagem').textContent = feitas.toLocaleString('pt-BR') + '/' + AC2.LISTA.length.toLocaleString('pt-BR');
+  $('ac2-barra').style.width = pct + '%';
+}
+$('ac2-busca').addEventListener('input', e => {
+  if (!AC2.pronto) return;
+  const q = normAcc(String(e.target.value || '')).trim();
+  const arvore = $('ac2-arvore');
+  if (!q) { arvore.dataset.pronto = ''; renderAcervo(); return; }
+  const hits = AC2.LISTA.filter(v => normAcc(v.titulo + ' ' + v.disc + ' ' + v.curso).includes(q)).slice(0, 80);
+  let html = '<div style="font-size:11.5px;color:var(--text-muted);padding:2px 4px 8px">' + hits.length + ' resultado(s)</div>' + hits.map(v => {
+    const feita = DONE.has('drive:' + v.id);
+    return '<div class="ac2-aula' + (AC2.atualId === v.id ? ' ativa' : '') + '" data-id="' + v.id + '" onclick="ac2Abrir(\'' + v.id + '\')" title="' + esc(v.curso) + ' › ' + esc(v.disc) + ' — ' + esc(v.titulo) + '">' +
+      '<i class="ph ' + (feita ? 'ph-check-circle ok-i' : 'ph-play-circle') + '"></i><span>' + esc(v.titulo) + '</span>' +
+      '<span style="font-size:10px;color:var(--text-muted);flex:none;border:1px solid var(--border-muted);border-radius:99px;padding:1px 7px">' + esc(v.curso) + '</span></div>';
+  }).join('');
+  arvore.innerHTML = hits.length ? html : '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">Nenhuma videoaula encontrada.</div>';
+});
+
+// Curso clicado na barra lateral (ou busca global) → abre na nova visão LMS
+function enterDriveCourse(id, name) {
+  go('view-acervo');
+  ac2Init().then(() => {
+    if (!name) return;
+    const alvo = [...document.querySelectorAll('#ac2-arvore .ac2-mod')].find(m => m.dataset.curso === name);
+    if (alvo) {
+      alvo.classList.add('aberto');
+      alvo.scrollIntoView({ block: 'start' });
+    }
+  });
+}
 </script>
 </body>
 </html>
