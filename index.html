@@ -84,7 +84,7 @@
 .pl-aula span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* ═══ Acervo LMS (substitui a navegação por pastas) ═══ */
 #view-acervo > *:not(#ac2-layout){display:none!important}
-.ac2-layout{display:grid;grid-template-columns:minmax(0,7fr) minmax(330px,3fr);gap:20px;max-width:1440px;margin:0 auto;padding:4px 20px 24px;align-items:start}
+.ac2-layout{display:grid;grid-template-columns:minmax(300px,2fr) minmax(0,3fr);gap:20px;max-width:1440px;margin:0 auto;padding:4px 20px 24px;align-items:start}
 .ac2-player{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:16/9;width:100%;background:#000;box-shadow:var(--shadow-glass),0 0 0 1px var(--border-muted)}
 .ac2-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:#000}
 .ac2-player iframe.ativo{display:block}
@@ -1136,7 +1136,23 @@ mark.exam-highlight {
     </div>
 
     <div id="view-acervo" class="view-section" style="padding-top:20px">
-      <div id="ac2-layout">
+      <div id="ac2-layout" class="ac2-layout">
+        <aside class="ac2-side">
+          <div class="ac2-side-head">
+            <h2><i class="ph ph-graduation-cap" style="color:var(--teal)"></i> Conteúdo do curso</h2>
+            <div class="ac2-stats" id="ac2-stats"></div>
+            <div class="ac2-progt" id="ac2-progt" onclick="ac2ToggleProg()"><i class="ph ph-chart-line-up"></i> Progresso <span class="pct" id="ac2-pct-mini">0%</span> <i class="ph ph-caret-down caret"></i></div>
+            <div class="ac2-progb" id="ac2-progb">
+              <div class="rotulo"><span>Videoaulas concluídas</span><b id="ac2-contagem">0/0</b></div>
+              <div class="barra"><div id="ac2-barra" style="width:0%"></div></div>
+            </div>
+          </div>
+          <div style="padding:12px 14px;border-bottom:1px solid var(--border-muted);position:relative">
+            <i class="ph ph-magnifying-glass" style="position:absolute;left:26px;top:50%;transform:translateY(calc(-50% - 6px));color:var(--text-muted)"></i>
+            <input type="search" id="ac2-busca" placeholder="Buscar videoaula…" autocomplete="off" style="width:100%;font-family:inherit;font-size:13.5px;padding:9px 12px 9px 36px;border-radius:10px;border:1px solid var(--border-muted);background:var(--bg-elevated);color:var(--text-primary);outline:none">
+          </div>
+          <div id="ac2-arvore" class="ac2-arvore"><div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px"><i class="ph ph-circle-notch" style="animation:spin 1s linear infinite;display:block;font-size:24px;margin-bottom:8px"></i>Carregando cursos do Drive…</div></div>
+        </aside>
         <section class="ac2-main">
           <div class="ac2-player" id="ac2-player">
             <div class="ac2-ph" id="ac2-ph"><i class="ph ph-play-circle"></i><span>Selecione uma videoaula no menu ao lado</span></div>
@@ -1162,22 +1178,6 @@ mark.exam-highlight {
             <div id="ac2-materiais" style="display:flex;flex-wrap:wrap;gap:10px"><span style="font-size:13px;color:var(--text-muted)">Carregando…</span></div>
           </div>
         </section>
-        <aside class="ac2-side">
-          <div class="ac2-side-head">
-            <h2><i class="ph ph-graduation-cap" style="color:var(--teal)"></i> Conteúdo do curso</h2>
-            <div class="ac2-stats" id="ac2-stats"></div>
-            <div class="ac2-progt" id="ac2-progt" onclick="ac2ToggleProg()"><i class="ph ph-chart-line-up"></i> Progresso <span class="pct" id="ac2-pct-mini">0%</span> <i class="ph ph-caret-down caret"></i></div>
-            <div class="ac2-progb" id="ac2-progb">
-              <div class="rotulo"><span>Videoaulas concluídas</span><b id="ac2-contagem">0/0</b></div>
-              <div class="barra"><div id="ac2-barra" style="width:0%"></div></div>
-            </div>
-          </div>
-          <div style="padding:12px 14px;border-bottom:1px solid var(--border-muted);position:relative">
-            <i class="ph ph-magnifying-glass" style="position:absolute;left:26px;top:50%;transform:translateY(calc(-50% - 6px));color:var(--text-muted)"></i>
-            <input type="search" id="ac2-busca" placeholder="Buscar videoaula…" autocomplete="off" style="width:100%;font-family:inherit;font-size:13.5px;padding:9px 12px 9px 36px;border-radius:10px;border:1px solid var(--border-muted);background:var(--bg-elevated);color:var(--text-primary);outline:none">
-          </div>
-          <div id="ac2-arvore" class="ac2-arvore"><div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px"><i class="ph ph-circle-notch" style="animation:spin 1s linear infinite;display:block;font-size:24px;margin-bottom:8px"></i>Carregando cursos do Drive…</div></div>
-        </aside>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 20px 16px;flex-wrap:wrap;gap:12px">
         <div>
@@ -2011,10 +2011,11 @@ function startApp(){
  catalog();refreshAll();setDot(CLOUD_ON?'ok':'off');
  loadDriveFolder(DRIVE_ROOT_ID, 'Cursos', false);
  loadAcervoData();    // Catálogo curado (acervo-manifest.json)
- if(CLOUD_ON&&SYNC_USER){FBDB.ref('users/'+safeUser(SYNC_USER)+'/state').once('value').then(s=>{const cl=s.val();if(!cl)return;
-  const cloudXp=cl.db&&cl.db.xp,changed=cloudXp!==DB.xp||(cl.done||[]).length!==DONE.size;
-  if(changed&&confirm('Dados encontrados na nuvem para "'+SYNC_USER+'".\nOK = restaurar da nuvem · Cancelar = manter local e sobrescrever nuvem')){
-   applyCloud(cl);location.reload()}else if(changed)pushCloud()}).catch(()=>setDot('off'))}}
+  if(CLOUD_ON&&SYNC_USER){FBDB.ref('users/'+safeUser(SYNC_USER)+'/state').once('value').then(s=>{const cl=s.val();if(!cl)return;
+   const cloudXp=cl.db&&cl.db.xp,changed=cloudXp!==DB.xp||(cl.done||[]).length!==DONE.size;
+   if(changed&&confirm('Dados encontrados na nuvem para "'+SYNC_USER+'".\nOK = restaurar da nuvem · Cancelar = manter local e sobrescrever nuvem')){
+    applyCloud(cl);refreshAll();if(typeof renderAcervo==='function')renderAcervo();if(typeof renderDecks==='function')renderDecks();toast('☁️ Progresso restaurado da nuvem','success')
+   }else if(changed)pushCloud()}).catch(()=>setDot('off'))}}
 
 /* ═══ XP / BADGES ═══ */
 const level=()=>Math.floor(DB.xp/100)+1;

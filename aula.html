@@ -49,7 +49,7 @@
   .topbar .logo span { color: var(--accent); }
   .topbar .curso-nome { margin-left: auto; font-size: 13px; color: var(--muted); max-width: 40vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  .aula-layout { display: grid; grid-template-columns: minmax(0, 7fr) minmax(330px, 3fr); gap: 24px; max-width: 1440px; margin: 0 auto; padding: 24px; align-items: start; }
+  .aula-layout { display: grid; grid-template-columns: minmax(330px, 2fr) minmax(0, 3fr); gap: 24px; max-width: 1440px; margin: 0 auto; padding: 24px; align-items: start; }
 
   .player-wrap { position: relative; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow), 0 0 0 1px var(--border); aspect-ratio: 16 / 9; width: 100%; background: #000; }
   .player-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: none; background: #000; }
@@ -184,7 +184,28 @@
 </header>
 
 <main class="aula-layout">
-  <!-- ══ Coluna principal (~70%) ══ -->
+  <!-- ══ Navegação (~40%, à esquerda) ══ -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <h2>Conteúdo do curso</h2>
+      <div class="sidebar-stats" id="curso-stats"></div>
+      <div class="prog-toggle" id="prog-toggle" onclick="toggleProg()" title="Abrir/fechar progresso">
+        <i class="ph ph-chart-line-up"></i> Progresso <span class="pct" id="prog-pct-mini">0%</span> <i class="ph ph-caret-down caret"></i>
+      </div>
+      <div class="prog-body" id="prog-body">
+        <div class="rotulo"><span>Videoaulas assistidas</span><b id="prog-contagem">0/0</b></div>
+        <div class="barra"><div id="prog-barra" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="busca">
+      <i class="ph ph-magnifying-glass"></i>
+      <input type="search" id="busca-aulas" placeholder="Buscar videoaula…" autocomplete="off">
+    </div>
+    <nav class="menu-aulas" id="menu-aulas"><div class="carregando"><i class="ph ph-circle-notch"></i>Carregando cursos do Drive…</div></nav>
+    <div class="sem-resultado" id="sem-resultado">Nenhuma videoaula encontrada com esse termo.</div>
+  </aside>
+
+  <!-- ══ Player (~60%, à direita) ══ -->
   <section class="coluna-principal">
     <div class="player-wrap" id="player-slot">
       <div class="player-placeholder" id="player-placeholder"><i class="ph ph-play-circle"></i><span>Selecione uma videoaula no menu ao lado</span></div>
@@ -218,26 +239,6 @@
     </div>
   </section>
 
-  <!-- ══ Sidebar (~30%) ══ -->
-  <aside class="sidebar">
-    <div class="sidebar-head">
-      <h2>Conteúdo do curso</h2>
-      <div class="sidebar-stats" id="curso-stats"></div>
-      <div class="prog-toggle" id="prog-toggle" onclick="toggleProg()" title="Abrir/fechar progresso">
-        <i class="ph ph-chart-line-up"></i> Progresso <span class="pct" id="prog-pct-mini">0%</span> <i class="ph ph-caret-down caret"></i>
-      </div>
-      <div class="prog-body" id="prog-body">
-        <div class="rotulo"><span>Videoaulas assistidas</span><b id="prog-contagem">0/0</b></div>
-        <div class="barra"><div id="prog-barra" style="width:0%"></div></div>
-      </div>
-    </div>
-    <div class="busca">
-      <i class="ph ph-magnifying-glass"></i>
-      <input type="search" id="busca-aulas" placeholder="Buscar videoaula…" autocomplete="off">
-    </div>
-    <nav class="menu-aulas" id="menu-aulas"><div class="carregando"><i class="ph ph-circle-notch"></i>Carregando cursos do Drive…</div></nav>
-    <div class="sem-resultado" id="sem-resultado">Nenhuma videoaula encontrada com esse termo.</div>
-  </aside>
 </main>
 
 <div class="toast" id="toast"><i class="ph ph-check-circle"></i><span id="toast-msg"></span></div>
