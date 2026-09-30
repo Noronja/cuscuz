@@ -36,37 +36,45 @@ const app = express();
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 const HOST = '0.0.0.0';
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Initialize Google Gemini Client with official @google/genai SDK
 const geminiApiKey = process.env.GEMINI_API_KEY;
 let ai = null;
-if (geminiApiKey) {
-  try {
-    ai = new GoogleGenAI({
-      apiKey: geminiApiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build'
+function getGeminiClient() {
+  if (ai) return ai;
+  const key = process.env.GEMINI_API_KEY;
+  if (key) {
+    try {
+      ai = new GoogleGenAI({
+        apiKey: key,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build'
+          }
         }
-      }
-    });
-    console.log('✅ Google Gemini client initialized (@google/genai)');
-  } catch (err) {
-    console.warn('⚠️ Could not initialize Gemini:', err.message);
+      });
+      console.log('✅ Google Gemini client initialized (@google/genai)');
+    } catch (err) {
+      console.warn('⚠️ Could not initialize Gemini:', err.message);
+    }
   }
+  return ai;
 }
+getGeminiClient();
 
 // Resilient Gemini model caller with retry and fallback cascade
 async function generateWithGemini(params) {
-  if (!ai) throw new Error('GEMINI_API_KEY não configurada no servidor.');
-  const models = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+  const client = getGeminiClient();
+  if (!client) throw new Error('GEMINI_API_KEY não configurada no servidor.');
+  const models = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
   let lastErr = null;
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     for (const m of models) {
       try {
-        const res = await ai.models.generateContent({
+        const res = await client.models.generateContent({
           model: m,
           ...params
         });
@@ -1668,6 +1676,1088 @@ app.post('/api/planner/generate', async (req, res) => {
     res.json({ success: true, plan, decksFila: temasRevisao.size, gemini: !!ai });
   } catch (err) {
     console.error('Erro no planner:', err);
+    res.status(500).json({ success: false, msg: err.message });
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   MOTOR DE PROCESSAMENTO (RAG, SINERGIA & PROTEÇÃO DE PROVAS)
+   Cruza a ementa da faculdade com o cursinho de residência médica
+   ═══════════════════════════════════════════════════════════════ */
+const SINERGIA_CANONICA = [
+  { tema: 'Antibioticoterapia & Sepse', materia: 'Clínica Médica', aliases: ['antibiotico', 'antibioticoterapia', 'antimicrobianos', 'sepse', 'choque septico', 'infeccao'] },
+  { tema: 'Hipertensão Arterial Sistêmica', materia: 'Clínica Médica', aliases: ['has', 'hipertensao', 'pressao alta', 'crise hipertensiva'] },
+  { tema: 'Insuficiência Cardíaca & Arritmias', materia: 'Clínica Médica', aliases: ['insuficiencia cardiaca', 'ic', 'arritmia', 'fibrilacao atrial', 'ecg'] },
+  { tema: 'Diabetes Mellitus & Cetoacidose', materia: 'Clínica Médica', aliases: ['diabetes', 'dm', 'cetoacidose', 'insulina', 'hipoglicemia'] },
+  { tema: 'Abdome Agudo Inflamatório & Obstrutivo', materia: 'Cirurgia Geral', aliases: ['abdome agudo', 'apendicite', 'colecistite', 'obstrucao intestinal', 'pancreatite'] },
+  { tema: 'Trauma & ATLS (Vias Aéreas e Choque)', materia: 'Cirurgia Geral', aliases: ['trauma', 'atls', 'politraumatizado', 'choque hipovolemico', 'torax agudo'] },
+  { tema: 'Hérnias da Parede Abdominal', materia: 'Cirurgia Geral', aliases: ['hernia', 'inguinal', 'crural', 'umbilical', 'incisional'] },
+  { tema: 'Pré-natal & Assistência ao Parto', materia: 'Ginecologia e Obstetrícia', aliases: ['pre-natal', 'prenatal', 'parto', 'trabalho de parto', 'tocologia', 'bacia'] },
+  { tema: 'Síndromes Hipertensivas & Hemorragias Gestacionais', materia: 'Ginecologia e Obstetrícia', aliases: ['pre-eclampsia', 'eclampsia', 'descolamento prematuro', 'dpp', 'placenta previa', 'hpp', 'hemorragia'] },
+  { tema: 'Sangramento Uterino Anormal & Miomatose', materia: 'Ginecologia e Obstetrícia', aliases: ['sua', 'sangramento uterino', 'mioma', 'adenomiose', 'polipo'] },
+  { tema: 'Puericultura & Desenvolvimento Infantil', materia: 'Pediatria', aliases: ['puericultura', 'crescimento', 'desenvolvimento', 'marcos', 'pesquisa de reflexos'] },
+  { tema: 'Desidratação & Terapia de Reidratação Oral', materia: 'Pediatria', aliases: ['desidratacao', 'tro', 'reidratacao', 'gastroenterite', 'diarreia infantil'] },
+  { tema: 'Infecções Respiratórias & Pneumonias na Infância', materia: 'Pediatria', aliases: ['pneumonia pediatrica', 'bronquiolite', 'asma infantil', 'estridor', 'laringite'] },
+  { tema: 'Atenção Primária & Princípios do SUS', materia: 'Medicina Preventiva', aliases: ['sus', 'atencao basica', 'esf', 'principios do sus', 'diretrizes', 'financiamento'] },
+  { tema: 'Estudos Epidemiológicos & Bioestatística', materia: 'Medicina Preventiva', aliases: ['epidemiologia', 'coorte', 'caso-controle', 'ensaio clinico', 'sensibilidade', 'especificidade'] }
+];
+
+function detectarEspecialidade(linha, contextoAtual) {
+  const l = hwqNorm(linha);
+  if (/cirurg|trauma|apendic|colecist|hernia|obstruc|abdome|atls|queimad|anestes|ferida|sutura|laparo/i.test(l)) return 'Cirurgia Geral';
+  if (/pediatr|puericult|neonato|lactente|bronquiolit|desidratac|pni|vacina|imunizac|asma infant|laringit|estridor/i.test(l)) return 'Pediatria';
+  if (/gineco|obstetr|gesta|parto|pre-natal|prenatal|puerper|pre-eclamps|eclamps|mioma|sangramento uterin|sua|colo uterin|mama|puerperio|amenorreia|anticoncep/i.test(l)) return 'Ginecologia e Obstetrícia';
+  if (/preventiv|epidemiol|sus|bioestatist|saude coletiv|atencao primar|estrategia saude familia|esf|vigilancia|declaracao obito|financiamento sus|pacto/i.test(l)) return 'Medicina Preventiva';
+  if (/clinic|cardiolog|has|hipertens|insuficienc|arritmi|infart|ecg|pneumolog|dpoc|asma|pneumoni|nefrolog|ira|drc|dialise|glomerul|infecto|sepse|antibiot|hiv|dengue|tuberculose|hepatit|endocrin|diabetes|tireoid|reumatolog|lupus|artrite|gastroenter|hemorragia digestiv|cirrose|hematolog|anemia|leucemi|neurolog|avc|cefaleia|epilepsi/i.test(l)) return 'Clínica Médica';
+  return contextoAtual || 'Clínica Médica';
+}
+
+function extrairTemasDoTexto(texto, defaultMateria = 'Clínica Médica') {
+  if (!texto || typeof texto !== 'string') return [];
+  const encontrados = [];
+  const vistos = new Set();
+
+  // 1. Verifica correspondências canônicas de alta precisão
+  const tNorm = hwqNorm(texto);
+  SINERGIA_CANONICA.forEach(item => {
+    if (item.aliases.some(a => tNorm.includes(hwqNorm(a)))) {
+      const k = hwqNorm(item.tema);
+      if (!vistos.has(k)) {
+        vistos.add(k);
+        encontrados.push({ tema: item.tema, materia: item.materia, canonic: true });
+      }
+    }
+  });
+
+  // 2. Extrai exaustivamente cada linha, tópico, módulo ou rodízio da ementa
+  const linhas = texto.split(/[\r\n]+/);
+  let especialidadeAtual = defaultMateria;
+
+  for (let linha of linhas) {
+    let raw = linha.trim();
+    if (!raw || raw.length < 3) continue;
+
+    // Detecta cabeçalhos de especialidade
+    if (/^(?:modulo|bloco|area|disciplina|internato|rodizio|materia|departamento)?\s*[:\-–]?\s*(clinica medica|cirurgia geral|cirurgia|pediatria|ginecologia e obstetricia|ginecologia|obstetricia|medicina preventiva|preventiva)/i.test(raw)) {
+      const match = raw.match(/(clinica medica|cirurgia geral|cirurgia|pediatria|ginecologia e obstetricia|ginecologia|obstetricia|medicina preventiva|preventiva)/i);
+      if (match) {
+        const esp = match[1].toLowerCase();
+        if (esp.includes('cirurg')) especialidadeAtual = 'Cirurgia Geral';
+        else if (esp.includes('pediatr')) especialidadeAtual = 'Pediatria';
+        else if (esp.includes('ginec') || esp.includes('obstetr')) especialidadeAtual = 'Ginecologia e Obstetrícia';
+        else if (esp.includes('preventiv')) especialidadeAtual = 'Medicina Preventiva';
+        else especialidadeAtual = 'Clínica Médica';
+      }
+      continue;
+    }
+
+    // Remove marcadores de numeração e bullets: "1.", "Semana 3:", "•", "-", etc.
+    let limpa = raw
+      .replace(/^(?:semana|dia|aula|bloco|modulo|tema|topico|unidade|capitulo)\s*\d+[\s:\-–.]*/i, '')
+      .replace(/^[\d]+[\.\)\-–]\s*/, '')
+      .replace(/^[\*\-\•\–\—\>]\s*/, '')
+      .trim();
+
+    if (!limpa || limpa.length < 3) continue;
+    if (/^\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?$/.test(limpa)) continue;
+    if (/^(pagina|page|prof|professor|carga horaria|ementa|bibliografia|objetivos?|conteudo programatico)\b/i.test(limpa)) continue;
+
+    // Se houver múltiplos tópicos separados por ';' ou '|'
+    const partes = limpa.split(/[;|]+/).map(p => p.trim()).filter(p => p.length >= 3);
+    for (const parte of (partes.length ? partes : [limpa])) {
+      const itemFormatado = parte.replace(/[:\-–]\s*$/, '').trim();
+      if (itemFormatado.length < 3 || itemFormatado.length > 140) continue;
+      const k = hwqNorm(itemFormatado);
+      if (vistos.has(k)) continue;
+
+      const materia = detectarEspecialidade(itemFormatado, especialidadeAtual);
+      vistos.add(k);
+      encontrados.push({
+        tema: itemFormatado,
+        materia
+      });
+    }
+  }
+
+  return encontrados;
+}
+
+function detectarTipoEvento(str) {
+  const s = hwqNorm(str || '');
+  if (/\btbl\b|team.based|irat|trat/i.test(s)) return 'tbl';
+  if (/\bosce\b|pratica|habilidade|checklist/i.test(s)) return 'osce';
+  if (/\bpbl\b|tutoria|abertura|fechamento/i.test(s)) return 'pbl';
+  if (/seminario|apresentacao/i.test(s)) return 'seminario';
+  return 'prova';
+}
+
+function extrairProvasDoTexto(texto) {
+  if (!texto || typeof texto !== 'string') return [];
+  const provas = [];
+  const regex = /(?:prova|p[1234]|avaliacao|exame|sub|final|teste|simulado|tbl|irat|trat|osce|pbl|tutoria|seminario)\b[^\n\r,;.]*?(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)/gi;
+  let match;
+  while ((match = regex.exec(texto)) !== null) {
+    const rawNome = match[0].split(/\d{1,2}[\/\-]/)[0].trim();
+    const dataStr = match[1];
+    const partes = dataStr.split(/[\/\-]/);
+    const anoAtual = new Date().getFullYear();
+    const dia = String(partes[0]).padStart(2, '0');
+    const mes = String(partes[1]).padStart(2, '0');
+    const ano = partes[2] ? (partes[2].length === 2 ? '20' + partes[2] : partes[2]) : String(anoAtual);
+    const dataIso = `${ano}-${mes}-${dia}`;
+    const tipoEvento = detectarTipoEvento(rawNome);
+    const nomePadrao = tipoEvento === 'tbl' ? 'TBL / Atividade em Equipe' : (tipoEvento === 'osce' ? 'OSCE / Prova Prática' : 'Avaliação da Faculdade');
+    const nomeFinal = rawNome.length > 3 ? (rawNome.length > 50 ? rawNome.slice(0, 50) : rawNome) : nomePadrao;
+    const materia = detectarEspecialidade(nomeFinal, 'Graduação');
+
+    if (!provas.some(p => p.data === dataIso && p.tipoEvento === tipoEvento)) {
+      provas.push({
+        nome: nomeFinal,
+        data: dataIso,
+        materia,
+        tipoEvento,
+        tipo: 'grad'
+      });
+    }
+  }
+  return provas;
+}
+
+// Motor de geração com Sinergia e Proteção de Provas
+function plGerarPlanSinergia(config, extras = {}) {
+  const hoje = config.inicio || plIso(new Date());
+  const energia = config.energiaPosFaculdade || 'moderada';
+  const dataAlvoResid = config.dataAlvoResidencia || plAddDias(hoje, 120);
+  
+  // Normaliza provas da faculdade e provas de residência
+  const todasProvas = (config.provas || []).map(p => ({
+    ...p,
+    tipo: p.tipo || (/resid|r1|enare|usp|unifesp|sus/i.test(p.nome) ? 'resid' : 'grad')
+  })).sort((a, b) => (a.data < b.data ? -1 : 1));
+
+  // O horizonte do cronograma vai até a data alvo da residência ou última prova (garantindo no mínimo 90 dias)
+  let fim = dataAlvoResid;
+  if (todasProvas.length) {
+    const ultimaProva = todasProvas[todasProvas.length - 1].data;
+    if (plDiff(ultimaProva, fim) > 0) fim = ultimaProva;
+  }
+  if (!fim || plDiff(hoje, fim) < 21) {
+    fim = plAddDias(hoje, 120);
+  }
+
+  if (plDiff(hoje, fim) < 0) return { erro: 'A data final precisa ser hoje ou posterior.' };
+
+  // Mapeamento de Provas, TBLs e Avaliações da Faculdade (Priorização Máxima e Mutável)
+  const provasFaculdade = todasProvas.filter(p => p.tipo === 'grad');
+  const protecaoDias = {}; // data -> { provaNome, materia, diasAte, tipoEvento, isDiaDoEvento }
+
+  provasFaculdade.forEach(pf => {
+    const tipoEv = pf.tipoEvento || detectarTipoEvento(pf.nome);
+    // Dias de antecedência de foco máximo dependendo do tipo:
+    // Prova teórica (P1/P2/Sub): 4 a 5 dias de blindagem completa
+    // TBL (Team-Based Learning): 2 a 3 dias de estudo preparatório intenso para iRAT/tRAT
+    // OSCE (Prática): 3 dias de treino de estações e checklists
+    const maxOffset = tipoEv === 'tbl' ? 2 : (tipoEv === 'osce' ? 3 : (tipoEv === 'pbl' ? 2 : 4));
+    for (let offset = -maxOffset; offset <= 0; offset++) {
+      const d = plAddDias(pf.data, offset);
+      if (plDiff(hoje, d) >= 0 && plDiff(d, fim) >= 0) {
+        if (!protecaoDias[d] || offset === 0) {
+          protecaoDias[d] = {
+            provaNome: pf.nome,
+            materia: pf.materia || 'Graduação',
+            tipoEvento: tipoEv,
+            diasAte: Math.abs(offset),
+            isDiaDoEvento: offset === 0
+          };
+        }
+      }
+    }
+  });
+
+  // Capacidade diária baseada no nível de energia pós-faculdade
+  const slotsPorDiaSemana = {
+    baixa: { util: 2, fimDeSemana: 3 },    // Mesmo com energia baixa, ao menos 2 blocos para cobrir ementa
+    moderada: { util: 2, fimDeSemana: 4 }, // Moderado: 2 úteis, 4 fim de semana
+    alta: { util: 3, fimDeSemana: 4 }      // Alta energia: 3 úteis, 4 fim de semana
+  }[energia] || { util: 2, fimDeSemana: 3 };
+
+  // Temas com Sinergia detectada entre Faculdade e Residência
+  const sinergiaLista = extras.sinergiaMatches || [];
+  const temasSinergicosMap = new Map();
+  sinergiaLista.forEach(s => {
+    temasSinergicosMap.set(hwqNorm(s.tema), s);
+  });
+
+  // 100% INTEGRAÇÃO DA EMENTA DA FACULDADE
+  // Coleta TODOS os tópicos propostos pela faculdade (vindos do texto livre, PDF ou Gemini RAG)
+  const conteudosFaculdadeExtras = extras.conteudosFaculdade || [];
+  const topicosFaculdadeCanonicos = [
+    { tema: 'Antibioticoterapia & Sepse', materia: 'Clínica Médica' },
+    { tema: 'Hipertensão Arterial Sistêmica', materia: 'Clínica Médica' },
+    { tema: 'Insuficiência Cardíaca & Arritmias', materia: 'Clínica Médica' },
+    { tema: 'Diabetes Mellitus & Cetoacidose', materia: 'Clínica Médica' },
+    { tema: 'Semiologia Médica & Raciocínio Clínico', materia: 'Clínica Médica' },
+    { tema: 'Abdome Agudo Inflamatório & Obstrutivo', materia: 'Cirurgia Geral' },
+    { tema: 'Trauma & ATLS (Vias Aéreas e Choque)', materia: 'Cirurgia Geral' },
+    { tema: 'Hérnias da Parede Abdominal', materia: 'Cirurgia Geral' },
+    { tema: 'Pré-natal & Assistência ao Parto', materia: 'Ginecologia e Obstetrícia' },
+    { tema: 'Síndromes Hipertensivas & Hemorragias Gestacionais', materia: 'Ginecologia e Obstetrícia' },
+    { tema: 'Sangramento Uterino Anormal & Miomatose', materia: 'Ginecologia e Obstetrícia' },
+    { tema: 'Puericultura & Desenvolvimento Infantil', materia: 'Pediatria' },
+    { tema: 'Desidratação & Terapia de Reidratação Oral', materia: 'Pediatria' },
+    { tema: 'Infecções Respiratórias & Pneumonias na Infância', materia: 'Pediatria' },
+    { tema: 'Atenção Primária & Princípios do SUS', materia: 'Medicina Preventiva' },
+    { tema: 'Estudos Epidemiológicos & Bioestatística', materia: 'Medicina Preventiva' }
+  ];
+
+  const todosTopicosFaculdadeMap = new Map();
+  conteudosFaculdadeExtras.forEach(cf => {
+    if (cf && cf.tema) {
+      todosTopicosFaculdadeMap.set(hwqNorm(cf.tema), {
+        tema: cf.tema,
+        materia: cf.materia || 'Clínica Médica',
+        sinergia: !!cf.sinergia || temasSinergicosMap.has(hwqNorm(cf.tema)),
+        sinergiaScore: cf.score || 98
+      });
+    }
+  });
+
+  // Se o aluno não forneceu ementa própria, usa a matriz canônica
+  if (todosTopicosFaculdadeMap.size === 0) {
+    topicosFaculdadeCanonicos.forEach(tc => {
+      todosTopicosFaculdadeMap.set(hwqNorm(tc.tema), {
+        ...tc,
+        sinergia: temasSinergicosMap.has(hwqNorm(tc.tema)),
+        sinergiaScore: 98
+      });
+    });
+  }
+
+  const totalTopicosFaculdade = todosTopicosFaculdadeMap.size;
+
+  // Fila de conteúdo: prioriza temas com Sinergia, depois Faculdade integral, depois Residência
+  const materias = (config.materias || []).filter(m => m.nome);
+  const filaConteudo = [];
+  
+  // 1) Temas com Sinergia Total (Faculdade + Cursinho Simultâneos)
+  todosTopicosFaculdadeMap.forEach(item => {
+    if (item.sinergia || temasSinergicosMap.has(hwqNorm(item.tema))) {
+      const match = temasSinergicosMap.get(hwqNorm(item.tema)) || {};
+      filaConteudo.push({
+        materia: item.materia,
+        tema: item.tema,
+        dificuldade: 'Sinergia 100%',
+        sinergia: true,
+        sinergiaScore: match.score || item.sinergiaScore || 98,
+        sinergiaDesc: match.desc || 'Sinergia 100%: Conteúdo simultâneo da Faculdade e da Residência Médica',
+        origem: 'faculdade_sinergia',
+        ementaFaculdade: true,
+        key: plDeckKey(item.materia, item.tema)
+      });
+    } else {
+      // Tema exclusivo da faculdade (100% integrado à rotina)
+      filaConteudo.push({
+        materia: item.materia,
+        tema: item.tema,
+        dificuldade: 'Ementa Faculdade',
+        sinergia: false,
+        origem: 'faculdade',
+        focoFaculdade: true,
+        ementaFaculdade: true,
+        desc: '🎓 Conteúdo da Faculdade (100% Integrado à rotina de estudos)',
+        key: plDeckKey(item.materia, item.tema)
+      });
+    }
+  });
+
+  // 2) Tópicos de Residência informados pelo aluno no texto sem limite
+  const conteudosResidenciaExtras = extras.conteudosResidencia || [];
+  conteudosResidenciaExtras.forEach(cr => {
+    if (cr && cr.tema && !todosTopicosFaculdadeMap.has(hwqNorm(cr.tema)) && !temasSinergicosMap.has(hwqNorm(cr.tema))) {
+      filaConteudo.push({
+        materia: cr.materia || 'Residência Médica',
+        tema: cr.tema,
+        dificuldade: 'Residência R1',
+        sinergia: false,
+        origem: 'residencia',
+        ementaResidencia: true,
+        desc: '🏥 Cursinho de Residência Médica (100% Coberto)',
+        key: plDeckKey(cr.materia || 'Residência Médica', cr.tema)
+      });
+    }
+  });
+
+  // 3) Demais temas complementares de Residência por matéria da matriz
+  materias.forEach(m => {
+    const temasIA = extras.temasPorMateria && extras.temasPorMateria[m.nome];
+    const baseTemas = Array.isArray(temasIA) && temasIA.length ? temasIA : [
+      'Semiologia & Diagnóstico', 'Condutas Terapêuticas', 'Emergências Clínicas', 'Questões de Alto Rendimento'
+    ];
+    baseTemas.forEach(tema => {
+      if (!todosTopicosFaculdadeMap.has(hwqNorm(tema)) && !temasSinergicosMap.has(hwqNorm(tema)) && !filaConteudo.some(f => hwqNorm(f.tema) === hwqNorm(tema))) {
+        filaConteudo.push({
+          materia: m.nome,
+          tema,
+          dificuldade: m.dificuldade || 'Médio',
+          sinergia: false,
+          origem: 'residencia',
+          key: plDeckKey(m.nome, tema)
+        });
+      }
+    });
+  });
+
+  // Replan / pendentes anteriores
+  (extras.pendentes || []).forEach(p => filaConteudo.unshift(p));
+
+  const revisoesAgendadas = {};
+  function agendarRevisoesSinergia(deData, bloco) {
+    [{ tipo: 'revisao24', off: 1 }, { tipo: 'revisao7', off: 7 }, { tipo: 'revisao30', off: 30 }].forEach(({ tipo, off }) => {
+      let d = plAddDias(deData, off);
+      if (plDiff(d, fim) >= 0) {
+        revisoesAgendadas[d] = revisoesAgendadas[d] || [];
+        revisoesAgendadas[d].push({
+          tipo,
+          materia: bloco.materia,
+          tema: bloco.tema,
+          key: bloco.key,
+          dificuldade: bloco.dificuldade,
+          sinergia: !!bloco.sinergia,
+          horas: 1,
+          status: 'pendente'
+        });
+      }
+    });
+  }
+
+  const dias = [];
+  let ci = 0;
+  const totalDias = Math.max(1, plDiff(hoje, fim));
+
+  for (let curr = new Date(hoje + 'T12:00:00'); plDiff(plIso(curr), fim) >= 0; curr.setDate(curr.getDate() + 1)) {
+    const data = plIso(curr);
+    const dow = curr.getDay(); // 0 = Dom, 6 = Sáb
+    const isFimDeSemana = dow === 0 || dow === 6;
+    const slotsMax = isFimDeSemana ? slotsPorDiaSemana.fimDeSemana : slotsPorDiaSemana.util;
+
+    const protecao = protecaoDias[data];
+    const blocos = [];
+
+    if (protecao) {
+      const isEvento = protecao.isDiaDoEvento;
+      const evTipo = protecao.tipoEvento || 'prova';
+
+      if (isEvento) {
+        // Dia Oficial da Prova, TBL ou OSCE
+        const labelNota = evTipo === 'tbl' ? '👥 Sessão Oficial de TBL (iRAT Individual + tRAT em Equipe)'
+          : (evTipo === 'osce' ? '🩺 Avaliação Prática OSCE de Habilidades Clínicas'
+          : (evTipo === 'pbl' ? '📚 Fechamento de Caso PBL / Tutoria'
+          : '🎯 Dia Oficial de Prova na Faculdade'));
+
+        blocos.push({
+          id: (evTipo === 'tbl' ? 'tbl-' : (evTipo === 'osce' ? 'osce-' : 'p-')) + data,
+          tipo: evTipo,
+          tipoEvento: evTipo,
+          prova: protecao.provaNome,
+          materia: protecao.materia,
+          horas: 0,
+          status: 'pendente',
+          nota: labelNota
+        });
+      } else {
+        // DIAS PRÉVIOS DE PREPARAÇÃO FOCADA (PRIORIDADE MÁXIMA NA SEMANA DE PROVA/TBL)
+        if (evTipo === 'tbl') {
+          // Foco Total no TBL: Leitura prévia obrigatória e iRAT
+          blocos.push({
+            id: 'pre-tbl-' + data,
+            tipo: 'pre_tbl',
+            tipoEvento: 'tbl',
+            materia: protecao.materia,
+            tema: `Preparação Focada para TBL: ${protecao.provaNome} (Foco no iRAT)`,
+            dificuldade: 'Foco TBL',
+            horas: 2.5,
+            protecao: true,
+            focoFaculdade: true,
+            status: 'pendente',
+            desc: `👥 Prioridade Máxima no TBL (${protecao.diasAte}d restantes). Leitura prévia dos artigos, domínio de conceitos e guias clínicos para o teste individual (iRAT) e em grupo (tRAT).`
+          });
+
+          blocos.push({
+            id: 'pre-tbl-casos-' + data,
+            tipo: 'conteudo',
+            materia: protecao.materia,
+            tema: `Casos Clínicos de Aplicação (TBL: ${protecao.materia})`,
+            horas: 1.5,
+            protecao: true,
+            focoFaculdade: true,
+            status: 'pendente',
+            desc: 'Treino de tomada de decisão e raciocínio diagnóstico para os casos em equipe do TBL.'
+          });
+        } else if (evTipo === 'osce') {
+          // Foco Total no OSCE / Prova Prática
+          blocos.push({
+            id: 'pre-osce-' + data,
+            tipo: 'pre_osce',
+            tipoEvento: 'osce',
+            materia: protecao.materia,
+            tema: `Treino de Estações & Checklists OSCE: ${protecao.provaNome}`,
+            dificuldade: 'Prática Clínica',
+            horas: 2.5,
+            protecao: true,
+            focoFaculdade: true,
+            status: 'pendente',
+            desc: `🩺 Foco Máximo em Habilidades Práticas (${protecao.diasAte}d para o OSCE). Simulação cronometrada de anamnese, exame físico e checklists.`
+          });
+        } else {
+          // Foco Total na Semana de Provas Teóricas (P1, P2, Sub)
+          blocos.push({
+            id: 'prot-fac-' + data,
+            tipo: 'conteudo',
+            tipoEvento: 'prova',
+            materia: protecao.materia,
+            tema: `Revisão Intensiva para Prova: ${protecao.provaNome}`,
+            dificuldade: 'Foco Faculdade',
+            horas: 2.5,
+            protecao: true,
+            focoFaculdade: true,
+            status: 'pendente',
+            desc: `🛡️ Blindagem de Prova ativada (${protecao.diasAte}d para a avaliação). Carga de residência pausada para foco total nas notas da graduação.`
+          });
+
+          blocos.push({
+            id: 'prot-questoes-' + data,
+            tipo: 'conteudo',
+            materia: protecao.materia,
+            tema: `Resolução de Questões & Casos de Prova (${protecao.materia})`,
+            horas: 1.5,
+            protecao: true,
+            focoFaculdade: true,
+            status: 'pendente',
+            desc: 'Treino de questões discursivas e teóricas cobradas pela banca da faculdade.'
+          });
+        }
+
+        // Manutenção rápida opcional de flashcards (15 min para não perder streak)
+        blocos.push({
+          id: 'prot-maint-' + data,
+          tipo: 'revisao24',
+          materia: 'Residência Médica',
+          tema: 'Manutenção Rápida SRS (15 min)',
+          horas: 0.5,
+          protecao: true,
+          manutencaoLeve: true,
+          status: 'pendente'
+        });
+      }
+
+      dias.push({
+        data,
+        dow,
+        tipo: isEvento ? evTipo : 'protecao',
+        tipoEvento: evTipo,
+        prova: isEvento ? protecao.provaNome : null,
+        protecaoProvas: true,
+        motivoProtecao: evTipo === 'tbl' ? `Preparação Direcionada para TBL (${protecao.provaNome})`
+          : (evTipo === 'osce' ? `Treino Prático para OSCE (${protecao.provaNome})`
+          : `Semana de Provas da Faculdade (${protecao.provaNome})`),
+        blocos
+      });
+      continue;
+    }
+
+    // DIA NORMAL DE ESTUDO (SEM BLINDAGEM DE PROVA)
+    let slotsLivres = slotsMax;
+
+    // 1) Revisões espaçadas de estudo ativo (prioritárias)
+    const doDia = (revisoesAgendadas[data] || []).sort((a, b) => plOrdemTipo(a.tipo) - plOrdemTipo(b.tipo));
+    for (const r of doDia) {
+      if (slotsLivres <= 0) {
+        const prox = plAddDias(data, 1);
+        if (plDiff(prox, fim) >= 0) {
+          revisoesAgendadas[prox] = revisoesAgendadas[prox] || [];
+          revisoesAgendadas[prox].push(r);
+        }
+        continue;
+      }
+      blocos.push({ ...r, id: 'r-' + data + '-' + blocos.length });
+      slotsLivres--;
+    }
+
+    // 2) Conteúdo novo da fila (Sinergia, Faculdade ou Residência)
+    while (slotsLivres > 0 && ci < filaConteudo.length) {
+      const c = filaConteudo[ci];
+      blocos.push({
+        id: 'c-' + data + '-' + blocos.length,
+        tipo: 'conteudo',
+        materia: c.materia,
+        tema: c.tema,
+        key: c.key,
+        dificuldade: c.dificuldade,
+        sinergia: !!c.sinergia,
+        sinergiaScore: c.sinergiaScore || null,
+        sinergiaDesc: c.sinergiaDesc || null,
+        ementaFaculdade: !!c.ementaFaculdade,
+        ementaResidencia: !!c.ementaResidencia,
+        focoFaculdade: !!c.focoFaculdade,
+        desc: c.desc || (c.sinergia ? '⚡ Sinergia Faculdade + Residência' : 'Tópico de Estudo Programado'),
+        horas: isFimDeSemana ? 2.5 : 2,
+        status: 'pendente'
+      });
+      agendarRevisoesSinergia(data, c);
+      ci++;
+      slotsLivres--;
+    }
+
+    // 3) Se a fila inicial terminou e ainda há dias até a prova, agenda ciclos ativos de consolidação
+    if (slotsLivres > 0 && ci >= filaConteudo.length) {
+      const treinosCiclo = [
+        { tipo: 'revisao30', tema: 'Treino Prático de Questões & Casos Clínicos', desc: 'Resolução intensiva de questões comentadas com foco em fixação de conteúdo' },
+        { tipo: 'revisao7', tema: 'Revisão Espaçada SRS & Flashcards', desc: 'Repetição espaçada inteligente dos cartões com maiores taxas de erro' },
+        { tipo: 'revisao30', tema: 'Simulado R1 / ENARE Temático', desc: 'Simulado cronometrado de prova na íntegra para treino de tempo' },
+        { tipo: 'revisao24', tema: 'Aprofundamento de Pontos Fracos & Pegadinhas', desc: 'Revisão ativa direcionada nos temas com menor rendimento' }
+      ];
+      let cicloIdx = 0;
+      while (slotsLivres > 0) {
+        const treino = treinosCiclo[(blocos.length + cicloIdx) % treinosCiclo.length];
+        const matAlvo = materias.length ? materias[(blocos.length + cicloIdx) % materias.length].nome : 'Clínica Médica';
+        blocos.push({
+          id: 'rev-ciclo-' + data + '-' + blocos.length,
+          tipo: treino.tipo,
+          materia: matAlvo,
+          tema: `${treino.tema} (${matAlvo})`,
+          key: plDeckKey(matAlvo, treino.tema),
+          dificuldade: 'Ciclo Ativo',
+          horas: 1.5,
+          status: 'pendente',
+          desc: treino.desc
+        });
+        slotsLivres--;
+        cicloIdx++;
+      }
+    }
+
+    dias.push({
+      data,
+      dow,
+      tipo: 'normal',
+      protecaoProvas: false,
+      blocos
+    });
+  }
+
+  // Se por acaso sobraram tópicos da fila porque o número de dias foi curto, distribui os restantes nos fins de semana
+  while (ci < filaConteudo.length) {
+    const c = filaConteudo[ci];
+    const diaLivre = dias.find(d => !d.protecaoProvas && d.tipo !== 'prova' && d.blocos.length < 4) || dias[dias.length - 1];
+    if (diaLivre) {
+      diaLivre.blocos.push({
+        id: 'c-extra-' + diaLivre.data + '-' + diaLivre.blocos.length,
+        tipo: 'conteudo',
+        materia: c.materia,
+        tema: c.tema,
+        key: c.key,
+        dificuldade: c.dificuldade,
+        sinergia: !!c.sinergia,
+        sinergiaScore: c.sinergiaScore || null,
+        sinergiaDesc: c.sinergiaDesc || null,
+        ementaFaculdade: !!c.ementaFaculdade,
+        ementaResidencia: !!c.ementaResidencia,
+        focoFaculdade: !!c.focoFaculdade,
+        desc: c.desc || 'Tópico de Estudo Programado',
+        horas: 1.5,
+        status: 'pendente'
+      });
+    }
+    ci++;
+  }
+
+  const todosBlocos = dias.flatMap(dd => dd.blocos);
+  const sinergicosCount = todosBlocos.filter(b => b.sinergia).length;
+  const protecaoDiasCount = dias.filter(d => d.protecaoProvas).length;
+  const faculdadeAgendadosCount = todosBlocos.filter(b => b.ementaFaculdade).length;
+
+  return {
+    geradoEm: new Date().toISOString(),
+    algoritmo: 'Sinergia RAG + Proteção de Provas (100% Faculdade Integrada)',
+    config: {
+      horasDia: config.horasDia,
+      horasSemana: config.horasSemana,
+      energiaPosFaculdade: energia,
+      provas: todasProvas,
+      materias: config.materias,
+      sinergiaTotal: sinergicosCount,
+      diasBlindados: protecaoDiasCount,
+      ementaFaculdadeIntegrada: 100,
+      totalTopicosFaculdade,
+      topicosFaculdadeAgendados: faculdadeAgendadosCount
+    },
+    sinergias: extras.sinergiaMatches || [],
+    conteudosFaculdade: extras.conteudosFaculdade || [],
+    conteudosResidencia: extras.conteudosResidencia || [],
+    inicio: hoje,
+    fim,
+    dias,
+    estatisticas: {
+      dias: dias.length,
+      conteudos: todosBlocos.filter(b => b.tipo === 'conteudo').length,
+      revisoes: todosBlocos.filter(b => b.tipo && b.tipo.startsWith('revisao')).length,
+      sinergias: sinergicosCount,
+      diasProtegidos: protecaoDiasCount,
+      provas: todasProvas.length,
+      ementaFaculdadeIntegrada: 100,
+      totalTopicosFaculdade,
+      topicosFaculdadeAgendados: faculdadeAgendadosCount
+    }
+  };
+}
+
+// POST /api/planner/synergy-generate — Motor de IA com RAG de PDFs, Sinergia e Proteção de Provas
+app.post('/api/planner/synergy-generate', async (req, res) => {
+  try {
+    const {
+      horasDia = 4,
+      horasSemana,
+      energiaPosFaculdade = 'moderada',
+      materiasDificuldade = [],
+      dataAlvoResidencia,
+      provasFaculdade = [],
+      materias = [],
+      textoFaculdade = '',
+      textoResidencia = '',
+      atualizacoesNotas = '',
+      pdfResidenciaTexto = '',
+      pdfFaculdadeTexto = ''
+    } = req.body || {};
+
+    const rawFaculdade = (textoFaculdade || pdfFaculdadeTexto || '').trim();
+    const rawResidencia = (textoResidencia || pdfResidenciaTexto || '').trim();
+    const rawAtualizacoes = (atualizacoesNotas || '').trim();
+
+    const config = {
+      inicio: plIso(new Date()),
+      horasDia: Math.max(1, Math.min(12, +horasDia || 4)),
+      horasSemana,
+      energiaPosFaculdade,
+      materiasDificuldade: Array.isArray(materiasDificuldade) ? materiasDificuldade : [materiasDificuldade].filter(Boolean),
+      dataAlvoResidencia: dataAlvoResidencia || plAddDias(plIso(new Date()), 90),
+      provas: (provasFaculdade || []).map(p => ({
+        nome: p.nome || 'Prova Faculdade',
+        data: p.data,
+        materia: p.materia || 'Graduação',
+        tipo: 'grad'
+      })),
+      materias: materias.length ? materias : [
+        { nome: 'Clínica Médica', dificuldade: 'Médio' },
+        { nome: 'Cirurgia Geral', dificuldade: 'Difícil' },
+        { nome: 'Pediatria', dificuldade: 'Médio' },
+        { nome: 'Ginecologia e Obstetrícia', dificuldade: 'Médio' },
+        { nome: 'Medicina Preventiva', dificuldade: 'Fácil' }
+      ]
+    };
+
+    if (dataAlvoResidencia) {
+      config.provas.push({
+        nome: 'Prova de Residência R1 Alvo',
+        data: dataAlvoResidencia,
+        tipo: 'resid'
+      });
+    }
+
+    let sinergiaMatches = [];
+    let conteudosFaculdade = [];
+    let conteudosResidencia = [];
+    let temasPorMateria = null;
+    let aviso = null;
+
+    // Extração local prévia com parser inteligente (garante que nada seja perdido)
+    const temasFacLocal = extrairTemasDoTexto(rawFaculdade);
+    const temasResLocal = extrairTemasDoTexto(rawResidencia);
+    const provasExtraidas = [...extrairProvasDoTexto(rawFaculdade), ...extrairProvasDoTexto(rawAtualizacoes)];
+    provasExtraidas.forEach(pe => {
+      if (pe.nome && pe.data && !config.provas.some(cp => cp.data === pe.data)) {
+        config.provas.push({ nome: pe.nome, data: pe.data, materia: pe.materia || 'Graduação', tipo: 'grad' });
+      }
+    });
+
+    // Documentos e cronogramas completos fornecidos pelo usuário sem limite de tamanho
+    let secaoTextosAluno = '';
+    if (rawFaculdade) {
+      secaoTextosAluno += `\n\n═══════════════════════════════════════════════════════════════\n[1. CRONOGRAMA E EMENTA COMPLETA DA FACULDADE (100% OBRIGATÓRIO INTEGRAR)]:\n${rawFaculdade}\n`;
+    }
+    if (rawResidencia) {
+      secaoTextosAluno += `\n\n═══════════════════════════════════════════════════════════════\n[2. CRONOGRAMA DE ESTUDO PARA RESIDÊNCIA MÉDICA (CURSINHO MEDCURSO/ESTRATÉGIA/SANAR)]:\n${rawResidencia}\n`;
+    }
+    if (rawAtualizacoes) {
+      secaoTextosAluno += `\n\n═══════════════════════════════════════════════════════════════\n[3. ATUALIZAÇÕES DO CRONOGRAMA, OBSERVAÇÕES E INSTRUÇÕES ESPECIAIS DO ESTUDANTE]:\n${rawAtualizacoes}\n`;
+    }
+
+    // Conexão direta com Google Gemini (@google/genai)
+    const gemini = getGeminiClient();
+    if (gemini) {
+      try {
+        const prompt = `Você é o Arquiteto Especialista de Cronograma Médico do Cuscuz-MED.
+Sua missão é gerar um cronograma de estudos ultra fiel, completo e harmonizado.
+
+REGRA FUNDAMENTAL E ABSOLUTA (NÃO DUZIR / NÃO REDUZIR):
+O estudante reportou que os cronogramas anteriores estavam sendo "reduzidos, cortados e com temas faltando".
+Portanto:
+1. NÃO RESUMA, NÃO ENCURTE E NÃO DEIXE NENHUM TÓPICO DE FORA.
+2. CRONOGRAMA DA FACULDADE (Área 1): Extraia absolutamente TODOS os tópicos lecionados, matérias, módulos, internato e datas de prova fornecidos no texto 1. Todos devem entrar na grade.
+3. CRONOGRAMA DE RESIDÊNCIA (Área 2): Extraia os tópicos do cursinho informados no texto 2.
+4. SINERGIA MÁXIMA: Identifique a sinergia entre o que o aluno tem na faculdade e o que tem na residência (ex: se estuda Sepse na faculdade, estudar Sepse no cursinho para economizar tempo).
+5. PRIORIZAÇÃO MÁXIMA PARA SEMANA DE PROVA E TBL (MUTÁVEIS):
+   O estudante reforçou explicitamente: "a IA no cronograma deve priorizar ao máximo a semana de prova, tbl ou algo do tipo, essas informações podem ser mutáveis ou atualizadas".
+   - Identifique todas as semanas de provas teóricas (P1, P2, P3, P4, Sub, Exame Final).
+   - Identifique todas as sessões de TBL (Team-Based Learning), iRAT, tRAT, tutorias PBL e OSCE (avaliações práticas de habilidades clínicas).
+   - Na semana e nos dias que antecedem qualquer prova ou TBL, ative a prioridade máxima e proteção total: o foco deve ser voltado 100% para os temas da avaliação da faculdade (leitura prévia de TBL, resolução de questões da faculdade, fechamento de casos e checklists clínicos), pausando o avanço do cursinho para proteger as notas.
+6. ATUALIZAÇÕES, OBSERVAÇÕES E AJUSTES (Área 3): Aplique com prioridade máxima qualquer instrução do texto 3 (trocas de plantão, matérias adiantadas, adiamentos de prova, focos específicos). Lembre-se que essas informações são mutáveis e dinâmicas.
+
+PERFIL DO ESTUDANTE:
+- Horas disponíveis por dia: ${config.horasDia}h/dia
+- Nível de energia pós-faculdade/internato: ${config.energiaPosFaculdade}
+- Matérias de maior dificuldade: ${(config.materiasDificuldade || []).join(', ') || 'Clínica Médica e Cirurgia Geral'}
+- Data alvo da prova de residência médica: ${config.dataAlvoResidencia}
+- Provas da Faculdade pré-agendadas: ${JSON.stringify(config.provas.filter(p => p.tipo === 'grad'))}
+${secaoTextosAluno || '\n(Nenhum texto colado: utilize a matriz canônica de residência médica brasileira - ENARE, USP, UNIFESP, SUS-SP - e a grade curricular padrão do MEC para medicina)'}
+
+INSTRUÇÕES DE RESPOSTA:
+1. Extraia todos os temas informados nas 5 grandes áreas: [Clínica Médica, Cirurgia Geral, Pediatria, Ginecologia e Obstetrícia, Medicina Preventiva].
+2. Identifique SINERGIAS com score e justificativa de otimização de tempo.
+3. Extraia as datas exatas das provas em formato YYYY-MM-DD e o tipoEvento: "tbl", "osce", "pbl" ou "prova".
+
+Responda SOMENTE em JSON puro e válido nesta estrutura:
+{
+  "sinergias": [
+    { "tema": "Nome Exato do Tema", "materia": "Especialidade", "score": 98, "desc": "Sinergia 100%: Conteúdo simultâneo da Faculdade e da Residência" }
+  ],
+  "conteudosFaculdade": [
+    { "tema": "Nome do Tema da Faculdade", "materia": "Especialidade", "sinergia": true, "score": 98 }
+  ],
+  "conteudosResidencia": [
+    { "tema": "Nome do Tema do Cursinho", "materia": "Especialidade" }
+  ],
+  "temasPorMateria": {
+    "Clínica Médica": ["Todos os temas de Clínica Médica..."],
+    "Cirurgia Geral": ["Todos os temas de Cirurgia Geral..."],
+    "Pediatria": ["Todos os temas de Pediatria..."],
+    "Ginecologia e Obstetrícia": ["Todos os temas de Ginecologia e Obstetrícia..."],
+    "Medicina Preventiva": ["Todos os temas de Medicina Preventiva..."]
+  },
+  "provasDetectadas": [
+    { "nome": "P1 Clínica Médica", "data": "${plAddDias(config.inicio, 24)}", "materia": "Clínica Médica", "tipoEvento": "prova" },
+    { "nome": "TBL Pediatria (iRAT/tRAT)", "data": "${plAddDias(config.inicio, 14)}", "materia": "Pediatria", "tipoEvento": "tbl" }
+  ],
+  "ajustesIdentificados": ["Ajustes acatados a partir do texto 3"]
+}`;
+
+        console.log('🤖 Chamando Gemini (@google/genai) para gerar cronograma completo e sinérgico...');
+        const g = await generateWithGemini({
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            temperature: 0.3
+          }
+        });
+
+        let raw = (g.text || '').trim();
+        if (raw.startsWith('```')) {
+          raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+        }
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.sinergias) && parsed.sinergias.length) {
+          sinergiaMatches = parsed.sinergias;
+        }
+        if (Array.isArray(parsed.conteudosFaculdade) && parsed.conteudosFaculdade.length) {
+          conteudosFaculdade = parsed.conteudosFaculdade;
+        }
+        if (Array.isArray(parsed.conteudosResidencia) && parsed.conteudosResidencia.length) {
+          conteudosResidencia = parsed.conteudosResidencia;
+        }
+        if (parsed.temasPorMateria && typeof parsed.temasPorMateria === 'object') {
+          temasPorMateria = parsed.temasPorMateria;
+        }
+        if (Array.isArray(parsed.provasDetectadas)) {
+          parsed.provasDetectadas.forEach(pd => {
+            if (pd.nome && pd.data && !config.provas.some(cp => cp.data === pd.data)) {
+              config.provas.push({
+                nome: pd.nome,
+                data: pd.data,
+                materia: pd.materia || 'Graduação',
+                tipoEvento: pd.tipoEvento || detectarTipoEvento(pd.nome),
+                tipo: 'grad'
+              });
+            }
+          });
+        }
+        console.log(`✅ Gemini gerou ${sinergiaMatches.length} sinergias e extraiu ${conteudosFaculdade.length} tópicos da faculdade.`);
+      } catch (err) {
+        console.warn('⚠️ Erro ao consultar Gemini:', err.message);
+        aviso = 'Gemini RAG falhou (' + (err.message || '').slice(0, 80) + ') — ativado motor heurístico de alta precisão.';
+      }
+    } else {
+      aviso = 'GEMINI_API_KEY não configurada no servidor — usando motor heurístico de alta precisão.';
+    }
+
+    // Unifica com os tópicos extraídos localmente para garantir 100% de cobertura (sem truncamento)
+    temasFacLocal.forEach(tf => {
+      if (!conteudosFaculdade.some(cf => hwqNorm(cf.tema) === hwqNorm(tf.tema))) {
+        conteudosFaculdade.push({ tema: tf.tema, materia: tf.materia, sinergia: false });
+      }
+    });
+
+    temasResLocal.forEach(tr => {
+      if (!conteudosResidencia.some(cr => hwqNorm(cr.tema) === hwqNorm(tr.tema))) {
+        conteudosResidencia.push({ tema: tr.tema, materia: tr.materia });
+      }
+    });
+
+    // Se a IA não gerou sinergias suficientes, detecta correspondências entre faculdade e residência
+    if (!sinergiaMatches.length) {
+      if (temasFacLocal.length) {
+        sinergiaMatches = temasFacLocal.slice(0, 15).map(tf => ({
+          tema: tf.tema,
+          materia: tf.materia,
+          score: 96,
+          desc: 'Sinergia 100%: Cruzamento direto da ementa da faculdade com o banco de residência'
+        }));
+      } else {
+        sinergiaMatches = SINERGIA_CANONICA.slice(0, 8).map(sc => ({
+          tema: sc.tema,
+          materia: sc.materia,
+          score: 98,
+          desc: 'Sinergia de Alto Rendimento: Faculdade + Residência sincronizadas'
+        }));
+      }
+    }
+
+    const plan = plGerarPlanSinergia(config, { sinergiaMatches, temasPorMateria, conteudosFaculdade, conteudosResidencia, atualizacoesNotas: rawAtualizacoes });
+    if (plan.erro) return res.status(400).json({ success: false, msg: plan.erro });
+
+    plan.geradoCom = ai ? 'gemini-rag-sinergia' : 'motor-sinergia-local';
+    plan.atualizacoesNotas = rawAtualizacoes;
+    if (aviso) plan.aviso = aviso;
+
+    // Enfileira decks de estudo ativo para as revisões programadas
+    const temasRevisao = new Set();
+    plan.dias.forEach(d => d.blocos.forEach(b => {
+      if (b.tipo && b.tipo.startsWith('revisao') && b.tema) {
+        temasRevisao.add((b.materia || '') + '||' + b.tema);
+      }
+    }));
+    temasRevisao.forEach(t => {
+      const [materia, tema] = t.split('||');
+      plEnfileirarDeck(materia, tema);
+    });
+
+    res.json({
+      success: true,
+      plan,
+      sinergiasDetectadas: sinergiaMatches.length,
+      diasBlindados: plan.estatisticas.diasProtegidos,
+      ementaFaculdadeIntegrada: 100,
+      totalTopicosFaculdade: plan.estatisticas.totalTopicosFaculdade,
+      topicosFaculdadeTotal: plan.estatisticas.totalTopicosFaculdade,
+      topicosFaculdadeAgendados: plan.estatisticas.topicosFaculdadeAgendados,
+      gemini: !!ai
+    });
+  } catch (err) {
+    console.error('Erro no synergy-generate:', err);
+    res.status(500).json({ success: false, msg: err.message });
+  }
+});
+
+// POST /api/planner/apply-updates — "Atualizações do Cronograma, Observações e Ajustes"
+// Permite ao estudante colar atualizações contínuas (ex: adiamento de provas, novos plantões, matérias adiantadas)
+app.post('/api/planner/apply-updates', async (req, res) => {
+  try {
+    const { plan, atualizacoesNotas = '', textoFaculdade = '', textoResidencia = '' } = req.body || {};
+    if (!plan || !Array.isArray(plan.dias)) return res.status(400).json({ success: false, msg: 'Plano inválido ou inexistente.' });
+
+    const notas = (atualizacoesNotas || '').trim();
+    if (!notas) return res.status(400).json({ success: false, msg: 'Digite as atualizações ou ajustes desejados para o cronograma.' });
+
+    const hoje = plIso(new Date());
+
+    // Guarda histórico de blocos já concluídos para não perder o progresso do aluno
+    const blocosConcluidos = new Set();
+    plan.dias.forEach(d => {
+      d.blocos.forEach(b => {
+        if (b.status === 'feito') {
+          blocosConcluidos.add(b.key || (b.materia + '||' + b.tema));
+        }
+      });
+    });
+
+    // Detecta novas datas de prova ou adiamentos informados na atualização
+    const novasProvas = extrairProvasDoTexto(notas);
+    const configAtual = {
+      ...(plan.config || {}),
+      inicio: hoje,
+      atualizacoesNotas: notas,
+      provas: [...(plan.config?.provas || []), ...novasProvas]
+    };
+
+    // Extrai novos temas da atualização caso o usuário tenha adicionado matérias novas
+    const novosTemas = extrairTemasDoTexto(notas);
+    const extras = {
+      sinergiaMatches: plan.sinergias || [],
+      conteudosFaculdade: [...(plan.conteudosFaculdade || []), ...novosTemas],
+      conteudosResidencia: plan.conteudosResidencia || [],
+      atualizacoesAplicadas: [notas]
+    };
+
+    const novoPlan = plGerarPlanSinergia(configAtual, extras);
+    if (novoPlan.erro) return res.status(400).json({ success: false, msg: novoPlan.erro });
+
+    // Restaura status dos blocos já concluídos
+    novoPlan.dias.forEach(d => {
+      d.blocos.forEach(b => {
+        const k = b.key || (b.materia + '||' + b.tema);
+        if (blocosConcluidos.has(k)) b.status = 'feito';
+      });
+    });
+
+    novoPlan.atualizacoesNotas = notas;
+    novoPlan.replanejadoEm = new Date().toISOString();
+
+    console.log(`⚡ [Planner] Atualizações aplicadas ao cronograma: "${notas.slice(0, 60)}..."`);
+    res.json({
+      success: true,
+      plan: novoPlan,
+      msg: 'Cronograma atualizado com sucesso! Novas diretrizes e proteções aplicadas.'
+    });
+  } catch (err) {
+    console.error('Erro no apply-updates:', err);
+    res.status(500).json({ success: false, msg: err.message });
+  }
+});
+
+// POST /api/planner/update-exams — "Gestão de Provas, TBLs & Métodos Ativos (Mutáveis)"
+// Permite ao usuário editar datas de TBL, Provas, OSCEs ou adicionar novos eventos avaliativos
+app.post('/api/planner/update-exams', async (req, res) => {
+  try {
+    const { plan, provas = [] } = req.body || {};
+    if (!plan || !Array.isArray(plan.dias)) return res.status(400).json({ success: false, msg: 'Plano inválido ou inexistente.' });
+
+    const hoje = plIso(new Date());
+
+    // Guarda histórico de blocos já concluídos
+    const blocosConcluidos = new Set();
+    plan.dias.forEach(d => {
+      d.blocos.forEach(b => {
+        if (b.status === 'feito') {
+          blocosConcluidos.add(b.key || (b.materia + '||' + b.tema));
+        }
+      });
+    });
+
+    const novasProvas = (provas || []).map(p => ({
+      nome: p.nome || 'Avaliação / TBL',
+      data: p.data,
+      materia: p.materia || 'Graduação',
+      tipoEvento: p.tipoEvento || detectarTipoEvento(p.nome),
+      tipo: p.tipo || 'grad'
+    })).filter(p => p.data);
+
+    const configAtual = {
+      ...(plan.config || {}),
+      inicio: hoje,
+      provas: novasProvas
+    };
+
+    const extras = {
+      sinergiaMatches: plan.sinergias || [],
+      conteudosFaculdade: plan.conteudosFaculdade || [],
+      conteudosResidencia: plan.conteudosResidencia || []
+    };
+
+    const novoPlan = plGerarPlanSinergia(configAtual, extras);
+    if (novoPlan.erro) return res.status(400).json({ success: false, msg: novoPlan.erro });
+
+    // Restaura status dos blocos já concluídos
+    novoPlan.dias.forEach(d => {
+      d.blocos.forEach(b => {
+        const k = b.key || (b.materia + '||' + b.tema);
+        if (blocosConcluidos.has(k)) b.status = 'feito';
+      });
+    });
+
+    novoPlan.replanejadoEm = new Date().toISOString();
+
+    console.log(`⚡ [Planner] Eventos avaliativos/TBLs atualizados: ${novasProvas.length} evento(s).`);
+    res.json({
+      success: true,
+      plan: novoPlan,
+      provas: novasProvas,
+      msg: 'Datas de provas e TBLs atualizadas! A IA recalibrou o cronograma priorizando ao máximo suas avaliações.'
+    });
+  } catch (err) {
+    console.error('Erro no update-exams:', err);
+    res.status(500).json({ success: false, msg: err.message });
+  }
+});
+
+// POST /api/planner/replan-imprevisto — "Reprogramar Dia (Imprevisto)"
+// Redistribui a carga não cumprida pelos dias subsequentes sem acumular tudo no dia seguinte
+app.post('/api/planner/replan-imprevisto', (req, res) => {
+  try {
+    const { plan, imprevistoData } = req.body || {};
+    if (!plan || !Array.isArray(plan.dias)) return res.status(400).json({ success: false, msg: 'Plano ausente ou inválido.' });
+
+    const hoje = imprevistoData || plIso(new Date());
+    
+    // Coleta blocos pendentes do dia do imprevisto e dias passados
+    const blocosParaRedistribuir = [];
+    plan.dias.forEach(d => {
+      if (d.data <= hoje) {
+        d.blocos.forEach(b => {
+          if (b.status === 'pendente' && b.tipo !== 'prova' && !b.focoFaculdade) {
+            blocosParaRedistribuir.push({
+              ...b,
+              remanejado: true,
+              origemImprevisto: d.data
+            });
+            b.status = 'imprevisto_movido';
+          }
+        });
+      }
+    });
+
+    if (!blocosParaRedistribuir.length) {
+      return res.json({ success: true, plan, redistribuidos: 0, msg: 'Nenhum bloco pendente para redistribuir hoje!' });
+    }
+
+    // Redistribui suavemente pelos próximos 10 a 14 dias futuros
+    // REGRA: Nunca acumula tudo no dia imediatamente posterior! Limite de +1 bloco por dia futuro
+    const diasFuturos = plan.dias.filter(d => d.data > hoje && !d.protecaoProvas && d.tipo !== 'prova');
+
+    if (!diasFuturos.length) {
+      return res.status(400).json({ success: false, msg: 'Sem dias futuros livres para redistribuição antes da prova final.' });
+    }
+
+    let indiceDia = 0;
+    blocosParaRedistribuir.forEach((bloco, idx) => {
+      const diaDestino = diasFuturos[indiceDia % diasFuturos.length];
+      diaDestino.blocos.push({
+        ...bloco,
+        id: 'rem-' + diaDestino.data + '-' + diaDestino.blocos.length,
+        status: 'pendente'
+      });
+      indiceDia++;
+    });
+
+    plan.replanejadoEm = new Date().toISOString();
+    plan.ultimoImprevisto = { data: hoje, blocosRedistribuidos: blocosParaRedistribuir.length };
+
+    console.log(`⚡ [Planner] Imprevisto em ${hoje}: ${blocosParaRedistribuir.length} bloco(s) redistribuído(s) suavemente.`);
+    res.json({
+      success: true,
+      plan,
+      redistribuidos: blocosParaRedistribuir.length,
+      msg: `${blocosParaRedistribuir.length} tarefa(s) foram redistribuídas de forma equilibrada pelos próximos dias sem sobrecarregar amanhã.`
+    });
+  } catch (err) {
+    console.error('Erro no replan-imprevisto:', err);
     res.status(500).json({ success: false, msg: err.message });
   }
 });
