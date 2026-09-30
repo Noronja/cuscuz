@@ -9,57 +9,79 @@
 <script defer src="https://unpkg.com/@phosphor-icons/web"></script>
 <style>
   :root {
-    --bg: #f5f6f8;
-    --card: #ffffff;
-    --border: #e6e8ec;
-    --text: #1a1d21;
-    --muted: #697079;
-    --accent: #0d7d78;
-    --accent-soft: #e6f4f3;
-    --accent-hover: #0a635f;
-    --danger: #d64545;
-    --ok: #1a9a55;
-    --amber: #b97a0a;
-    --radius: 12px;
-    --shadow: 0 1px 2px rgba(16, 24, 40, .05);
+    --bg: #060a10;
+    --card: rgba(255, 255, 255, .045);
+    --card-hover: rgba(255, 255, 255, .08);
+    --border: rgba(255, 255, 255, .09);
+    --border-strong: rgba(255, 255, 255, .16);
+    --text: #eef2f6;
+    --muted: rgba(238, 242, 246, .55);
+    --accent: #2dd4bf;
+    --accent-soft: rgba(45, 212, 191, .12);
+    --accent-hover: #14b8a6;
+    --danger: #f87171;
+    --ok: #4ade80;
+    --amber: #fbbf24;
+    --radius: 16px;
+    --blur: blur(18px) saturate(1.3);
+    --shadow: 0 10px 40px rgba(0, 0, 0, .45);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    background:
+      radial-gradient(1100px 700px at 12% -8%, rgba(13, 148, 136, .18), transparent 60%),
+      radial-gradient(900px 650px at 108% 108%, rgba(14, 116, 144, .15), transparent 60%),
+      radial-gradient(600px 400px at 85% 8%, rgba(56, 189, 248, .07), transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+  }
   button { font-family: inherit; cursor: pointer; }
   a { color: inherit; }
+  .glass { background: var(--card); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); box-shadow: var(--shadow); }
 
-  .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 20; }
+  .topbar { position: sticky; top: 0; z-index: 20; padding: 12px 24px; display: flex; align-items: center; gap: 12px; background: rgba(10, 16, 24, .55); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); }
   .topbar .voltar { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; color: var(--muted); text-decoration: none; padding: 8px 12px; border-radius: 10px; transition: background .15s, color .15s; }
-  .topbar .voltar:hover { background: var(--bg); color: var(--text); }
+  .topbar .voltar:hover { background: var(--card-hover); color: var(--text); }
   .topbar .logo { font-weight: 800; font-size: 16px; letter-spacing: -.2px; }
   .topbar .logo span { color: var(--accent); }
   .topbar .curso-nome { margin-left: auto; font-size: 13px; color: var(--muted); max-width: 40vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .aula-layout { display: grid; grid-template-columns: minmax(0, 7fr) minmax(330px, 3fr); gap: 24px; max-width: 1440px; margin: 0 auto; padding: 24px; align-items: start; }
 
-  .player-wrap { background: #000; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); aspect-ratio: 16 / 9; width: 100%; position: relative; }
-  .player-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
-  .player-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #9aa3ad; font-size: 14px; }
-  .player-placeholder i { font-size: 44px; }
+  .player-wrap { position: relative; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow), 0 0 0 1px var(--border); aspect-ratio: 16 / 9; width: 100%; background: #000; }
+  .player-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: none; background: #000; }
+  .player-wrap iframe.ativo { display: block; }
+  .player-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: rgba(238, 242, 246, .5); font-size: 14px; z-index: 2; }
+  .player-placeholder i { font-size: 46px; color: rgba(45, 212, 191, .7); }
+  .buffer-status { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); margin-top: 9px; min-height: 18px; }
+  .buffer-status i { font-size: 14px; }
+  .buffer-status .ok { color: var(--ok); }
+  .buffer-status .carregando { color: var(--amber); }
 
-  .aula-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; margin-top: 16px; }
+  .aula-card { background: var(--card); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; margin-top: 16px; }
   .breadcrumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
   .breadcrumbs a { text-decoration: none; font-weight: 500; }
   .breadcrumbs a:hover { color: var(--accent); }
   .breadcrumbs i { font-size: 12px; opacity: .55; }
   .breadcrumbs .atual { color: var(--text); font-weight: 600; }
   .aula-titulo { font-size: 21px; font-weight: 800; letter-spacing: -.4px; line-height: 1.25; }
-  .aula-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .aula-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 10px; font-size: 13px; color: var(--muted); }
   .aula-meta span { display: inline-flex; align-items: center; gap: 5px; }
   .aula-meta i { font-size: 15px; }
+  .aula-meta b { color: var(--text); font-weight: 600; }
+  .meta-buffer { color: var(--accent) !important; }
+  .meta-buffer.carregando { color: var(--muted) !important; }
 
   .acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 13.5px; font-weight: 600; padding: 9px 14px; border-radius: 10px; transition: background .15s, border-color .15s, color .15s, transform .05s; user-select: none; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border-strong); background: var(--card); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); color: var(--text); font-size: 13.5px; font-weight: 600; padding: 9px 14px; border-radius: 10px; transition: background .15s, border-color .15s, color .15s, transform .05s; user-select: none; text-decoration: none; }
   .btn i { font-size: 17px; }
-  .btn:hover { background: var(--bg); }
+  .btn:hover { background: var(--card-hover); }
   .btn:active { transform: translateY(1px); }
-  .btn.primario { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.primario:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn.primario { background: var(--accent); border-color: var(--accent); color: #04211d; }
+  .btn.primario:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #04211d; }
   .btn.primario:disabled { opacity: .45; cursor: not-allowed; }
   .grupo-votos { display: inline-flex; }
   .grupo-votos .btn { border-radius: 0; }
@@ -67,29 +89,28 @@
   .grupo-votos .btn:last-child { border-radius: 0 10px 10px 0; border-left: 0; }
   .btn.votado { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .btn.salvo { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
-  .btn.vista { background: #eaf7ef; border-color: var(--ok); color: var(--ok); }
+  .btn.vista { background: rgba(74, 222, 128, .12); border-color: var(--ok); color: var(--ok); }
   .btn.espaco { margin-left: auto; }
 
   .materiais h3 { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
   .materiais h3 i { color: var(--accent); font-size: 17px; }
   .materiais-lista { display: flex; flex-wrap: wrap; gap: 10px; }
-  .material-chip { display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--border); border-radius: 10px; padding: 9px 13px; background: var(--card); font-size: 13px; font-weight: 500; text-decoration: none; transition: border-color .15s, background .15s, box-shadow .15s; max-width: 320px; }
-  .material-chip:hover { border-color: var(--accent); background: var(--accent-soft); box-shadow: var(--shadow); }
-  .material-chip .pdf { width: 30px; height: 30px; border-radius: 8px; flex: none; background: #fdecec; color: var(--danger); display: inline-flex; align-items: center; justify-content: center; font-size: 17px; }
+  .material-chip { display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--border); border-radius: 10px; padding: 9px 13px; background: var(--card); font-size: 13px; font-weight: 500; text-decoration: none; transition: border-color .15s, background .15s; max-width: 320px; }
+  .material-chip:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .material-chip .pdf { width: 30px; height: 30px; border-radius: 8px; flex: none; background: rgba(248, 113, 113, .15); color: var(--danger); display: inline-flex; align-items: center; justify-content: center; font-size: 17px; }
   .material-chip .nome { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
   .material-chip .nome span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 230px; }
   .material-chip .nome small { color: var(--muted); font-size: 11.5px; font-weight: 400; }
   .material-chip > i { color: var(--muted); font-size: 16px; }
 
-  .sidebar { position: sticky; top: 76px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); display: flex; flex-direction: column; max-height: calc(100vh - 100px); overflow: hidden; }
+  .sidebar { position: sticky; top: 76px; background: var(--card); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); display: flex; flex-direction: column; max-height: calc(100vh - 100px); overflow: hidden; }
   .sidebar-head { padding: 16px 18px 10px; border-bottom: 1px solid var(--border); }
   .sidebar-head h2 { font-size: 16px; font-weight: 800; letter-spacing: -.3px; }
   .sidebar-stats { display: flex; gap: 14px; margin-top: 6px; font-size: 12.5px; color: var(--muted); flex-wrap: wrap; }
   .sidebar-stats span { display: inline-flex; align-items: center; gap: 5px; }
   .sidebar-stats i { font-size: 14px; }
 
-  /* Progresso retrátil */
-  .prog-toggle { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; padding: 6px 8px; border-radius: 8px; background: var(--bg); user-select: none; }
+  .prog-toggle { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; padding: 6px 8px; border-radius: 8px; background: var(--card-hover); user-select: none; }
   .prog-toggle:hover { color: var(--text); }
   .prog-toggle .pct { margin-left: auto; font-weight: 800; color: var(--accent); }
   .prog-toggle .caret { transition: transform .25s; font-size: 13px; }
@@ -97,30 +118,32 @@
   .prog-body { display: none; padding: 10px 8px 4px; }
   .prog-body.aberto { display: block; }
   .prog-body .barra { height: 7px; border-radius: 99px; background: var(--border); overflow: hidden; }
-  .prog-body .barra div { height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
+  .prog-body .barra div { height: 100%; background: linear-gradient(90deg, var(--accent-hover), var(--accent)); border-radius: 99px; transition: width .3s; }
   .prog-body .rotulo { font-size: 11.5px; color: var(--muted); display: flex; justify-content: space-between; margin-bottom: 5px; }
 
   .busca { padding: 12px 14px; border-bottom: 1px solid var(--border); position: relative; }
-  .busca input { width: 100%; font-family: inherit; font-size: 13.5px; padding: 9px 12px 9px 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); outline: none; transition: border-color .15s, box-shadow .15s; }
-  .busca input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(13, 125, 120, .12); background: #fff; }
+  .busca input { width: 100%; font-family: inherit; font-size: 13.5px; padding: 9px 12px 9px 36px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255, 255, 255, .05); color: var(--text); outline: none; transition: border-color .15s, box-shadow .15s; }
+  .busca input::placeholder { color: var(--muted); }
+  .busca input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45, 212, 191, .15); }
   .busca > i { position: absolute; left: 26px; top: 50%; transform: translateY(calc(-50% - 6px)); color: var(--muted); font-size: 16px; }
 
-  .menu-aulas { overflow-y: auto; flex: 1; padding: 8px 10px 14px; scrollbar-width: thin; }
+  .menu-aulas { overflow-y: auto; flex: 1; padding: 8px 10px 14px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }
   .menu-aulas::-webkit-scrollbar { width: 8px; }
-  .menu-aulas::-webkit-scrollbar-thumb { background: #d7dbe0; border-radius: 99px; }
+  .menu-aulas::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .14); border-radius: 99px; }
 
-  .modulo { border: 1px solid var(--border); border-radius: 10px; margin-top: 8px; overflow: hidden; background: var(--card); }
+  .modulo { border: 1px solid var(--border); border-radius: 12px; margin-top: 8px; overflow: hidden; background: var(--card); }
   .modulo-cabecalho { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 13px; border: 0; background: transparent; text-align: left; font-size: 13.5px; font-weight: 700; color: var(--text); }
-  .modulo-cabecalho:hover { background: var(--bg); }
+  .modulo-cabecalho:hover { background: var(--card-hover); }
+  .modulo-cabecalho i.ph-folder-simple { color: var(--accent); }
   .modulo-cabecalho .seta { margin-left: auto; transition: transform .25s; font-size: 15px; color: var(--muted); }
   .modulo.aberto .modulo-cabecalho .seta { transform: rotate(90deg); }
-  .modulo-cabecalho .contagem { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 99px; }
+  .modulo-cabecalho .contagem { font-size: 11px; font-weight: 600; color: var(--muted); background: rgba(255, 255, 255, .05); border: 1px solid var(--border); padding: 2px 8px; border-radius: 99px; }
   .modulo-corpo { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ease; }
   .modulo.aberto .modulo-corpo { grid-template-rows: 1fr; }
   .modulo-corpo > div { overflow: hidden; }
   .submodulo { border-top: 1px solid var(--border); }
   .sub-cabecalho { width: 100%; display: flex; align-items: center; gap: 8px; padding: 9px 13px 9px 20px; border: 0; background: transparent; font-size: 12.5px; font-weight: 600; color: var(--text); text-align: left; }
-  .sub-cabecalho:hover { background: var(--bg); }
+  .sub-cabecalho:hover { background: var(--card-hover); }
   .sub-cabecalho .contagem { margin-left: auto; font-size: 10.5px; color: var(--muted); }
   .sub-cabecalho .seta { transition: transform .25s; font-size: 12px; color: var(--muted); }
   .submodulo.aberto .sub-cabecalho .seta { transform: rotate(90deg); }
@@ -128,22 +151,22 @@
   .submodulo.aberto .sub-corpo { grid-template-rows: 1fr; }
   .sub-corpo > div { overflow: hidden; }
   .aula-item { display: flex; align-items: center; gap: 10px; padding: 8px 13px 8px 28px; font-size: 12.5px; cursor: pointer; border-top: 1px solid var(--border); transition: background .15s; }
-  .aula-item:hover { background: var(--bg); }
+  .aula-item:hover { background: var(--card-hover); }
   .aula-item.ativa { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
   .aula-item .play { color: var(--muted); font-size: 15px; flex: none; }
   .aula-item.ativa .play { color: var(--accent); }
   .aula-item .titulo-aula { flex: 1; min-width: 0; line-height: 1.3; }
   .aula-item .check { color: var(--ok); font-size: 15px; flex: none; }
   .resultado-busca .aula-item { padding-left: 13px; }
-  .resultado-busca .curso-tag { font-size: 10px; color: var(--muted); font-weight: 600; flex: none; }
+  .resultado-busca .curso-tag { font-size: 10px; color: var(--muted); font-weight: 600; flex: none; border: 1px solid var(--border); border-radius: 99px; padding: 1px 7px; }
   .sem-resultado { padding: 18px 14px; font-size: 13px; color: var(--muted); text-align: center; display: none; }
   .carregando { padding: 30px 14px; text-align: center; color: var(--muted); font-size: 13.5px; }
   .carregando i { font-size: 26px; display: block; margin-bottom: 10px; animation: girar 1s linear infinite; }
   @keyframes girar { to { transform: rotate(360deg); } }
 
-  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: #fff; font-size: 13.5px; font-weight: 500; padding: 11px 18px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18); opacity: 0; transition: opacity .25s, transform .25s; z-index: 50; display: flex; align-items: center; gap: 8px; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px); background: rgba(10, 16, 24, .85); backdrop-filter: var(--blur); border: 1px solid var(--border); color: var(--text); font-size: 13.5px; font-weight: 500; padding: 11px 18px; border-radius: 12px; box-shadow: var(--shadow); opacity: 0; transition: opacity .25s, transform .25s; z-index: 50; display: flex; align-items: center; gap: 8px; }
   .toast.visivel { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .toast i { color: #7fe0c2; font-size: 17px; }
+  .toast i { color: var(--accent); font-size: 17px; }
 
   @media (max-width: 1020px) {
     .aula-layout { grid-template-columns: 1fr; }
@@ -154,7 +177,7 @@
 </head>
 <body>
 
-<header class="topbar">
+<header class="topbar glass">
   <a class="voltar" href="/"><i class="ph ph-arrow-left"></i> Voltar</a>
   <div class="logo">Cuscuz<span>-MED</span></div>
   <div class="curso-nome" id="curso-nome-topo">Acervo de videoaulas — Google Drive</div>
@@ -163,10 +186,10 @@
 <main class="aula-layout">
   <!-- ══ Coluna principal (~70%) ══ -->
   <section class="coluna-principal">
-    <div class="player-wrap">
+    <div class="player-wrap" id="player-slot">
       <div class="player-placeholder" id="player-placeholder"><i class="ph ph-play-circle"></i><span>Selecione uma videoaula no menu ao lado</span></div>
-      <iframe id="player" src="" title="Player da aula" allow="autoplay; encrypted-media; fullscreen" allowfullscreen style="display:none"></iframe>
     </div>
+    <div class="buffer-status" id="buffer-status"></div>
 
     <div class="aula-card">
       <nav class="breadcrumbs" id="breadcrumbs" aria-label="Caminho de navegação"></nav>
@@ -174,7 +197,7 @@
       <div class="aula-meta">
         <span><i class="ph ph-graduation-cap"></i> <b id="meta-curso">—</b></span>
         <span><i class="ph ph-folder-open"></i> <b id="meta-disc">—</b></span>
-        <span><i class="ph ph-hard-drives"></i> <b id="meta-fonte">Google Drive</b></span>
+        <span class="meta-buffer carregando" id="meta-buffer"><i class="ph ph-file-video"></i> <b id="meta-buffer-txt">calculando buffer…</b></span>
       </div>
 
       <div class="acoes">
@@ -261,9 +284,7 @@ async function carregarAcervo() {
     if (!MATERIAIS.has(k)) MATERIAIS.set(k, []);
     MATERIAIS.get(k).push({ id: m.id, nome: m.t || 'Material' });
   }
-  LISTA.forEach(v => { if (!ARVORE.get(v.curso).get(v.disc)) ARVORE.get(v.curso).set(v.disc, []); });
 
-  const totalH = 0;
   $('curso-stats').innerHTML =
     '<span><i class="ph ph-play-circle"></i> ' + LISTA.length.toLocaleString('pt-BR') + ' videoaulas</span>' +
     '<span><i class="ph ph-folder-simple"></i> ' + ORDEM_CURSOS.length + ' cursos</span>' +
@@ -274,11 +295,110 @@ async function carregarAcervo() {
   if (primeira) abrirAula(primeira.id);
 }
 
+/* ════════════ BUFFER INTELIGENTE ════════════
+   1) Tamanho/duração/resolução de cada vídeo são calculados previamente (API do Drive, com cache).
+   2) As próximas aulas da fila ficam pré-carregadas em iframes empilhados (sem recarregar DOM). */
+const infoCache = new Map();   // id -> {sizeMB, durLabel, res}
+const iframes = new Map();     // id -> iframe (empilhados no player-slot)
+let iframeOrdem = [];          // LRU dos ids
+
+function plInfo(ids) {
+  const faltam = [...new Set(ids)].filter(id => id && !infoCache.has(id));
+  const promessa = faltam.length
+    ? fetch('/api/drive/video-info?ids=' + encodeURIComponent(faltam.join(',')))
+        .then(r => r.json())
+        .then(d => { Object.entries(d.info || {}).forEach(([id, info]) => infoCache.set(id, info)); })
+        .catch(() => {})
+    : Promise.resolve();
+  return promessa.then(() => ids.map(id => infoCache.get(id) || null));
+}
+
+function proximasAulas(n) {
+  if (!ATUAL) return [];
+  const i = LISTA.findIndex(x => x.id === ATUAL.id);
+  return LISTA.slice(i + 1, i + 1 + n);
+}
+
+function criarIframe(v, ativo) {
+  const f = document.createElement('iframe');
+  f.src = 'https://drive.google.com/file/d/' + v.id + '/preview';
+  f.title = v.titulo;
+  f.allow = 'autoplay; encrypted-media; fullscreen';
+  f.setAttribute('data-vid', v.id);
+  if (ativo) f.classList.add('ativo');
+  $('player-slot').appendChild(f);
+  iframes.set(v.id, f);
+  iframeOrdem.push(v.id);
+  plTrimIframes(ATUAL ? ATUAL.id : v.id);
+  return f;
+}
+
+function ativarIframe(id) {
+  document.querySelectorAll('#player-slot iframe.ativo').forEach(x => x.classList.remove('ativo'));
+  let f = iframes.get(id);
+  if (!f) {
+    const v = LISTA.find(x => x.id === id);
+    f = criarIframe(v, true);
+  } else {
+    f.classList.add('ativo');
+  }
+  $('player-placeholder').style.display = 'none';
+  iframeOrdem = iframeOrdem.filter(x => x !== id);
+  iframeOrdem.unshift(id);
+  plTrimIframes(id);
+}
+
+// LRU: mantém no máximo 3 (atual + 2 pré-carregadas), nunca removendo a aula ativa
+function plTrimIframes(idAtivo) {
+  while (iframeOrdem.length > 3) {
+    const velho = iframeOrdem.pop();
+    if (velho === idAtivo) continue;
+    const f2 = iframes.get(velho);
+    if (f2) { f2.remove(); iframes.delete(velho); }
+  }
+}
+
+function bufferizarProximas() {
+  if (!ATUAL) return;
+  const prox = proximasAulas(2);
+  // 1) tamanho/duração calculados previamente (atual + próximas)
+  plInfo([ATUAL.id, ...prox.map(v => v.id)]).then(infos => {
+    const atual = infos[0];
+    const mb = $('meta-buffer');
+    if (atual && atual.sizeMB) {
+      mb.classList.remove('carregando');
+      const partes = [atual.sizeMB + ' MB'];
+      if (atual.durLabel) partes.push(atual.durLabel);
+      if (atual.res && atual.res !== '0p') partes.push(atual.res);
+      partes.push('em buffer');
+      $('meta-buffer-txt').textContent = partes.join(' · ');
+    } else {
+      $('meta-buffer-txt').textContent = 'tamanho indisponível';
+    }
+    // 2) indicador do pré-carregamento das próximas
+    const st = $('buffer-status');
+    if (prox.length && prox[0]) {
+      const info = infos[1];
+      const tam = info && info.sizeMB ? ' (' + info.sizeMB + ' MB' + (info.durLabel ? ', ' + info.durLabel : '') + ')' : '';
+      st.innerHTML = '<i class="ph ph-lightning carregando"></i> Buffer inteligente: pré-carregando <b>&nbsp;' + esc(prox[0].titulo) + '&nbsp;</b>' + esc(tam) + ' e a seguinte…';
+      // atualiza para "pronto" quando os iframes aquecerem
+      setTimeout(() => {
+        const prontas = prox.filter(v => iframes.has(v.id)).length;
+        if (prontas) st.innerHTML = '<i class="ph ph-check-circle ok"></i> Buffer inteligente: ' + prontas + ' próxima(s) aula(s) pré-carregada(s) — troque sem esperar.';
+      }, 5000);
+    } else {
+      st.innerHTML = '';
+    }
+  });
+  // 3) pré-carrega as próximas 2 aulas (iframes empilhados, escondidos)
+  prox.forEach(v => { if (!iframes.has(v.id)) criarIframe(v, false); });
+}
+
 /* ════════════ Sidebar: accordion cursos → disciplinas → aulas ════════════ */
 function renderMenu() {
   const menu = $('menu-aulas');
   let html = '';
-  ORDEM_CURSOS.forEach((curso, ci) => {
+  ORDEM_CURSOS.forEach((curso) => {
     const discs = ARVORE.get(curso);
     let total = 0; discs.forEach(list => total += list.length);
     html += '<div class="modulo" data-curso="' + esc(curso) + '">' +
@@ -297,7 +417,6 @@ function renderMenu() {
       '</div></div></div>';
   });
   menu.innerHTML = html;
-  // abre o primeiro curso por padrão
   const primeiro = menu.querySelector('.modulo');
   if (primeiro) primeiro.classList.add('aberto');
 }
@@ -305,7 +424,7 @@ function renderMenu() {
 function preencherLista(curso, disc) {
   const alvo = document.querySelector('[data-lista="' + CSS.escape(curso) + '||' + CSS.escape(disc) + '"]');
   if (!alvo || alvo.dataset.preenchido) return;
-  const aulas = ARVORE.get(curso).get(disc) || [];
+  const aulas = (ARVORE.get(curso) || new Map()).get(disc) || [];
   alvo.innerHTML = aulas.map(v => itemAula(v)).join('');
   alvo.dataset.preenchido = '1';
 }
@@ -319,7 +438,10 @@ function itemAula(v) {
 window.toggleModulo = function (btn) {
   const m = btn.closest('.modulo');
   m.classList.toggle('aberto');
-  if (m.classList.contains('aberto')) m.querySelectorAll('.submodulo.aberto').forEach(s => preencherLista(s.dataset.disc && s.closest('[data-curso]').dataset.curso, s.dataset.disc));
+  if (m.classList.contains('aberto')) {
+    const curso = m.dataset.curso;
+    m.querySelectorAll('.submodulo.aberto').forEach(s => preencherLista(curso, s.dataset.disc));
+  }
 };
 window.toggleSub = function (btn) {
   const sub = btn.closest('.submodulo');
@@ -345,11 +467,7 @@ window.abrirAula = function (id) {
   const v = LISTA.find(x => x.id === id);
   if (!v) return;
   ATUAL = v;
-  $('player-placeholder').style.display = 'none';
-  const player = $('player');
-  player.style.display = 'block';
-  player.src = 'https://drive.google.com/file/d/' + v.id + '/preview';
-
+  ativarIframe(id);
   $('breadcrumbs').innerHTML =
     '<a href="#" onclick="return false">' + esc(v.curso) + '</a><i class="ph ph-caret-right"></i>' +
     '<a href="#" onclick="return false">' + esc(v.disc) + '</a><i class="ph ph-caret-right"></i>' +
@@ -357,17 +475,20 @@ window.abrirAula = function (id) {
   $('aula-titulo').textContent = v.titulo;
   $('meta-curso').textContent = v.curso;
   $('meta-disc').textContent = v.disc;
+  const mb = $('meta-buffer');
+  mb.classList.add('carregando');
+  $('meta-buffer-txt').textContent = 'calculando buffer…';
   $('btn-drive').href = 'https://drive.google.com/file/d/' + v.id + '/view';
   renderAcoes();
   renderMateriais(v);
   marcarAtivoNaArvore(v);
+  bufferizarProximas();
 };
 
 function marcarAtivoNaArvore(v) {
   document.querySelectorAll('.aula-item').forEach(el => el.classList.toggle('ativa', el.dataset.id === v.id));
-  // garante curso/disciplina abertos e visíveis
   const mod = document.querySelector('.modulo[data-curso="' + CSS.escape(v.curso) + '"]');
-  if (mod && !mod.classList.contains('aberto')) { mod.classList.add('aberto'); }
+  if (mod && !mod.classList.contains('aberto')) mod.classList.add('aberto');
   const sub = mod && mod.querySelector('.submodulo[data-disc="' + CSS.escape(v.disc) + '"]');
   if (sub) {
     sub.classList.add('aberto');
@@ -382,7 +503,6 @@ function renderMateriais(v) {
   let mats = MATERIAIS.get(v.curso + '||' + v.disc) || [];
   let origem = v.disc;
   if (!mats.length) { mats = MATERIAIS.get(v.curso + '||Geral') || []; origem = 'Geral'; }
-  if (!mats.length) { mats = (MATERIAIS.get(v.curso + '||') || []); }
   if (!mats.length) {
     box.innerHTML = '<span style="font-size:13px;color:var(--muted)">Nenhum material PDF nesta disciplina (' + esc(v.curso) + ' — ' + esc(origem) + '). Explore a aba Cursos & Acervo para as apostilas completas.</span>';
     return;

@@ -2813,10 +2813,31 @@ async function loadQuestionsBankFromAPI(silent = true) {
     const res = await fetch('/api/questions/bank');
     if (res.ok) {
       const data = await res.json();
-      if (data && Array.isArray(data.questions) && data.questions.length > 0) {
-        BANK_QUESTIONS = data.questions;
-        lsSet('cuscuz_questions_cache', BANK_QUESTIONS);
-        if (!silent) toast(`📚 ${data.questions.length} questões carregadas do banco`, 'success');
+      if (data && Array.isArray(data.questions)) {
+        // Salvamento automático: se o servidor tem menos questões que o espelho do navegador
+        // (hospedagem efêmera reiniciou), devolve o espelho ao servidor antes de carregar
+        const cache = lsGet('cuscuz_questions_cache', []);
+        if (Array.isArray(cache) && cache.length > data.questions.length) {
+          try {
+            const r = await fetch('/api/questions/bank/restore', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ questions: cache })
+            });
+            const rd = await r.json();
+            if (rd.success && rd.restaurado > 0) {
+              if (!silent) toast('♻️ Banco restaurado do navegador: +' + rd.restaurado + ' questões', 'success');
+              const r2 = await fetch('/api/questions/bank');
+              if (r2.ok) { const d2 = await r2.json(); if (d2 && Array.isArray(d2.questions)) data.questions = d2.questions; }
+            }
+          } catch (e) { /* segue com o que o servidor tem */ }
+        }
+        if (data.questions.length > 0) {
+          BANK_QUESTIONS = data.questions;
+          lsSet('cuscuz_questions_cache', BANK_QUESTIONS);
+          if (!silent) toast(`📚 ${data.questions.length} questões carregadas do banco`, 'success');
+        } else if (Array.isArray(cache) && cache.length && !BANK_QUESTIONS.length) {
+          BANK_QUESTIONS = cache; // servidor ainda sem banco: usa o espelho local em memória
+        }
       }
     }
   } catch (err) {

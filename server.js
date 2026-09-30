@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { execFile } from 'child_process';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -304,6 +305,34 @@ app.get('/api/drive/list', async (req, res) => {
   }
 });
 
+// Metadados de vídeo do Drive (tamanho/duração/resolução) — base do buffer inteligente da página de aula
+const driveInfoCache = new Map();
+app.get('/api/drive/video-info', async (req, res) => {
+  const ids = String(req.query.ids || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 6);
+  if (!ids.length) return res.status(400).json({ error: 'Informe ids separados por vírgula' });
+  const out = {};
+  await Promise.all(ids.map(id => new Promise(resolve => {
+    if (driveInfoCache.has(id)) { out[id] = driveInfoCache.get(id); return resolve(); }
+    fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=size,videoMediaMetadata,mimeType&key=${DRIVE_API_KEY}`)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+      .then(j => {
+        const sizeB = parseInt(j.size || '0', 10);
+        const ms = parseInt((j.videoMediaMetadata && j.videoMediaMetadata.durationMillis) || '0', 10);
+        const info = {
+          mimeType: j.mimeType || '',
+          sizeMB: sizeB ? Math.round(sizeB / 1048576 * 10) / 10 : 0,
+          durLabel: ms ? (Math.floor(ms / 60000) + ':' + String(Math.floor(ms / 1000) % 60).padStart(2, '0')) : '',
+          res: j.videoMediaMetadata ? (j.videoMediaMetadata.height || 0) + 'p' : ''
+        };
+        driveInfoCache.set(id, info);
+        out[id] = info;
+      })
+      .catch(err => { out[id] = { erro: String(err.message || err).slice(0, 60) }; })
+      .finally(resolve);
+  })));
+  res.json({ info: out });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
@@ -503,6 +532,24 @@ function writeQuestionsBank(questions) {
 app.get('/api/questions/bank', (req, res) => {
   const bank = readQuestionsBank();
   res.json({ success: true, count: bank.length, questions: bank });
+});
+
+// Restauração do espelho do navegador: se o servidor perdeu o arquivo (hospedagem efêmera),
+// o devolve o banco que o próprio usuário tem no localStorage — merge por id/enunciado
+app.post('/api/questions/bank/restore', (req, res) => {
+  try {
+    const { questions } = req.body || {};
+    if (!Array.isArray(questions) || !questions.length) return res.status(400).json({ success: false, msg: 'questions vazio' });
+    const atual = readQuestionsBank();
+    if (atual.length >= questions.length) {
+      return res.json({ success: true, restaurado: 0, total: atual.length, msg: 'Banco do servidor já está igual ou maior — nada a restaurar.' });
+    }
+    const m = mergeQuestionsIntoBank(questions);
+    console.log(`♻️ [Hardworq] Banco restaurado do espelho do navegador: +${m.imported} questões (total ${m.total}).`);
+    res.json({ success: true, restaurado: m.imported, total: m.total });
+  } catch (err) {
+    res.status(500).json({ success: false, msg: err.message });
+  }
 });
 
 /* ═══════════════════════════════════════════════════════════════
@@ -890,6 +937,29 @@ function repairMojibakeInBank() {
 }
 repairMojibakeInBank();
 
+// Salvamento automático: após cada sync bem-sucedido, commita e empurra o banco de questões
+// (HARDWORQ_AUTO_GIT=1 no .env; silencioso e com debounce de 5 min — sem git/GitHub, só ignora)
+let plUltimoAutoGit = 0;
+function autoGitBanco() {
+  if (!/^(1|true|on)$/i.test(process.env.HARDWORQ_AUTO_GIT || '')) return;
+  const agora = Date.now();
+  if (agora - plUltimoAutoGit < 5 * 60 * 1000) return;
+  plUltimoAutoGit = agora;
+  const git = process.env.GIT_PATH || 'git';
+  const opts = { cwd: __dirname, timeout: 90000 };
+  const passo = (args, done) => execFile(git, args, opts, (err) => done(err));
+  passo(['add', 'data/questions-bank.json'], () => {
+    passo(['commit', '-m', 'chore: salvar banco de questoes Hardworq (auto)'], () => {
+      passo(['pull', '--rebase', 'origin', 'main'], () => {
+        passo(['push', 'origin', 'main'], (err) => {
+          if (err) console.warn('⚠️ [Hardworq] Auto-git: banco salvo localmente, mas não subiu:', (err.message || '').slice(0, 90));
+          else console.log('💾 [Hardworq] Banco de questões salvo automaticamente no GitHub');
+        });
+      });
+    });
+  });
+}
+
 // Fluxo principal: busca na API + parse + merge no banco local (usado pelo painel e pelo auto-sync)
 async function runHardworqSync(filters = {}) {
   if (!HWQ_STATE.userToken) await hwqLogin(); // garante token antes da busca (se falhar, hwqRequest tenta de novo)
@@ -921,6 +991,7 @@ async function runHardworqSync(filters = {}) {
   HWQ_STATE.lastSyncOk = true;
   HWQ_STATE.lastSyncResult = { fetched: search.questions.length, imported: merge.imported, updated: merge.updated };
   console.log(`🟣 [Hardworq] Sincronização: ${search.questions.length} buscadas → ${merge.imported} novas, ${merge.updated} atualizadas.`);
+  autoGitBanco();
   return { ok: true, fetched: search.questions.length, imported: merge.imported, updated: merge.updated, total: merge.total, questions: parsed };
 }
 
