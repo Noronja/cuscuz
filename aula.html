@@ -60,6 +60,10 @@
   .buffer-status i { font-size: 14px; }
   .buffer-status .ok { color: var(--ok); }
   .buffer-status .carregando { color: var(--amber); }
+  .navbtn { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--muted); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; cursor: pointer; flex: none; transition: border-color .15s, color .15s; }
+  .navbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .aula-layout.nav-off { grid-template-columns: minmax(0, 1fr); }
+  .aula-layout.nav-off .sidebar { display: none; }
 
   .aula-card { background: var(--card); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; margin-top: 16px; }
   .breadcrumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
@@ -210,7 +214,11 @@
     <div class="player-wrap" id="player-slot">
       <div class="player-placeholder" id="player-placeholder"><i class="ph ph-play-circle"></i><span>Selecione uma videoaula no menu ao lado</span></div>
     </div>
-    <div class="buffer-status" id="buffer-status"></div>
+    <div class="buffer-status">
+      <button class="navbtn" onclick="aulaToggleNav()" title="Mostrar/ocultar menu de navegação"><i class="ph ph-sidebar-simple"></i></button>
+      <button class="navbtn" onclick="aulaRecarregar()" title="Recarregar vídeo (resolve falha temporária do Drive)"><i class="ph ph-arrow-clockwise"></i></button>
+      <span id="buffer-status"></span>
+    </div>
 
     <div class="aula-card">
       <nav class="breadcrumbs" id="breadcrumbs" aria-label="Caminho de navegação"></nav>
@@ -361,7 +369,7 @@ function plTrimIframes(idAtivo) {
 
 function bufferizarProximas() {
   if (!ATUAL) return;
-  const proxMeta = proximasAulas(2);
+  const proxMeta = proximasAulas(3); // tamanho/duração calculados com antecedência (3 à frente)
   const prox = proximasAulas(1); // só 1 player extra por vez — mais que isso pode disparar limitação do Drive
   // 1) tamanho/duração calculados previamente (atual + próximas 2)
   plInfo([ATUAL.id, ...proxMeta.map(v => v.id)]).then(infos => {
@@ -572,6 +580,20 @@ window.toggleProg = function () {
   $('prog-toggle').classList.toggle('aberto');
   $('prog-body').classList.toggle('aberto');
 };
+/* Menu lateral retrátil + recarga rápida do vídeo */
+window.aulaToggleNav = function () {
+  const off = document.querySelector('.aula-layout').classList.toggle('nav-off');
+  localStorage.setItem('aula-nav-off', off ? '1' : '');
+};
+window.aulaRecarregar = function () {
+  const f = document.querySelector('#player-slot iframe.ativo');
+  if (!f) return;
+  const src = f.src;
+  f.src = 'about:blank';
+  setTimeout(() => { f.src = src; }, 120);
+  toast('↻ Vídeo recarregado — a falha temporária do Drive normalmente some ao recarregar');
+};
+if (localStorage.getItem('aula-nav-off')) document.querySelector('.aula-layout').classList.add('nav-off');
 function atualizarProgresso() {
   const pct = LISTA.length ? Math.round(VISTAS.size / LISTA.length * 100) : 0;
   $('prog-pct-mini').textContent = pct + '%';

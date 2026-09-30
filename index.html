@@ -94,6 +94,10 @@
 .ac2-buffer i{font-size:14px}
 .ac2-buffer .ok{color:var(--green)}
 .ac2-buffer .carregando{color:var(--amber)}
+.ac2-navbtn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border-muted);background:var(--bg-elevated);color:var(--text-secondary);display:inline-flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;flex:none;transition:border-color .15s,color .15s}
+.ac2-navbtn:hover{border-color:var(--teal);color:var(--teal)}
+.ac2-layout.nav-off{grid-template-columns:minmax(0,1fr)}
+.ac2-layout.nav-off .ac2-side{display:none}
 .ac2-card{background:var(--bg-surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--border-muted);border-radius:14px;padding:18px 20px;margin-top:14px}
 .ac2-bc{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:12.5px;color:var(--text-muted);margin-bottom:8px}
 .ac2-bc b{color:var(--text-primary);font-weight:600}
@@ -1157,7 +1161,11 @@ mark.exam-highlight {
           <div class="ac2-player" id="ac2-player">
             <div class="ac2-ph" id="ac2-ph"><i class="ph ph-play-circle"></i><span>Selecione uma videoaula no menu ao lado</span></div>
           </div>
-          <div class="ac2-buffer" id="ac2-buffer"></div>
+          <div class="ac2-buffer">
+            <button class="ac2-navbtn" onclick="ac2ToggleNav()" title="Mostrar/ocultar menu de navegação"><i class="ph ph-sidebar-simple"></i></button>
+            <button class="ac2-navbtn" onclick="ac2Recarregar()" title="Recarregar vídeo (resolve falha temporária do Drive)"><i class="ph ph-arrow-clockwise"></i></button>
+            <span id="ac2-buffer"></span>
+          </div>
           <div class="ac2-card">
             <div class="ac2-bc" id="ac2-bc"></div>
             <h1 class="ac2-titulo" id="ac2-titulo">Carregando acervo…</h1>
@@ -5077,6 +5085,7 @@ function ac2Init() {
 function renderAcervo() {
   const arvore = $('ac2-arvore');
   if (!arvore) return;
+  if (lsGet('ac2-nav-off', false)) $('ac2-layout').classList.add('nav-off');
   ac2Init().then(() => {
     ac2RenderArvore();
     ac2Progresso();
@@ -5170,8 +5179,9 @@ function ac2Buffer() {
   const atual = AC2.indice.get(AC2.atualId);
   const i = AC2.LISTA.findIndex(x => x.id === AC2.atualId);
   const prox = AC2.LISTA.slice(i + 1, i + 2);
+  const proxMeta = AC2.LISTA.slice(i + 1, i + 4); // tamanho/duração calculados com antecedência (3 à frente)
   const st = $('ac2-buffer');
-  ac2Info([AC2.atualId, ...prox.map(v => v.id)]).then(infos => {
+  ac2Info([AC2.atualId, ...proxMeta.map(v => v.id)]).then(infos => {
     const a = infos[0], mb = $('ac2-bmeta');
     if (a && a.sizeMB) {
       mb.classList.remove('carregando');
@@ -5184,11 +5194,27 @@ function ac2Buffer() {
     if (prox[0]) {
       const tam = infos[1] && infos[1].sizeMB ? ' (' + infos[1].sizeMB + ' MB' + (infos[1].durLabel ? ', ' + infos[1].durLabel : '') + ')' : '';
       st.innerHTML = '<i class="ph ph-lightning carregando"></i> Buffer inteligente: pré-carregando <b>&nbsp;' + esc(prox[0].titulo) + '&nbsp;</b>' + esc(tam) + '…';
-      setTimeout(() => { if (AC2.iframes.has(prox[0].id)) st.innerHTML = '<i class="ph ph-check-circle ok"></i> Buffer inteligente: <b>&nbsp;' + esc(prox[0].titulo) + '&nbsp;</b> pré-carregada — troque sem esperar.'; }, 5000);
+      setTimeout(() => {
+        if (AC2.iframes.has(prox[0].id)) st.innerHTML = '<i class="ph ph-check-circle ok"></i> Buffer inteligente: <b>&nbsp;' + esc(prox[0].titulo) + '&nbsp;</b> pré-carregada — troque sem esperar. Se o Drive dar falha temporária, clique em ↻.';
+      }, 5000);
     } else st.innerHTML = '';
   });
   prox.forEach(v => { if (!AC2.iframes.has(v.id)) ac2CriarIframe(v, false); });
 }
+
+// Menu lateral retrátil: some e o player ocupa a tela toda (estado salvo)
+window.ac2ToggleNav = function () {
+  const off = $('ac2-layout').classList.toggle('nav-off');
+  lsSet('ac2-nav-off', off);
+};
+window.ac2Recarregar = function () {
+  const f = document.querySelector('#ac2-player iframe.ativo');
+  if (!f) return;
+  const src = f.src;
+  f.src = 'about:blank';
+  setTimeout(() => { f.src = src; }, 120);
+  toast('↻ Vídeo recarregado — a falha temporária do Drive normalmente some ao recarregar');
+};
 
 window.ac2Abrir = function (id, silencioso) {
   const v = AC2.indice.get(id); if (!v) return;
