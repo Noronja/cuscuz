@@ -63,6 +63,25 @@
 .pl-kpi div{background:var(--bg-surface);border:1px solid var(--border-muted);border-radius:12px;padding:12px;text-align:center}
 .pl-kpi b{font-size:20px;display:block}
 .pl-kpi span{font-size:11px;color:var(--text-muted)}
+/* Menu do curso dentro do Acervo */
+.pl-menu-arvore{margin-top:10px;max-height:440px;overflow-y:auto;border:1px solid var(--border-muted);border-radius:12px;background:var(--bg-surface);padding:8px;scrollbar-width:thin}
+.pl-menu-arvore::-webkit-scrollbar{width:8px}
+.pl-menu-arvore::-webkit-scrollbar-thumb{background:var(--border-muted);border-radius:99px}
+.pl-mod{border:1px solid var(--border-muted);border-radius:10px;margin-bottom:6px;overflow:hidden}
+.pl-mod-btn,.pl-sub-btn{width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;border:0;background:transparent;color:var(--text-primary);font-size:13px;font-weight:700;text-align:left;cursor:pointer}
+.pl-mod-btn:hover,.pl-sub-btn:hover{background:var(--bg-elevated)}
+.pl-mod-btn span,.pl-sub-btn span{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--text-muted);background:var(--bg-elevated);border:1px solid var(--border-muted);border-radius:99px;padding:2px 8px}
+.pl-mod-lista,.pl-sub-lista{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease}
+.pl-mod.aberto .pl-mod-lista,.pl-sub.aberto .pl-sub-lista{grid-template-rows:1fr}
+.pl-mod-lista>div,.pl-sub-lista>div{overflow:hidden}
+.pl-sub{border-top:1px solid var(--border-muted)}
+.pl-sub-btn{padding:8px 12px 8px 22px;font-weight:600;font-size:12.5px}
+.pl-sub-btn::before{content:'›';color:var(--text-muted);transition:transform .2s;display:inline-block}
+.pl-sub.aberto .pl-sub-btn::before{transform:rotate(90deg)}
+.pl-aula{display:flex;align-items:center;gap:8px;padding:7px 12px 7px 34px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;border-top:1px solid var(--border-muted)}
+.pl-aula:hover{background:var(--accent-dim);color:var(--text-primary)}
+.pl-aula i{color:var(--teal);flex:none}
+.pl-aula span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -1066,6 +1085,20 @@ mark.exam-highlight {
           <input type="text" id="drive-filter-input" class="drive-filter-input" placeholder="🔎 Filtrar nesta pasta..." oninput="filterCurrentDriveFolder(this.value)">
           <button class="filter-pill" onclick="openFavorites()"><i class="ph ph-star" style="color:#FFC107"></i> Favoritos</button>
           <button class="filter-pill" onclick="refreshCurrentDriveFolder()"><i class="ph ph-arrows-clockwise" style="color:var(--teal)"></i> Atualizar Drive</button>
+        </div>
+      </div>
+
+      <div style="margin:0 20px 12px">
+        <button class="filter-pill" onclick="plMenuToggle()" style="width:100%;justify-content:space-between;padding:12px 16px;border-radius:14px">
+          <span style="display:flex;align-items:center;gap:9px;font-weight:700"><i class="ph ph-tree-structure" style="color:var(--teal);font-size:18px"></i> Menu do curso — todas as videoaulas por curso e disciplina</span>
+          <i class="ph ph-caret-down" id="pl-menu-caret"></i>
+        </button>
+        <div id="pl-menu-acervo" style="display:none;margin-top:10px">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input type="search" id="pl-menu-busca" placeholder="🔎 Buscar videoaula em todo o acervo…" oninput="plMenuBusca()" style="flex:1;min-width:220px;padding:10px 14px;border-radius:10px;background:var(--bg-elevated);border:1px solid var(--border-muted);color:var(--text-primary);font-size:13px;outline:none">
+            <span id="pl-menu-stats" style="font-size:12px;color:var(--text-muted)"></span>
+          </div>
+          <div id="pl-menu-arvore" class="pl-menu-arvore"><div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">Carregando acervo…</div></div>
         </div>
       </div>
 
@@ -4815,6 +4848,86 @@ window.plNovoCronograma = function () {
   localStorage.removeItem('planner-ia-plan');
   PL_PDFS = []; PL_PROVAS = []; PL_MATERIAS = [];
   renderPlannerIA();
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   MENU DO CURSO NO ACERVO — árvore curso → disciplina → videoaula
+   (mesma navegação da página de aula, dentro do app)
+   ═══════════════════════════════════════════════════════════════ */
+let plMenuDados = null;
+const plMenuNorm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+async function plMenuCarregar() {
+  if (plMenuDados) return plMenuDados;
+  const resp = await fetch('/acervo-manifest.json');
+  const data = await resp.json();
+  const arvore = new Map(), ordem = [];
+  (data.videos || []).forEach(v => {
+    const curso = v.course || 'Geral';
+    const disc = String(v.d || '').replace(/\.(mp4|webm|mkv|mov|pdf)$/i, '').trim() || 'Geral';
+    if (!arvore.has(curso)) { arvore.set(curso, new Map()); ordem.push(curso); }
+    if (!arvore.get(curso).has(disc)) arvore.get(curso).set(disc, []);
+    arvore.get(curso).get(disc).push({ id: v.id, t: v.t || '(sem título)' });
+  });
+  plMenuDados = { arvore, ordem };
+  return plMenuDados;
+}
+
+window.plMenuToggle = async function () {
+  const panel = $('pl-menu-acervo');
+  const abrindo = panel.style.display === 'none' || !panel.style.display;
+  panel.style.display = abrindo ? 'block' : 'none';
+  $('pl-menu-caret').className = abrindo ? 'ph ph-caret-up' : 'ph ph-caret-down';
+  if (abrindo && !panel.dataset.pronto) {
+    panel.dataset.pronto = '1';
+    try {
+      const { arvore, ordem } = await plMenuCarregar();
+      let total = 0; arvore.forEach(discs => discs.forEach(l => total += l.length));
+      $('pl-menu-stats').textContent = total.toLocaleString('pt-BR') + ' videoaulas · ' + ordem.length + ' cursos';
+      plMenuRender(arvore, ordem, '');
+    } catch (e) {
+      $('pl-menu-arvore').innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">Não foi possível carregar o acervo.</div>';
+    }
+  }
+};
+
+function plMenuRender(arvore, ordem, filtro) {
+  const q = plMenuNorm(filtro || '').trim();
+  let html = '', encontrados = 0;
+  ordem.forEach(curso => {
+    const discs = arvore.get(curso);
+    let modTotal = 0;
+    const discHtml = [];
+    [...discs.entries()].forEach(([disc, aulas]) => {
+      const hits = q ? aulas.filter(a => plMenuNorm(a.t + ' ' + disc + ' ' + curso).includes(q)) : aulas;
+      if (q && !hits.length) return;
+      modTotal += hits.length; encontrados += hits.length;
+      discHtml.push(
+        '<div class="pl-sub' + (q ? ' aberto' : '') + '">' +
+          '<button class="pl-sub-btn" onclick="this.parentElement.classList.toggle(\'aberto\')">' + esc(disc) + '<span>' + hits.length + '</span></button>' +
+          '<div class="pl-sub-lista"><div>' + hits.slice(0, 300).map(a =>
+            '<div class="pl-aula" data-id="' + a.id + '" data-t="' + esc(a.t) + '" onclick="plMenuAbrirEl(this)" title="' + esc(a.t) + '"><i class="ph ph-play-circle"></i><span>' + esc(a.t) + '</span></div>').join('') +
+            (hits.length > 300 ? '<div class="pl-aula" style="color:var(--text-muted)">… mais ' + (hits.length - 300) + ' (refine a busca)</div>' : '') +
+          '</div></div></div>');
+    });
+    if (q && !modTotal) return;
+    const totalCurso = q ? modTotal : [...discs.values()].reduce((t, l) => t + l.length, 0);
+    html += '<div class="pl-mod' + (q ? ' aberto' : '') + '">' +
+      '<button class="pl-mod-btn" onclick="this.parentElement.classList.toggle(\'aberto\')">' + esc(curso) + '<span>' + totalCurso.toLocaleString('pt-BR') + '</span></button>' +
+      '<div class="pl-mod-lista"><div>' + discHtml.join('') + '</div></div></div>';
+  });
+  $('pl-menu-arvore').innerHTML = html || '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">Nenhuma videoaula encontrada.</div>';
+  $('pl-menu-stats').textContent = q ? encontrados + ' resultado(s) para "' + filtro + '"' : plMenuDados.ordem.length + ' cursos';
+}
+window.plMenuBusca = function () {
+  if (!plMenuDados) return;
+  plMenuRender(plMenuDados.arvore, plMenuDados.ordem, $('pl-menu-busca').value);
+};
+// Abre pelo player do app com o título real do acervo
+window.plMenuAbrirEl = function (el) {
+  openDriveItemById(el.dataset.id);
+  const t = $('player-title');
+  if (t) t.textContent = el.dataset.t || t.textContent;
 };
 </script>
 </body>
