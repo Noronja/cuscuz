@@ -11,6 +11,59 @@
 <meta property="og:description" content="Planejador de estudos médicos, cronograma inteligente, acervo completo de videoaulas, flashcards SRS e simulados com interface Liquid Glass inspirada em visionOS.">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,700&display=swap" rel="stylesheet">
 <script defer src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+/* ═══ Cronograma IA (Planejador) ═══ */
+.pl-card{background:var(--bg-surface);border:1px solid var(--border-muted);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.pl-card h3{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;margin-bottom:10px}
+.pl-row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.pl-input{flex:1;min-width:120px;padding:9px 12px;border-radius:10px;background:var(--bg-elevated);border:1px solid var(--border-muted);color:var(--text-primary);font-size:13px;outline:none}
+.pl-input:focus{border-color:var(--teal)}
+.pl-del{border:0;background:transparent;color:var(--rose);font-size:17px;cursor:pointer;padding:4px}
+.pl-cta{width:100%;padding:13px;border:0;border-radius:12px;background:var(--accent-gradient,linear-gradient(90deg,#0d9488,#0ea5e9));color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.pl-cta:disabled{opacity:.5;cursor:wait}
+.pl-semana{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-bottom:10px}
+.pl-dia{background:var(--bg-elevated);border:1px solid var(--border-muted);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:5px;min-height:96px}
+.pl-dia.vespera{border-color:var(--amber)}
+.pl-dia.prova{border-color:var(--rose)}
+.pl-dia.hoje{outline:2px solid var(--teal);outline-offset:-1px}
+.pl-dia.passado{opacity:.5}
+.pl-dia-head{font-size:10.5px;font-weight:700;color:var(--text-muted);display:flex;justify-content:space-between;gap:4px;text-transform:uppercase;letter-spacing:.03em}
+.pl-badge{font-size:9px;font-weight:800;padding:1px 6px;border-radius:99px;text-transform:uppercase}
+.pl-badge.vespera{background:rgba(245,158,11,.15);color:var(--amber)}
+.pl-badge.prova{background:rgba(214,69,69,.18);color:var(--rose)}
+.pl-bloco{font-size:11px;border-radius:8px;padding:5px 7px;cursor:pointer;border:1px solid transparent;line-height:1.35;text-align:left}
+.pl-bloco.conteudo{background:rgba(59,130,246,.13);border-color:rgba(59,130,246,.4)}
+.pl-bloco.revisao{background:rgba(13,148,136,.13);border-color:rgba(13,148,136,.45)}
+.pl-bloco.prova{background:rgba(214,69,69,.16);border-color:var(--rose);cursor:default}
+.pl-bloco b{display:block;font-size:10px;opacity:.75;text-transform:uppercase;letter-spacing:.03em}
+.pl-bloco.feito{opacity:.45;text-decoration:line-through}
+.pl-nao-estudei{margin-top:auto;border:1px dashed var(--border-muted);background:transparent;color:var(--text-muted);font-size:10px;border-radius:8px;padding:4px;cursor:pointer}
+.pl-nao-estudei:hover{color:var(--rose);border-color:var(--rose)}
+.pl-modo-btns{display:flex;gap:12px;margin-top:14px}
+.pl-modo{flex:1;padding:18px 12px;border-radius:14px;border:1px solid var(--border-muted);background:var(--bg-elevated);color:var(--text-primary);cursor:pointer;text-align:center;font-size:14px;font-weight:700;transition:border-color .15s,transform .1s}
+.pl-modo:hover{border-color:var(--teal);transform:translateY(-2px)}
+.pl-modo i{font-size:30px;display:block;margin-bottom:8px;color:var(--teal)}
+.pl-lock{display:flex;gap:10px;align-items:flex-start;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.4);border-radius:12px;padding:12px;font-size:13px;line-height:1.5}
+.pl-flash{perspective:1000px;height:230px;cursor:pointer;margin:10px 0}
+.pl-flash-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s}
+.pl-flash.virada .pl-flash-inner{transform:rotateY(180deg)}
+.pl-flash-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:14px;padding:18px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:15px;line-height:1.5;overflow:auto}
+.pl-flash-face.frente{background:var(--bg-elevated);border:1px solid var(--border-muted)}
+.pl-flash-face.verso{background:rgba(13,148,136,.12);border:1px solid var(--teal);transform:rotateY(180deg)}
+.pl-fc-notas{display:flex;gap:8px}
+.pl-fc-notas button{flex:1;padding:11px;border-radius:10px;border:1px solid var(--border-muted);background:var(--bg-elevated);color:var(--text-primary);font-weight:700;font-size:13px;cursor:pointer}
+.pl-fc-notas .errei:hover{border-color:var(--rose);color:var(--rose)}
+.pl-fc-notas .bom:hover{border-color:var(--amber);color:var(--amber)}
+.pl-fc-notas .facil:hover{border-color:var(--green);color:var(--green)}
+.pl-check{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border-radius:10px;background:var(--bg-elevated);margin-top:6px;font-size:13px;cursor:pointer;line-height:1.4}
+.pl-check input{margin-top:2px;accent-color:var(--teal)}
+.pl-chip-pdf{display:inline-flex;align-items:center;gap:6px;background:var(--bg-elevated);border:1px solid var(--border-muted);border-radius:99px;padding:5px 11px;font-size:12px;margin:4px 4px 0 0}
+.pl-chip-pdf i{color:var(--rose)}
+.pl-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.pl-kpi div{background:var(--bg-surface);border:1px solid var(--border-muted);border-radius:12px;padding:12px;text-align:center}
+.pl-kpi b{font-size:20px;display:block}
+.pl-kpi span{font-size:11px;color:var(--text-muted)}
+</style>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -873,6 +926,7 @@ mark.exam-highlight {
         <div class="nav-item" data-view="view-acervo" onclick="go('view-acervo')"><i class="ph ph-folder-notch-open"></i><span id="drive-btn-label">Cursos & Acervo</span></div>
         <div class="nav-item" data-view="view-calendario" onclick="go('view-calendario')"><i class="ph ph-calendar-blank"></i>Calendário</div>
         <div class="nav-item" data-view="view-cronograma" onclick="go('view-cronograma')"><i class="ph ph-calendar-check"></i>Cronograma</div>
+        <div class="nav-item" data-view="view-planneria" onclick="go('view-planneria')"><i class="ph ph-calendar-gear"></i>Cronograma IA</div>
         <div class="nav-item" data-view="view-semana" onclick="go('view-semana')"><i class="ph ph-target"></i>Semana Atual</div>
         <div class="nav-item" data-view="view-preparatorio" onclick="go('view-preparatorio')"><i class="ph ph-graduation-cap"></i>Preparatório</div>
         <div class="nav-item" data-view="view-treino" onclick="go('view-treino')"><i class="ph ph-exam"></i>Treino</div>
@@ -938,6 +992,7 @@ mark.exam-highlight {
     </div>
 
     <div id="view-cronograma" class="view-section"><div class="pad" id="schedule-view"></div></div>
+    <div id="view-planneria" class="view-section"><div class="pad" id="planner-ia-root"></div></div>
     <div id="view-semana" class="view-section"><div class="pad" id="week-view"></div></div>
 
     <div id="view-preparatorio" class="view-section" style="padding-top:20px">
@@ -1786,7 +1841,7 @@ function go(id){$$('.view-section').forEach(v=>v.classList.remove('active'));$(i
  document.querySelector('.sidebar').classList.remove('open');$('mobile-sidebar-backdrop').classList.remove('open');
  document.querySelector('.main').scrollTop=0;
  ({'view-inicio':renderHome,'view-calendario':renderCalendar,'view-cronograma':renderSchedule,'view-semana':renderWeek,
-   'view-preparatorio':renderPrep,'view-acervo':renderAcervo,'view-treino':renderDecks,'view-simulados':renderSim}[id]||(()=>{}))()}
+   'view-preparatorio':renderPrep,'view-acervo':renderAcervo,'view-treino':renderDecks,'view-simulados':renderSim,'view-planneria':renderPlannerIA}[id]||(()=>{}))()}
 function refreshAll(){renderHome();renderCalendar();renderSchedule();renderWeek();renderPrep();renderAcervo();renderDecks();renderSim();renderDash();updateBadges();
  const n=DRIVE.videos.length+DRIVE.apostilas.length+ACERVO.videos.length+ACERVO.apostilas.length;const lbl=$('drive-btn-label');if(lbl){lbl.textContent=n?'Cursos & Acervo ('+n+')':'Cursos & Acervo'}}
 function refreshLight(){renderDash();renderCalendar();renderSchedule();renderWeek();renderHome();updateBadges()}
@@ -4338,6 +4393,408 @@ document.addEventListener('pointerdown', (e) => {
   target.appendChild(ripple);
   setTimeout(() => ripple.remove(), 600);
 });
+</script>
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   PLANEJADOR DE CRONOGRAMA IA — graduação + residência
+   Regra absoluta: revisão = ESTUDO ATIVO (flashcards/questões)
+   ═══════════════════════════════════════════════════════════════ */
+let PL_PDFS = [], PL_PROVAS = [], PL_MATERIAS = [];
+let PL_FC = null;
+const plDow = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const plHoje = () => { const d = new Date(); return d.toISOString().slice(0, 10); };
+
+function renderPlannerIA() {
+  const plan = lsGet('planner-ia-plan', null);
+  const root = $('planner-ia-root');
+  if (plan && plan.dias) renderPlannerCalendario(root, plan);
+  else renderPlannerConfig(root);
+}
+
+/* ── 1. Configuração (entrada de dados) ── */
+function renderPlannerConfig(root) {
+  if (!PL_MATERIAS.length) PL_MATERIAS = [{ nome: '', dificuldade: 'Médio' }];
+  if (!PL_PROVAS.length) PL_PROVAS = [{ nome: '', data: '', tipo: 'resid' }];
+  root.innerHTML =
+    '<h1 class="section-title" style="margin:8px 0 14px"><i class="ph ph-calendar-gear" style="color:var(--teal)"></i> Planejador de Cronograma IA</h1>' +
+    '<div style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6">Envie seus PDFs (edital, cronograma do cursinho, ementas), informe datas de prova da <b>graduação</b> e da <b>residência</b>, sua rotina e o nível de cada matéria. A IA funde tudo em um cronograma único — e <b>toda revisão nasce como estudo ativo</b> (flashcards e questões, nunca releitura passiva).</div>' +
+    '<div class="pl-card"><h3><i class="ph ph-file-pdf" style="color:var(--rose)"></i> 1. Materiais de estudo (PDFs — opcional)</h3>' +
+      '<input type="file" id="pl-pdfs" accept="application/pdf" multiple style="font-size:12px;color:var(--text-muted)" onchange="plHandlePdfs(this)">' +
+      '<div id="pl-pdf-chips"></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:6px">A IA lê o texto dos PDFs para extrair os temas mais cobrados de cada matéria.</div>' +
+    '</div>' +
+    '<div class="pl-card"><h3><i class="ph ph-target" style="color:var(--rose)"></i> 2. Provas e datas</h3><div id="pl-provas"></div>' +
+      '<button class="pl-nao-estudei" style="padding:7px 12px;font-size:12px;margin-top:8px" onclick="plAddProvaRow()"><i class="ph ph-plus"></i> Adicionar prova</button></div>' +
+    '<div class="pl-card"><h3><i class="ph ph-clock" style="color:var(--teal)"></i> 3. Rotina diária</h3>' +
+      '<div class="pl-row"><span style="font-size:13px">Carga horária disponível:</span>' +
+      '<input class="pl-input" id="pl-horas" type="number" min="1" max="12" step="0.5" value="4" style="max-width:90px"> <span style="font-size:13px">horas/dia</span></div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Cada dia recebe blocos de ~2h — conteúdo novo + revisões ativas (24h/7d/30d).</div></div>' +
+    '<div class="pl-card"><h3><i class="ph ph-books" style="color:var(--violet)"></i> 4. Matérias e dificuldade</h3><div id="pl-materias"></div>' +
+      '<button class="pl-nao-estudei" style="padding:7px 12px;font-size:12px;margin-top:8px" onclick="plAddMateriaRow()"><i class="ph ph-plus"></i> Adicionar matéria</button></div>' +
+    '<button class="pl-cta" id="pl-btn-gerar" onclick="plGenerate()"><i class="ph ph-magic-wand"></i> Gerar Cronograma com IA</button>' +
+    '<div id="pl-gerando" style="display:none;text-align:center;padding:14px;font-size:13px;color:var(--text-muted)"><i class="ph ph-circle-notch" style="animation:spin 1s linear infinite;display:inline-block"></i> Montando seu cronograma…</div>';
+  plRenderProvas(); plRenderMaterias(); plRenderPdfChips();
+}
+
+window.plAddProvaRow = function () { PL_PROVAS.push({ nome: '', data: '', tipo: 'grad' }); plRenderProvas(); };
+window.plAddMateriaRow = function () { PL_MATERIAS.push({ nome: '', dificuldade: 'Médio' }); plRenderMaterias(); };
+window.plDelProva = function (i) { PL_PROVAS.splice(i, 1); plRenderProvas(); };
+window.plDelMateria = function (i) { PL_MATERIAS.splice(i, 1); plRenderMaterias(); };
+window.plProvaChange = function (i, campo, valor) { PL_PROVAS[i][campo] = valor; };
+window.plMateriaChange = function (i, campo, valor) { PL_MATERIAS[i][campo] = valor; };
+
+function plRenderProvas() {
+  const box = $('pl-provas'); if (!box) return;
+  box.innerHTML = PL_PROVAS.map((p, i) =>
+    '<div class="pl-row">' +
+    '<input class="pl-input" placeholder="Ex.: USP 2026" value="' + esc(p.nome) + '" oninput="plProvaChange(' + i + ',\'nome\',this.value)">' +
+    '<input class="pl-input" type="date" value="' + p.data + '" onchange="plProvaChange(' + i + ',\'data\',this.value)" style="max-width:160px">' +
+    '<select class="pl-input" style="max-width:150px" onchange="plProvaChange(' + i + ',\'tipo\',this.value)">' +
+      '<option value="grad"' + (p.tipo === 'grad' ? ' selected' : '') + '>Graduação</option>' +
+      '<option value="resid"' + (p.tipo === 'resid' ? ' selected' : '') + '>Residência</option></select>' +
+    (PL_PROVAS.length > 1 ? '<button class="pl-del" onclick="plDelProva(' + i + ')" title="Remover"><i class="ph ph-x"></i></button>' : '') +
+    '</div>').join('');
+}
+function plRenderMaterias() {
+  const box = $('pl-materias'); if (!box) return;
+  box.innerHTML = PL_MATERIAS.map((m, i) =>
+    '<div class="pl-row">' +
+    '<input class="pl-input" placeholder="Ex.: Cardiologia" value="' + esc(m.nome) + '" oninput="plMateriaChange(' + i + ',\'nome\',this.value)">' +
+    '<select class="pl-input" style="max-width:150px" onchange="plMateriaChange(' + i + ',\'dificuldade\',this.value)">' +
+      ['Fácil','Médio','Difícil','Pesado'].map(d => '<option' + (m.dificuldade === d ? ' selected' : '') + '>' + d + '</option>').join('') +
+    '</select>' +
+    (PL_MATERIAS.length > 1 ? '<button class="pl-del" onclick="plDelMateria(' + i + ')" title="Remover"><i class="ph ph-x"></i></button>' : '') +
+    '</div>').join('');
+}
+
+/* PDF → texto (pdf.js sob demanda) */
+let plPdfPromise = null;
+function plCarregarPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve();
+  if (!plPdfPromise) plPdfPromise = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = () => { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; res(); };
+    s.onerror = () => rej(new Error('Falha ao carregar pdf.js'));
+    document.head.appendChild(s);
+  });
+  return plPdfPromise;
+}
+window.plHandlePdfs = async function (input) {
+  if (!input.files || !input.files.length) return;
+  try { await plCarregarPdfJs(); } catch (e) { toast('Não foi possível carregar o leitor de PDF', 'error'); return; }
+  for (const file of input.files) {
+    try {
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      let txt = '';
+      for (let p = 1; p <= Math.min(pdf.numPages, 50); p++) {
+        const page = await pdf.getPage(p);
+        const c = await page.getTextContent();
+        txt += c.items.map(i => i.str).join(' ') + '\n';
+      }
+      PL_PDFS.push({ nome: file.name, texto: txt });
+      toast('📄 ' + file.name + ' lido (' + Math.round(txt.length / 1000) + 'k caracteres)', 'success');
+    } catch (e) { toast('Erro ao ler ' + file.name, 'error'); }
+  }
+  input.value = '';
+  plRenderPdfChips();
+};
+function plRenderPdfChips() {
+  const box = $('pl-pdf-chips'); if (!box) return;
+  box.innerHTML = PL_PDFS.map(p => '<span class="pl-chip-pdf"><i class="ph ph-file-pdf"></i> ' + esc(p.nome) + ' · ' + Math.round(p.texto.length / 1000) + 'k chars <i class="ph ph-x" style="cursor:pointer" onclick="plRmPdf(\'' + esc(p.nome).replace(/'/g, '') + '\')"></i></span>').join('');
+}
+window.plRmPdf = function (nome) { PL_PDFS = PL_PDFS.filter(p => p.nome !== nome); plRenderPdfChips(); };
+
+/* Gerar */
+window.plGenerate = async function () {
+  const provas = PL_PROVAS.filter(p => p.nome && p.data);
+  const materias = PL_MATERIAS.filter(m => m.nome);
+  if (!provas.length) { toast('Informe pelo menos uma prova com data', 'error'); return; }
+  if (!materias.length) { toast('Informe pelo menos uma matéria', 'error'); return; }
+  const btn = $('pl-btn-gerar'); if (btn) btn.disabled = true;
+  $('pl-gerando').style.display = 'block';
+  try {
+    const res = await fetch('/api/planner/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        horasDia: +($('pl-horas') || {}).value || 4,
+        provas, materias,
+        pdfTexto: PL_PDFS.map(p => p.texto).join('\n').slice(0, 60000)
+      })
+    });
+    const d = await res.json();
+    if (!d.success) { toast(d.msg || 'Erro ao gerar', 'error'); return; }
+    lsSet('planner-ia-plan', d.plan);
+    toast('✅ Cronograma gerado! ' + (d.decksFila || 0) + ' decks de revisão na fila da IA', 'success');
+    if (d.plan.aviso) setTimeout(() => toast('ℹ️ ' + d.plan.aviso), 1200);
+    renderPlannerIA();
+  } catch (e) { toast('Erro de rede: ' + e.message, 'error'); }
+  finally { if (btn) btn.disabled = false; $('pl-gerando').style.display = 'none'; }
+};
+
+/* ── 2. Calendário de cards interativos ── */
+const plTipoLabel = { conteudo: 'Conteúdo', revisao24: 'Revisão 24h', revisao7: 'Revisão 7d', revisao30: 'Revisão 30d', prova: 'PROVA' };
+function plSalvarPlan(plan) { lsSet('planner-ia-plan', plan); }
+function plAcharBloco(plan, data, blocoId) {
+  const dia = plan.dias.find(d => d.data === data); if (!dia) return {};
+  const bloco = dia.blocos.find(b => b.id === blocoId) || {};
+  return { dia, bloco };
+}
+
+function renderPlannerCalendario(root, plan) {
+  const hoje = plHoje();
+  const pend = plan.dias.flatMap(d => d.blocos).filter(b => b.status === 'pendente' && b.tipo !== 'prova');
+  const feitos = plan.dias.flatMap(d => d.blocos).filter(b => (b.status === 'feito') && b.tipo !== 'prova');
+  const pct = pend.length + feitos.length ? Math.round(feitos.length / (pend.length + feitos.length) * 100) : 0;
+  const proxProva = plan.config.provas.slice().sort((a, b) => a.data < b.data ? -1 : 1).find(p => p.data >= hoje);
+  root.innerHTML =
+    '<h1 class="section-title" style="margin:8px 0 14px"><i class="ph ph-calendar-gear" style="color:var(--teal)"></i> Cronograma IA</h1>' +
+    (plan.aviso ? '<div class="pl-lock" style="margin-bottom:12px">ℹ️ ' + esc(plan.aviso) + '</div>' : '') +
+    '<div class="pl-kpi">' +
+      '<div><b>' + plan.estatisticas.dias + '</b><span>dias até a última prova</span></div>' +
+      '<div><b>' + plan.estatisticas.conteudos + '</b><span>blocos de conteúdo</span></div>' +
+      '<div><b>' + plan.estatisticas.revisoes + '</b><span>revisões ativas</span></div>' +
+      '<div><b>' + pct + '%</b><span>concluído (' + feitos.length + '/' + (feitos.length + pend.length) + ')</span></div>' +
+      (proxProva ? '<div><b>' + Math.max(0, Math.round((new Date(proxProva.data) - new Date(hoje)) / 86400000)) + 'd</b><span>até ' + esc(proxProva.nome) + '</span></div>' : '') +
+    '</div>' +
+    '<div class="pl-card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+      '<span style="font-size:12.5px;color:var(--text-muted)"><i class="ph ph-lightning" style="color:var(--teal)"></i> Toda revisão é estudo ativo — o card abre flashcards/questões, nunca texto passivo.</span>' +
+      '<span style="flex:1"></span>' +
+      '<button class="pl-nao-estudei" style="padding:7px 12px;font-size:12px" onclick="plNovoCronograma()"><i class="ph ph-arrow-counter-clockwise"></i> Novo cronograma</button>' +
+    '</div>' +
+    '<div id="pl-cal"></div>';
+  plRenderSemanas(plan);
+}
+
+function plRenderSemanas(plan) {
+  const hoje = plHoje();
+  const cal = $('pl-cal'); if (!cal) return;
+  let html = '', semana = [], nSem = 1, inicioSem = null;
+  const fechar = () => {
+    if (!semana.length) return;
+    html += '<div class="pl-card"><div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px">SEMANA ' + nSem + (inicioSem ? ' · desde ' + inicioSem : '') + '</div><div class="pl-semana">' + semana.join('') + '</div></div>';
+    semana = []; nSem++;
+  };
+  plan.dias.forEach(d => {
+    if (!inicioSem) inicioSem = d.data.slice(8) + '/' + d.data.slice(5, 7);
+    semana.push(plDiaCard(d, hoje));
+    if (semana.length === 7) fechar();
+  });
+  fechar();
+  cal.innerHTML = html || '<div class="pl-card">Cronograma vazio.</div>';
+}
+
+function plDiaCard(d, hoje) {
+  const classes = ['pl-dia'];
+  if (d.tipo === 'prova') classes.push('prova');
+  if (d.tipo === 'vespera') classes.push('vespera');
+  if (d.data === hoje) classes.push('hoje');
+  if (d.data < hoje) classes.push('passado');
+  const badge = d.tipo === 'prova' ? '<span class="pl-badge prova">Prova</span>' : (d.tipo === 'vespera' ? '<span class="pl-badge vespera">Véspera</span>' : '');
+  const blocos = d.blocos.map(b => {
+    const cls = b.tipo === 'prova' ? 'prova' : (b.tipo === 'conteudo' ? 'conteudo' : 'revisao');
+    const nome = b.tipo === 'prova' ? esc(b.prova || 'Prova') : esc((b.materia || '') + (b.tema ? ' — ' + b.tema : ''));
+    return '<button class="pl-bloco ' + cls + (b.status === 'feito' ? ' feito' : '') + '" onclick="plOpenBloco(\'' + d.data + '\',\'' + b.id + '\')">' +
+      '<b>' + (plTipoLabel[b.tipo] || b.tipo) + '</b>' + nome + '</button>';
+  }).join('');
+  const podeMarcar = d.data >= hoje && d.blocos.some(b => b.status === 'pendente' && b.tipo !== 'prova');
+  return '<div class="' + classes.join(' ') + '">' +
+    '<div class="pl-dia-head"><span>' + plDow[d.dow] + ' ' + d.data.slice(8) + '/' + d.data.slice(5, 7) + '</span>' + badge + '</div>' +
+    blocos +
+    (podeMarcar ? '<button class="pl-nao-estudei" onclick="plNaoEstudei(\'' + d.data + '\')">⚠️ Não estudei</button>' : '') +
+    '</div>';
+}
+
+/* ── 3. Ações sobre blocos ── */
+window.plOpenBloco = function (data, blocoId) {
+  const plan = lsGet('planner-ia-plan', null); if (!plan) return;
+  const { dia, bloco } = plAcharBloco(plan, data, blocoId);
+  if (!bloco.id) return;
+  if (bloco.tipo === 'prova') { openModal('<div class="modal-title">🎯 ' + esc(bloco.prova || 'Prova') + '<button class="modal-close"><i class="ph ph-x"></i></button></div><div style="font-size:14px;line-height:1.6">Hoje é dia de prova. Boa sorte — você está preparado(a)! 🍀</div>'); return; }
+  if (bloco.tipo === 'conteudo') plOpenDashboard(data, bloco);
+  else plOpenRevisao(data, bloco);
+};
+
+/* Dashboard de tarefa (conteúdo) */
+function plOpenDashboard(data, b) {
+  const plan = lsGet('planner-ia-plan', null) || {};
+  const chkKey = data + '#' + b.id;
+  const checks = lsGet('planner-ia-check', {});
+  const topicos = (plan.config && plan.config.resumos && plan.config.resumos[b.tema]) ||
+    ['Ler o tema no material/capítulo', 'Fazer um resumo em até 5 linhas', 'Resolver 10 questões do tema'];
+  const marks = checks[chkKey] || [];
+  const estado = i => marks[i] !== undefined ? marks[i] : false;
+  openModal('<div class="modal-title">📘 ' + esc(b.tema) + '<button class="modal-close"><i class="ph ph-x"></i></button></div>' +
+    '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">' + esc(b.materia || '') + ' · dificuldade ' + esc(b.dificuldade || 'Médio') + ' · ~' + (b.horas || 2) + 'h</div>' +
+    '<h4 style="font-size:13px;margin-bottom:6px">✅ Checklist do que estudar</h4>' +
+    '<div id="pl-checks">' + topicos.map((t, i) =>
+      '<label class="pl-check"><input type="checkbox" ' + (estado(i) ? 'checked' : '') + ' onchange="plCheck(\'' + chkKey + '\',' + i + ',this.checked)"><span>' + esc(t) + '</span></label>').join('') + '</div>' +
+    '<h4 style="font-size:13px;margin:14px 0 6px">📝 Resumo em tópicos (IA)</h4>' +
+    ((plan.config && plan.config.resumos && plan.config.resumos[b.tema])
+      ? '<ul style="font-size:13px;line-height:1.7;padding-left:18px">' + plan.config.resumos[b.tema].map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>'
+      : '<div style="font-size:12.5px;color:var(--text-muted);line-height:1.6">Resumos automáticos entram quando a <b>GEMINI_API_KEY</b> está configurada no servidor e um PDF foi enviado na geração.</div>') +
+    '<div class="pl-modo-btns">' +
+      '<button class="pl-modo" onclick="plConcluirBloco(\'' + data + '\',\'' + b.id + '\')"><i class="ph ph-check-circle"></i>Concluir bloco</button>' +
+      '<button class="pl-modo" onclick="plTreinarTema(\'' + esc(b.materia || '').replace(/'/g, '') + '\',\'' + esc(b.tema).replace(/'/g, '') + '\')"><i class="ph ph-exam"></i>Treinar este tema</button>' +
+    '</div>');
+}
+window.plCheck = function (chkKey, i, val) {
+  const checks = lsGet('planner-ia-check', {});
+  if (!checks[chkKey]) checks[chkKey] = [];
+  checks[chkKey][i] = val; lsSet('planner-ia-check', checks);
+};
+window.plConcluirBloco = function (data, blocoId) {
+  const plan = lsGet('planner-ia-plan', null); if (!plan) return;
+  const { dia, bloco } = plAcharBloco(plan, data, blocoId);
+  bloco.status = 'feito'; plSalvarPlan(plan);
+  closeModals(); renderPlannerIA();
+  addXP(20, 'Bloco de estudo concluído');
+  toast('✅ Bloco concluído — revisões agendadas em 24h/7d/30d', 'success');
+};
+
+/* Modal de revisão — REGRA ABSOLUTA: só estudo ativo */
+function plOpenRevisao(data, b) {
+  const tipoLabel = plTipoLabel[b.tipo] || 'Revisão';
+  openModal('<div class="modal-title">🔄 ' + tipoLabel + ' — ' + esc(b.tema) + '<button class="modal-close"><i class="ph ph-x"></i></button></div>' +
+    '<div class="pl-lock"><i class="ph ph-lock-key" style="font-size:20px;color:var(--amber)"></i><span><b>Revisão é 100% Estudo Ativo.</b><br>Por regra do sistema, este card não abre textos, PDFs ou vídeos: o objetivo é <b>recuperar o conteúdo da memória</b> com testes práticos.</span></div>' +
+    '<div id="pl-deck-status" style="font-size:12px;color:var(--text-muted);margin-top:10px">Verificando deck do tema…</div>' +
+    '<div class="pl-modo-btns">' +
+      '<button class="pl-modo" onclick="plTreinarTema(\'' + esc(b.materia || '').replace(/'/g, '') + '\',\'' + esc(b.tema).replace(/'/g, '') + '\')"><i class="ph ph-exam"></i>Modo Questões</button>' +
+      '<button class="pl-modo" onclick="plFlashcards(\'' + esc(b.materia || '').replace(/'/g, '') + '\',\'' + esc(b.tema).replace(/'/g, '') + '\')"><i class="ph ph-cards"></i>Modo Flashcards</button>' +
+    '</div>' +
+    '<div style="text-align:right;margin-top:10px"><button class="pl-nao-estudei" style="padding:6px 12px;font-size:11.5px" onclick="plConcluirRevisao(\'' + data + '\',\'' + b.id + '\')">Marcar revisão como concluída</button></div>');
+  fetch('/api/planner/deck?materia=' + encodeURIComponent(b.materia || '') + '&tema=' + encodeURIComponent(b.tema))
+    .then(r => r.json()).then(d => {
+      const el = $('pl-deck-status'); if (!el) return;
+      if (d.pronto && d.deck) el.innerHTML = '✅ Deck pronto (' + (d.deck.fonte === 'gemini' ? 'gerado pela IA' : 'banco local') + '): ' + (d.deck.flashcards || []).length + ' flashcards · ' + (d.deck.questoes || []).length + ' questões';
+      else el.innerHTML = '⏳ A IA está montando o deck deste tema em segundo plano — pode abrir agora, o modo fica pronto sozinho.';
+    }).catch(() => {});
+}
+window.plConcluirRevisao = function (data, blocoId) {
+  const plan = lsGet('planner-ia-plan', null); if (!plan) return;
+  const { bloco } = plAcharBloco(plan, data, blocoId);
+  bloco.status = 'feito'; plSalvarPlan(plan);
+  closeModals(); renderPlannerIA(); addXP(10, 'Revisão ativa concluída');
+};
+
+/* Modo Questões → Treino Livre com o tema do card */
+window.plTreinarTema = async function (materia, tema) {
+  closeModals();
+  try {
+    const d = await (await fetch('/api/planner/deck?materia=' + encodeURIComponent(materia || '') + '&tema=' + encodeURIComponent(tema))).json();
+    const qs = ((d.deck && d.deck.questoes) || []).filter(q => q.statement && Array.isArray(q.options) && q.options.length >= 2 && typeof q.correctIndex === 'number');
+    if (qs.length) {
+      go('view-treino');
+      startTreinoSimulator(qs.map((q, i) => ({
+        id: q.id || 'q-pl-' + i + '-' + Date.now(), specialty: q.specialty || materia || tema, subspecialty: tema,
+        institution: q.institution || 'Cronograma IA', year: q.year || new Date().getFullYear(),
+        statement: q.statement,
+        options: q.options.map((o, oi) => /^[A-E]\)/.test(String(o)) ? o : (['A', 'B', 'C', 'D', 'E'][oi] + ') ' + o)),
+        correctIndex: q.correctIndex, correctLetter: q.correctLetter || ['A', 'B', 'C', 'D', 'E'][q.correctIndex],
+        explanation: q.explanation || '', difficulty: q.difficulty || 'Médio', tags: q.tags || [tema], source: q.source || 'Cronograma IA'
+      })));
+      toast('🎯 ' + qs.length + ' questões de ' + tema, 'success');
+      return;
+    }
+  } catch (e) { /* segue para o fallback */ }
+  go('view-treino');
+  switchTreinoTab('prontas');
+  const inp = $('bank-search-input');
+  if (inp) { inp.value = tema; filterBankQuestions(); }
+  toast('🔎 Treino Livre filtrado por: ' + tema);
+};
+
+/* Modo Flashcards → deck com Card Flip + SRS (Errei/Bom/Fácil) */
+window.plFlashcards = async function (materia, tema) {
+  const o = openModal('<div class="modal-title">🃏 Flashcards — ' + esc(tema) + '<button class="modal-close"><i class="ph ph-x"></i></button></div>' +
+    '<div id="pl-fc-area" style="text-align:center;padding:16px;font-size:13.5px;color:var(--text-muted)"><i class="ph ph-circle-notch" style="animation:spin 1s linear infinite;display:inline-block;font-size:20px"></i><br>Verificando/gerando deck do tema…</div>');
+  const area = $('pl-fc-area');
+  const deadline = Date.now() + 60000;
+  let deck = null;
+  while (Date.now() < deadline) {
+    try {
+      const d = await (await fetch('/api/planner/deck?materia=' + encodeURIComponent(materia || '') + '&tema=' + encodeURIComponent(tema))).json();
+      if (d.deck && d.deck.fonte === 'nenhuma') { deck = d.deck; break; }
+      if (d.pronto && d.deck && (d.deck.flashcards || []).length) { deck = d.deck; break; }
+      area.innerHTML = '<i class="ph ph-circle-notch" style="animation:spin 1s linear infinite;display:inline-block;font-size:22px"></i><br><br>A IA está montando seu deck<br>(10 flashcards + 3 questões sobre <b>' + esc(tema) + '</b>)…';
+    } catch (e) { break; }
+    await new Promise(r => setTimeout(r, 4000));
+  }
+  if (!area.isConnected) return;
+  if (!deck || !deck.pronto || !(deck.flashcards || []).length) {
+    area.innerHTML = '<div style="padding:10px 0">Deck indisponível agora.<br><span style="font-size:12px;color:var(--text-muted)">' + esc((deck && deck.msg) || 'Configure GEMINI_API_KEY no servidor ou sincronize questões do tema.') + '</span></div>' +
+      '<div class="pl-modo-btns"><button class="pl-modo" onclick="plTreinarTema(\'' + esc(materia || '').replace(/'/g, '') + '\',\'' + esc(tema).replace(/'/g, '') + '\')"><i class="ph ph-exam"></i>Usar Modo Questões</button></div>';
+    return;
+  }
+  PL_FC = { materia, tema, key: tema, list: deck.flashcards, i: 0, virada: false, errei: 0, bom: 0, facil: 0, fonte: deck.fonte };
+  plRenderFC();
+};
+
+function plRenderFC() {
+  const area = $('pl-fc-area'); if (!area || !PL_FC) return;
+  const r = PL_FC;
+  if (r.i >= r.list.length) {
+    area.innerHTML = '<div style="padding:18px 0"><div style="font-size:40px">🎉</div><b style="font-size:16px">Deck concluído!</b><br><br>' +
+      '✅ Fáceis: ' + r.facil + ' · 👍 Bons: ' + r.bom + ' · ❌ Erradas: ' + r.errei +
+      '<br><span style="font-size:12px;color:var(--text-muted)">Notas salvas — o algoritmo SRS vai trazer os cards errados de volta mais cedo.</span></div>' +
+      '<div class="pl-modo-btns"><button class="pl-modo" onclick="plReiniciarFC()"><i class="ph ph-arrow-clockwise"></i>Repetir deck</button>' +
+      '<button class="pl-modo" onclick="plTreinarTema(\'' + esc(r.materia || '').replace(/'/g, '') + '\',\'' + esc(r.tema).replace(/'/g, '') + '\')"><i class="ph ph-exam"></i>Modo Questões</button></div>';
+    confetti();
+    return;
+  }
+  const c = r.list[r.i];
+  area.innerHTML =
+    '<div style="font-size:11.5px;color:var(--text-muted);text-align:left">Card ' + (r.i + 1) + '/' + r.list.length + ' · ' + esc(r.tema) + (r.fonte === 'gemini' ? ' · deck IA' : ' · banco local') + '</div>' +
+    '<div class="pl-flash' + (r.virada ? ' virada' : '') + '" id="pl-fc-card" onclick="plFcVirar()"><div class="pl-flash-inner">' +
+      '<div class="pl-flash-face frente">' + esc(c.frente || c.pergunta || c.front || 'Card sem frente') + '<div style="position:absolute;bottom:10px;font-size:10.5px;color:var(--text-muted)">clique para virar</div></div>' +
+      '<div class="pl-flash-face verso">' + esc(c.verso || c.resposta || c.back || '—') + '</div>' +
+    '</div></div>' +
+    (r.virada
+      ? '<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">Como você foi?</div><div class="pl-fc-notas">' +
+        '<button class="errei" onclick="plFcNota(\'errei\')">❌ Errei</button>' +
+        '<button class="bom" onclick="plFcNota(\'bom\')">👍 Bom</button>' +
+        '<button class="facil" onclick="plFcNota(\'facil\')">⚡ Fácil</button></div>'
+      : '<div style="font-size:12px;color:var(--text-muted)">Pense na resposta e clique na carta para conferir.</div>');
+}
+window.plFcVirar = function () { if (!PL_FC) return; PL_FC.virada = true; plRenderFC(); };
+window.plReiniciarFC = function () { PL_FC.i = 0; PL_FC.virada = false; PL_FC.errei = PL_FC.bom = PL_FC.facil = 0; plRenderFC(); };
+window.plFcNota = function (g) {
+  if (!PL_FC || !PL_FC.virada) return;
+  const srs = lsGet('planner-ia-srs', {});
+  const dias = { errei: 1, bom: 5, facil: 10 }[g] || 3;
+  const d = new Date(); d.setDate(d.getDate() + dias);
+  srs[PL_FC.key + '#' + PL_FC.i] = { g, d: d.toISOString().slice(0, 10) };
+  lsSet('planner-ia-srs', srs);
+  if (g === 'errei') PL_FC.errei++; else if (g === 'bom') PL_FC.bom++; else PL_FC.facil++;
+  PL_FC.i++; PL_FC.virada = false;
+  plRenderFC();
+};
+
+/* ── 4. Replanejamento adaptativo ("Não estudei") ── */
+window.plNaoEstudei = async function (data) {
+  if (!confirm('Marcar ' + data + ' como não estudado? O conteúdo atrasado será redistribuído racionalmente até a data da prova.')) return;
+  const plan = lsGet('planner-ia-plan', null); if (!plan) return;
+  toast('📅 Replanejando cronograma…');
+  try {
+    const res = await fetch('/api/planner/replan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }) });
+    const d = await res.json();
+    if (!d.success) { toast(d.msg || 'Erro ao replanejar', 'error'); return; }
+    const novo = d.plan;
+    novo.dias = [...(novo.diasAnteriores || []), ...novo.dias];
+    delete novo.diasAnteriores;
+    plSalvarPlan(novo);
+    renderPlannerIA();
+    toast('📅 Replanejado: ' + d.movidos + ' bloco(s) redistribuído(s) até a prova', 'success');
+  } catch (e) { toast('Erro de rede: ' + e.message, 'error'); }
+};
+
+window.plNovoCronograma = function () {
+  if (!confirm('Criar um novo cronograma? O atual será substituído.')) return;
+  localStorage.removeItem('planner-ia-plan');
+  PL_PDFS = []; PL_PROVAS = []; PL_MATERIAS = [];
+  renderPlannerIA();
+};
 </script>
 </body>
 </html>

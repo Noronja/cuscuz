@@ -1344,6 +1344,298 @@ app.post('/api/questions/auto-feed', async (req, res) => {
   res.json({ success: true, count: bank.length, message: 'Auto-feed executado com sucesso' });
 });
 
+/* ═══════════════════════════════════════════════════════════════
+   PLANEJADOR DE CRONOGRAMA IA — graduação + residência
+   Regra absoluta: toda revisão é ESTUDO ATIVO (flashcards/questões).
+   ═══════════════════════════════════════════════════════════════ */
+const DECKS_FILE = path.join(__dirname, 'data', 'planner-decks.json');
+function readDecks() { try { return JSON.parse(fs.readFileSync(DECKS_FILE, 'utf8')); } catch { return {}; } }
+function writeDecks(d) { try { fs.mkdirSync(path.dirname(DECKS_FILE), { recursive: true }); fs.writeFileSync(DECKS_FILE, JSON.stringify(d, null, 2), 'utf8'); } catch (err) { console.warn('⚠️ [Planner] Falha ao salvar decks:', err.message); } }
+const plDeckKey = (materia, tema) => hwqNorm(materia) + '::' + hwqNorm(tema);
+const PESO_DIFICULDADE = { facil: 1, medio: 1.5, dificil: 2, pesado: 2.5 };
+const TEMAS_POR_PESO = { facil: 3, medio: 4, dificil: 5, pesado: 6 };
+const plOrdemTipo = t => ({ revisao24: 0, revisao7: 1, revisao30: 2 })[t] ?? 3;
+function plIso(d) { return d.toISOString().slice(0, 10); }
+function plAddDias(isoStr, n) { const d = new Date(isoStr + 'T12:00:00'); d.setDate(d.getDate() + n); return plIso(d); }
+function plDiff(a, b) { return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000); }
+
+// Motor determinístico: equilibra carga, cruza datas de prova e aplica a regra de conflito
+function plGerarPlan(config, extras = {}) {
+  const hoje = config.inicio;
+  const provas = (config.provas || []).slice().sort((a, b) => (a.data < b.data ? -1 : 1));
+  const fim = provas.length ? provas[provas.length - 1].data : plAddDias(hoje, 30);
+  if (plDiff(hoje, fim) < 0) return { erro: 'A última prova precisa ser hoje ou depois.' };
+  const mapaProva = {}; provas.forEach(p => { mapaProva[p.data] = p; });
+  const vesperasDe = {}; provas.forEach(p => { const v = plAddDias(p.data, -1); (vesperasDe[v] = vesperasDe[v] || []).push(p.nome); });
+  const blocosPorDia = Math.max(1, Math.min(4, Math.floor((+config.horasDia || 4) / 2)));
+
+  // Fila de conteúdo: round-robin ponderado pela dificuldade (matérias pesadas entram mais vezes por rodada)
+  const filas = (config.materias || []).filter(m => m.nome).map(m => {
+    const dKey = normLower(m.dificuldade || 'medio');
+    const temasIA = extras.temasPorMateria && extras.temasPorMateria[m.nome];
+    const qtd = TEMAS_POR_PESO[dKey] || 4;
+    const temas = (Array.isArray(temasIA) && temasIA.length) ? temasIA.slice(0, 14) : Array.from({ length: qtd }, (_, i) => `Tópico ${i + 1}`);
+    return { nome: m.nome, dificuldade: m.dificuldade || 'Médio', peso: PESO_DIFICULDADE[dKey] || 1.5, pendentes: temas };
+  });
+  const fila = [];
+  let rodada = 0, avancou = true;
+  while (avancou && rodada < 80) {
+    avancou = false; rodada++;
+    for (const m of filas) {
+      let vez = Math.max(1, Math.round(m.peso));
+      while (vez-- > 0 && m.pendentes.length) {
+        const tema = m.pendentes.shift();
+        fila.push({ materia: m.nome, tema, dificuldade: m.dificuldade, key: plDeckKey(m.nome, tema) });
+        avancou = true;
+      }
+    }
+  }
+  (extras.pendentes || []).forEach(p => fila.unshift(p)); // replan: atrasados voltam na frente
+
+  const revisoesAgendadas = {}; // data -> [bloco]
+  function agendarRevisoes(deData, bloco) {
+    [{ tipo: 'revisao24', off: 1 }, { tipo: 'revisao7', off: 7 }, { tipo: 'revisao30', off: 30 }].forEach(({ tipo, off }) => {
+      let d = plAddDias(deData, off), tent = 0;
+      while ((mapaProva[d] || (revisoesAgendadas[d] || []).length >= blocosPorDia) && tent < 15 && plDiff(d, fim) >= 0) { d = plAddDias(d, 1); tent++; }
+      if (plDiff(d, fim) < 0 || mapaProva[d]) return; // sem espaço antes da última prova → descarta
+      (revisoesAgendadas[d] = revisoesAgendadas[d] || []).push({ tipo, materia: bloco.materia, tema: bloco.tema, key: bloco.key, dificuldade: bloco.dificuldade, horas: 1, status: 'pendente' });
+    });
+  }
+
+  const filaRevisao = (extras.revisoesHerdadas || []).map(r => ({ ...r })); // replan: revisões de conteúdo concluído
+  const dias = [];
+  let ci = 0;
+  for (let d = new Date(hoje + 'T12:00:00'); plDiff(plIso(d), fim) >= 0; d.setDate(d.getDate() + 1)) {
+    const data = plIso(d);
+    const prova = mapaProva[data];
+    const vespera = vesperasDe[data] || [];
+    const blocos = [];
+    let slots = prova ? 0 : blocosPorDia;
+
+    // 1) revisões herdadas do replan (estudo ativo) entram primeiro
+    while (slots > 0 && filaRevisao.length) {
+      const r = filaRevisao.shift();
+      blocos.push({ id: 'r' + data + blocos.length, tipo: r.tipo || 'revisao7', materia: r.materia, tema: r.tema, key: r.key, dificuldade: r.dificuldade, horas: 1, status: 'pendente' });
+      slots--;
+    }
+    // 2) revisões espaçadas (24h/7d/30d) programadas para este dia
+    const doDia = (revisoesAgendadas[data] || []).sort((a, b) => plOrdemTipo(a.tipo) - plOrdemTipo(b.tipo));
+    for (const r of doDia) {
+      if (slots <= 0) { // dia cheio → empurra para amanhã
+        const prox = plAddDias(data, 1);
+        if (plDiff(prox, fim) >= 0) (revisoesAgendadas[prox] = revisoesAgendadas[prox] || []).push(r);
+        continue;
+      }
+      blocos.push({ ...r, id: 'r' + data + blocos.length });
+      slots--;
+    }
+    // 3) conteúdo novo — regra de conflito: véspera de prova não recebe tema pesado/difícil
+    while (slots > 0 && ci < fila.length) {
+      const c = fila[ci];
+      const leve = !['dificil', 'pesado'].includes(normLower(c.dificuldade || ''));
+      if (vespera.length && !leve) break;
+      blocos.push({ id: 'c' + data + blocos.length, tipo: 'conteudo', materia: c.materia, tema: c.tema, key: c.key, dificuldade: c.dificuldade, horas: 2, status: 'pendente' });
+      agendarRevisoes(data, c);
+      ci++; slots--;
+    }
+    // 4) dia de prova
+    if (prova) blocos.push({ id: 'p' + data, tipo: 'prova', prova: prova.nome, horas: 0, status: 'pendente' });
+
+    dias.push({ data, dow: d.getDay(), tipo: prova ? 'prova' : (vespera.length ? 'vespera' : 'normal'), prova: prova ? prova.nome : null, vesperaDe: vespera, blocos });
+  }
+
+  const blocos = dias.flatMap(dd => dd.blocos);
+  return {
+    geradoEm: new Date().toISOString(),
+    config: { horasDia: config.horasDia, provas, materias: config.materias, temasPorMateria: extras.temasPorMateria || null },
+    inicio: hoje, fim,
+    dias,
+    estatisticas: {
+      dias: dias.length,
+      conteudos: blocos.filter(b => b.tipo === 'conteudo').length,
+      revisoes: blocos.filter(b => b.tipo.startsWith('revisao')).length,
+      provas: provas.length
+    }
+  };
+}
+function normLower(s) { return hwqNorm(s); }
+
+// Geração de deck de estudo ativo (10 flashcards + 3 questões) — background via Gemini, fallback no banco
+async function plGerarDeck(materia, tema) {
+  const key = plDeckKey(materia, tema);
+  const decks = readDecks();
+  if (decks[key] && decks[key].pronto) return decks[key];
+  let deck = null;
+  if (ai) {
+    try {
+      const res = await generateWithGemini({
+        contents: `Crie 10 flashcards curtos e diretos (frente e verso) e 3 questões de múltipla escolha baseados no tema "${tema}" (matéria: ${materia}), focando nos conceitos mais cobrados em provas.`,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              flashcards: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { frente: { type: Type.STRING }, verso: { type: Type.STRING } }, required: ['frente', 'verso'] } },
+              questoes: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: {
+                statement: { type: Type.STRING },
+                options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                correctIndex: { type: Type.INTEGER },
+                explanation: { type: Type.STRING }
+              }, required: ['statement', 'options', 'correctIndex'] } }
+            },
+            required: ['flashcards', 'questoes']
+          },
+          temperature: 0.7
+        }
+      });
+      const parsed = JSON.parse(res.text.trim());
+      deck = {
+        tema, materia, fonte: 'gemini', pronto: true, criadoEm: new Date().toISOString(),
+        flashcards: (parsed.flashcards || []).slice(0, 12),
+        questoes: (parsed.questoes || []).map((q, i) => ({
+          id: `q-pl-${key}-${i}`, specialty: materia, subspecialty: tema, institution: 'Cronograma IA', year: new Date().getFullYear(),
+          statement: q.statement, options: q.options, correctIndex: q.correctIndex,
+          correctLetter: ['A', 'B', 'C', 'D', 'E'][q.correctIndex] || 'A',
+          explanation: q.explanation || '', difficulty: 'Médio', tags: [materia, tema], source: 'Cronograma IA'
+        }))
+      };
+      console.log(`🧠 [Planner] Deck Gemini pronto: "${tema}" (${deck.flashcards.length} cards, ${deck.questoes.length} questões)`);
+    } catch (err) {
+      console.warn(`⚠️ [Planner] Gemini falhou para "${tema}":`, err.message?.slice(0, 120));
+    }
+  }
+  if (!deck) {
+    // Fallback: monta deck de estudo ativo a partir do banco local de questões
+    const bank = readQuestionsBank();
+    const alvo = hwqNorm(tema);
+    let hits = bank.filter(q => hwqNorm(q.specialty).includes(alvo) || hwqNorm(q.statement).includes(alvo) || (q.tags || []).some(t => hwqNorm(t).includes(alvo)));
+    if (!hits.length && /^topico\s*\d*$/i.test(alvo)) {
+      // Tema genérico ("Tópico N") sem GEMINI: usa a matéria inteira como recorte
+      hits = bank.filter(q => hwqNorm(q.specialty) === hwqNorm(materia));
+    }
+    if (hits.length) {
+      deck = {
+        tema, materia, fonte: 'banco', pronto: true, criadoEm: new Date().toISOString(),
+        flashcards: hits.slice(0, 10).map(q => ({ frente: q.statement.slice(0, 260), verso: '✅ ' + (q.options[q.correctIndex] || '') + (q.explanation ? '\n\n' + q.explanation : '') })),
+        questoes: hits.slice(0, 6)
+      };
+      console.log(`🧠 [Planner] Deck do banco local: "${tema}" (${hits.length} questões encontradas)`);
+    } else {
+      deck = { tema, materia, fonte: 'nenhuma', pronto: false, msg: 'Configure GEMINI_API_KEY ou sincronize questões deste tema no banco.', criadoEm: new Date().toISOString(), flashcards: [], questoes: [] };
+    }
+  }
+  decks[key] = deck;
+  writeDecks(decks);
+  return deck;
+}
+const plDeckFila = [];
+let plDeckRodando = false;
+function plEnfileirarDeck(materia, tema) {
+  const key = plDeckKey(materia, tema);
+  if ((readDecks()[key] || {}).pronto) return;
+  if (!plDeckFila.some(x => plDeckKey(x.materia, x.tema) === key)) plDeckFila.push({ materia, tema });
+  plBombearDeck();
+}
+async function plBombearDeck() {
+  if (plDeckRodando) return;
+  plDeckRodando = true;
+  while (plDeckFila.length) {
+    const { materia, tema } = plDeckFila.shift();
+    try { await plGerarDeck(materia, tema); } catch (err) { console.warn('⚠️ [Planner] Erro no deck:', err.message); }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  plDeckRodando = false;
+}
+
+// POST /api/planner/generate — gera o cronograma (Gemini para temas se houver chave; motor local sempre funciona)
+app.post('/api/planner/generate', async (req, res) => {
+  try {
+    const { horasDia = 4, inicio, provas = [], materias = [], pdfTexto = '' } = req.body || {};
+    if (!provas.length) return res.status(400).json({ success: false, msg: 'Informe pelo menos uma data de prova.' });
+    if (!materias.length) return res.status(400).json({ success: false, msg: 'Informe pelo menos uma matéria.' });
+    const config = {
+      inicio: inicio || plIso(new Date()),
+      horasDia: Math.max(1, Math.min(12, +horasDia || 4)),
+      provas: provas.filter(p => p.nome && p.data),
+      materias: materias.filter(m => m.nome)
+    };
+    let temasPorMateria = null, aviso = null;
+    if (ai && pdfTexto && String(pdfTexto).length > 400) {
+      try {
+        const listaMaterias = config.materias.map(m => `${m.nome} (${m.dificuldade || 'Médio'})`).join('; ');
+        const g = await generateWithGemini({
+          contents: `Analise o material de estudo abaixo (edital/cronograma/ementa) e extraia os temas mais cobrados para cada matéria desta lista: [${listaMaterias}].\nResponda JSON com temasPorMateria (objeto matéria → array de 4 a 8 temas curtos) e resumos (objeto tema → array de 3 a 5 tópicos de estudo).\n\nMATERIAL:\n${String(pdfTexto).slice(0, 12000)}`,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                temasPorMateria: { type: Type.OBJECT },
+                resumos: { type: Type.OBJECT }
+              }
+            },
+            temperature: 0.5
+          }
+        });
+        const parsed = JSON.parse(g.text.trim());
+        temasPorMateria = parsed.temasPorMateria || null;
+        if (parsed.resumos) config.resumos = parsed.resumos;
+      } catch (err) {
+        aviso = 'IA não conseguiu ler o PDF (' + (err.message || '').slice(0, 80) + ') — usando grade padrão de tópicos.';
+      }
+    } else if (!ai && pdfTexto) {
+      aviso = 'GEMINI_API_KEY não configurada — o PDF não pôde ser lido pela IA e a grade padrão de tópicos foi usada.';
+    }
+    const plan = plGerarPlan(config, { temasPorMateria });
+    if (plan.erro) return res.status(400).json({ success: false, msg: plan.erro });
+    plan.geradoCom = ai ? 'gemini' : 'motor-local';
+    if (aviso) plan.aviso = aviso;
+    // Dispara geração silenciosa dos decks de estudo ativo para os temas que terão revisão
+    const temasRevisao = new Set();
+    plan.dias.forEach(d => d.blocos.forEach(b => { if (b.tipo.startsWith('revisao') && b.tema) temasRevisao.add((b.materia || '') + '||' + b.tema); }));
+    temasRevisao.forEach(t => { const [materia, tema] = t.split('||'); plEnfileirarDeck(materia, tema); });
+    res.json({ success: true, plan, decksFila: temasRevisao.size, gemini: !!ai });
+  } catch (err) {
+    console.error('Erro no planner:', err);
+    res.status(500).json({ success: false, msg: err.message });
+  }
+});
+
+// POST /api/planner/replan — "Não estudei": redistribui atrasos de forma racional até a prova
+app.post('/api/planner/replan', (req, res) => {
+  try {
+    const { plan } = req.body || {};
+    if (!plan || !plan.dias) return res.status(400).json({ success: false, msg: 'Plano ausente.' });
+    const hoje = plIso(new Date());
+    const pendentes = [], herdadas = [];
+    plan.dias.filter(d => d.data >= hoje).forEach(d => d.blocos.forEach(b => {
+      if (b.tipo === 'conteudo' && b.status === 'pendente') pendentes.push({ materia: b.materia, tema: b.tema, dificuldade: b.dificuldade, key: b.key });
+      if (b.tipo.startsWith('revisao') && b.status === 'pendente') herdadas.push({ tipo: b.tipo, materia: b.materia, tema: b.tema, key: b.key, dificuldade: b.dificuldade });
+    }));
+    const config = { ...plan.config, inicio: hoje };
+    const novo = plGerarPlan(config, { pendentes, revisoesHerdadas: herdadas, temasPorMateria: plan.config?.temasPorMateria || null });
+    if (novo.erro) return res.status(400).json({ success: false, msg: novo.erro });
+    novo.geradoCom = plan.geradoCom || 'motor-local';
+    novo.replanejadoEm = new Date().toISOString();
+    novo.diasAnteriores = plan.dias.filter(d => d.data < hoje); // histórico preservado
+    res.json({ success: true, plan: novo, movidos: pendentes.length });
+  } catch (err) {
+    res.status(500).json({ success: false, msg: err.message });
+  }
+});
+
+// GET /api/planner/deck?materia=&tema= — deck de estudo ativo do tema (flashcards + questões)
+app.get('/api/planner/deck', async (req, res) => {
+  try {
+    const materia = String(req.query.materia || ''), tema = String(req.query.tema || '');
+    if (!tema) return res.status(400).json({ success: false, msg: 'tema é obrigatório' });
+    const deck = readDecks()[plDeckKey(materia, tema)] || null;
+    res.json({ success: true, pronto: !!(deck && deck.pronto), deck });
+  } catch (err) {
+    res.status(500).json({ success: false, msg: err.message });
+  }
+});
+
 // Serve static assets from root directory
 app.use(express.static(__dirname, {
   extensions: ['html', 'htm'],
