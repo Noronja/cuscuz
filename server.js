@@ -1895,6 +1895,7 @@ function extrairProvasDoTexto(texto) {
 function plGerarPlanSinergia(config, extras = {}) {
   const hoje = config.inicio || plIso(new Date());
   const energia = config.energiaPosFaculdade || 'moderada';
+  const soGraduacao = config.modo === 'graduacao'; // estuda só para a faculdade (sem residência)
   const dataAlvoResid = config.dataAlvoResidencia || plAddDias(hoje, 120);
   
   // Normaliza provas da faculdade e provas de residência
@@ -1905,12 +1906,19 @@ function plGerarPlanSinergia(config, extras = {}) {
 
   // O horizonte do cronograma vai até a data alvo da residência ou última prova (garantindo no mínimo 90 dias)
   let fim = dataAlvoResid;
-  if (todasProvas.length) {
-    const ultimaProva = todasProvas[todasProvas.length - 1].data;
-    if (plDiff(ultimaProva, fim) > 0) fim = ultimaProva;
-  }
-  if (!fim || plDiff(hoje, fim) < 21) {
-    fim = plAddDias(hoje, 120);
+  if (soGraduacao) {
+    // Só graduação: o horizonte termina na última avaliação da faculdade (ou 90 dias se não houver datas)
+    const provasGrad = todasProvas.filter(p => p.tipo === 'grad' && plDiff(hoje, p.data) >= 0);
+    fim = provasGrad.length ? provasGrad[provasGrad.length - 1].data : plAddDias(hoje, 90);
+    if (plDiff(hoje, fim) < 7) fim = plAddDias(hoje, 30);
+  } else {
+    if (todasProvas.length) {
+      const ultimaProva = todasProvas[todasProvas.length - 1].data;
+      if (plDiff(ultimaProva, fim) > 0) fim = ultimaProva;
+    }
+    if (!fim || plDiff(hoje, fim) < 21) {
+      fim = plAddDias(hoje, 120);
+    }
   }
 
   if (plDiff(hoje, fim) < 0) return { erro: 'A data final precisa ser hoje ou posterior.' };
@@ -1950,7 +1958,7 @@ function plGerarPlanSinergia(config, extras = {}) {
   }[energia] || { util: 2, fimDeSemana: 3 };
 
   // Temas com Sinergia detectada entre Faculdade e Residência
-  const sinergiaLista = extras.sinergiaMatches || [];
+  const sinergiaLista = soGraduacao ? [] : (extras.sinergiaMatches || []);
   const temasSinergicosMap = new Map();
   sinergiaLista.forEach(s => {
     temasSinergicosMap.set(hwqNorm(s.tema), s);
@@ -2039,7 +2047,7 @@ function plGerarPlanSinergia(config, extras = {}) {
   });
 
   // 2) Tópicos de Residência informados pelo aluno no texto sem limite
-  const conteudosResidenciaExtras = extras.conteudosResidencia || [];
+  const conteudosResidenciaExtras = soGraduacao ? [] : (extras.conteudosResidencia || []);
   conteudosResidenciaExtras.forEach(cr => {
     if (cr && cr.tema && !todosTopicosFaculdadeMap.has(hwqNorm(cr.tema)) && !temasSinergicosMap.has(hwqNorm(cr.tema))) {
       filaConteudo.push({
@@ -2056,7 +2064,7 @@ function plGerarPlanSinergia(config, extras = {}) {
   });
 
   // 3) Demais temas complementares de Residência por matéria da matriz
-  materias.forEach(m => {
+  (soGraduacao ? [] : materias).forEach(m => {
     const temasIA = extras.temasPorMateria && extras.temasPorMateria[m.nome];
     const baseTemas = Array.isArray(temasIA) && temasIA.length ? temasIA : [
       'Semiologia & Diagnóstico', 'Condutas Terapêuticas', 'Emergências Clínicas', 'Questões de Alto Rendimento'
@@ -2074,6 +2082,17 @@ function plGerarPlanSinergia(config, extras = {}) {
       }
     });
   });
+
+  // FOCO: temas da faculdade entram por ordem da prova mais próxima da matéria (quem cai antes, estuda antes)
+  const provaMaisProxima = (materia) => {
+    const m = hwqNorm(materia || '');
+    const alvos = provasFaculdade
+      .filter(p => plDiff(hoje, p.data) >= 0 && m && (hwqNorm(p.materia || '').includes(m) || m.includes(hwqNorm(p.materia || '') || '\u0000')))
+      .map(p => p.data).sort();
+    return alvos[0] || '9999-12-31';
+  };
+  filaConteudo.forEach((f, i) => { f._ord = f.origem && f.origem.startsWith('faculdade') ? provaMaisProxima(f.materia) : '9999-12-31'; f._i = i; });
+  filaConteudo.sort((a, b) => (a._ord === b._ord ? a._i - b._i : (a._ord < b._ord ? -1 : 1)));
 
   // Replan / pendentes anteriores
   (extras.pendentes || []).forEach(p => filaConteudo.unshift(p));
@@ -2189,7 +2208,7 @@ function plGerarPlanSinergia(config, extras = {}) {
             protecao: true,
             focoFaculdade: true,
             status: 'pendente',
-            desc: `🛡️ Blindagem de Prova ativada (${protecao.diasAte}d para a avaliação). Carga de residência pausada para foco total nas notas da graduação.`
+            desc: `🛡️ Blindagem de Prova ativada (${protecao.diasAte}d para a avaliação). ${soGraduacao ? 'Foco total na avaliação da graduação.' : 'Carga de residência pausada para foco total nas notas da graduação.'}`
           });
 
           blocos.push({
@@ -2209,7 +2228,7 @@ function plGerarPlanSinergia(config, extras = {}) {
         blocos.push({
           id: 'prot-maint-' + data,
           tipo: 'revisao24',
-          materia: 'Residência Médica',
+          materia: soGraduacao ? 'Graduação' : 'Residência Médica',
           tema: 'Manutenção Rápida SRS (15 min)',
           horas: 0.5,
           protecao: true,
@@ -2350,6 +2369,7 @@ function plGerarPlanSinergia(config, extras = {}) {
     config: {
       horasDia: config.horasDia,
       horasSemana: config.horasSemana,
+      modo: soGraduacao ? 'graduacao' : 'completo',
       energiaPosFaculdade: energia,
       provas: todasProvas,
       materias: config.materias,
@@ -2361,7 +2381,8 @@ function plGerarPlanSinergia(config, extras = {}) {
     },
     sinergias: extras.sinergiaMatches || [],
     conteudosFaculdade: extras.conteudosFaculdade || [],
-    conteudosResidencia: extras.conteudosResidencia || [],
+    conteudosResidencia: soGraduacao ? [] : (extras.conteudosResidencia || []),
+    modo: soGraduacao ? 'graduacao' : 'completo',
     inicio: hoje,
     fim,
     dias,
@@ -2394,14 +2415,17 @@ app.post('/api/planner/synergy-generate', async (req, res) => {
       textoResidencia = '',
       atualizacoesNotas = '',
       pdfResidenciaTexto = '',
-      pdfFaculdadeTexto = ''
+      pdfFaculdadeTexto = '',
+      modo = 'completo'
     } = req.body || {};
+    const soGraduacao = modo === 'graduacao';
 
     const rawFaculdade = (textoFaculdade || pdfFaculdadeTexto || '').trim();
-    const rawResidencia = (textoResidencia || pdfResidenciaTexto || '').trim();
+    const rawResidencia = soGraduacao ? '' : (textoResidencia || pdfResidenciaTexto || '').trim();
     const rawAtualizacoes = (atualizacoesNotas || '').trim();
 
     const config = {
+      modo: soGraduacao ? 'graduacao' : 'completo',
       inicio: plIso(new Date()),
       horasDia: Math.max(1, Math.min(12, +horasDia || 4)),
       horasSemana,
@@ -2423,7 +2447,7 @@ app.post('/api/planner/synergy-generate', async (req, res) => {
       ]
     };
 
-    if (dataAlvoResidencia) {
+    if (dataAlvoResidencia && !soGraduacao) {
       config.provas.push({
         nome: 'Prova de Residência R1 Alvo',
         data: dataAlvoResidencia,
@@ -2480,11 +2504,21 @@ Portanto:
    - Na semana e nos dias que antecedem qualquer prova ou TBL, ative a prioridade máxima e proteção total: o foco deve ser voltado 100% para os temas da avaliação da faculdade (leitura prévia de TBL, resolução de questões da faculdade, fechamento de casos e checklists clínicos), pausando o avanço do cursinho para proteger as notas.
 6. ATUALIZAÇÕES, OBSERVAÇÕES E AJUSTES (Área 3): Aplique com prioridade máxima qualquer instrução do texto 3 (trocas de plantão, matérias adiantadas, adiamentos de prova, focos específicos). Lembre-se que essas informações são mutáveis e dinâmicas.
 
+FOCO E QUALIDADE (obrigatório):
+- Use SOMENTE temas que aparecem nos textos do aluno; só complete com a matriz padrão se NENHUM texto foi colado. Nunca invente tema, data ou professor.
+- Associe cada tema à matéria correta e use nomes de matéria consistentes (iguais ao texto do aluno).
+- Datas sempre em YYYY-MM-DD; se o texto não informar o ano, assuma o ano corrente ou o próximo (nunca no passado).
+- Prioridade do que estudar primeiro = prova/TBL mais próxima da matéria; avaliações de peso maior entram antes.
+${soGraduacao ? `
+MODO SOMENTE GRADUAÇÃO (o aluno NÃO está estudando para residência agora):
+- Ignore residência por completo: devolva "sinergias": [] e "conteudosResidencia": [].
+- Todo o foco vai para a ementa, o internato/rodízio e as avaliações da faculdade.
+` : ''}
 PERFIL DO ESTUDANTE:
 - Horas disponíveis por dia: ${config.horasDia}h/dia
 - Nível de energia pós-faculdade/internato: ${config.energiaPosFaculdade}
 - Matérias de maior dificuldade: ${(config.materiasDificuldade || []).join(', ') || 'Clínica Médica e Cirurgia Geral'}
-- Data alvo da prova de residência médica: ${config.dataAlvoResidencia}
+${soGraduacao ? '' : `- Data alvo da prova de residência médica: ${config.dataAlvoResidencia}`}
 - Provas da Faculdade pré-agendadas: ${JSON.stringify(config.provas.filter(p => p.tipo === 'grad'))}
 ${secaoTextosAluno || '\n(Nenhum texto colado: utilize a matriz canônica de residência médica brasileira - ENARE, USP, UNIFESP, SUS-SP - e a grade curricular padrão do MEC para medicina)'}
 
@@ -2580,7 +2614,8 @@ Responda SOMENTE em JSON puro e válido nesta estrutura:
     });
 
     // Se a IA não gerou sinergias suficientes, detecta correspondências entre faculdade e residência
-    if (!sinergiaMatches.length) {
+    if (soGraduacao) { sinergiaMatches = []; conteudosResidencia = []; }
+    if (!soGraduacao && !sinergiaMatches.length) {
       if (temasFacLocal.length) {
         sinergiaMatches = temasFacLocal.slice(0, 15).map(tf => ({
           tema: tf.tema,
