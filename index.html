@@ -2992,7 +2992,6 @@ function renderPrep(){
 
 /* ═══ ACERVO E INTEGRAÇÃO GOOGLE DRIVE (TAL QUAL ESTÁ NO DRIVE) ═══ */
 const HARDCODED_DRIVE_CONFIG = {
-  apiKey: 'AIzaSyA6aoGd1Yxj0Yn9JjzAABwQGOTkj7xEAVQ',
   folderId: '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7'
 };
 const DRIVE_ROOT_ID = HARDCODED_DRIVE_CONFIG.folderId;
@@ -3090,22 +3089,8 @@ async function fetchDriveFolderItems(folderId, forceRefresh = false) {
     console.warn('Backend proxy fetch failed, falling back to direct Drive API', e);
   }
 
-  // 2. Fallback direto para Google Drive v3 com paginação
-  const key = HARDCODED_DRIVE_CONFIG.apiKey;
-  let allFiles = [];
-  let pageToken = '';
-  do {
-    const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
-    const p = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
-    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name,mimeType,webViewLink)&orderBy=folder,name_natural&pageSize=1000&key=${key}${p}`;
-    const r = await fetch(url);
-    if (!r.ok) break;
-    const data = await r.json();
-    if (data.files && Array.isArray(data.files)) {
-      allFiles.push(...data.files);
-    }
-    pageToken = data.nextPageToken || '';
-  } while (pageToken);
+  // 2. Sem fallback direto: a chave do Drive fica só no servidor (GOOGLE_DRIVE_API_KEY)
+  const allFiles = [];
 
   const rawFiles = allFiles.map(f => {
     const isFolder = f.mimeType === 'application/vnd.google-apps.folder';

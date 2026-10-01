@@ -305,7 +305,8 @@ function handleToolExecution(name, args) {
 }
 
 // Google Drive Proxy & In-Memory Cache
-const DRIVE_API_KEY = process.env.GOOGLE_DRIVE_API_KEY || 'AIzaSyA6aoGd1Yxj0Yn9JjzAABwQGOTkj7xEAVQ';
+const DRIVE_API_KEY = process.env.GOOGLE_DRIVE_API_KEY || '';
+if (!DRIVE_API_KEY) console.warn('⚠️ GOOGLE_DRIVE_API_KEY não definida: o acervo do Drive não vai carregar.');
 const DRIVE_ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7';
 const driveCache = new Map();
 const DRIVE_CACHE_TTL = 10 * 60 * 1000; // 10 minutes

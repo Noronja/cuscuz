@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DRIVE_API_KEY = process.env.GOOGLE_DRIVE_API_KEY || 'AIzaSyA6aoGd1Yxj0Yn9JjzAABwQGOTkj7xEAVQ';
+const DRIVE_API_KEY = process.env.GOOGLE_DRIVE_API_KEY || '';
 const DRIVE_ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7';
 
 async function fetchChildren(folderId) {
