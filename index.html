@@ -10,6 +10,30 @@
 <meta property="og:title" content="Cuscuz-MED — Liquid Glass">
 <meta property="og:description" content="Planejador de estudos médicos, cronograma inteligente, acervo completo de videoaulas, flashcards SRS e simulados com interface Liquid Glass inspirada em visionOS.">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,700&display=swap" rel="stylesheet">
+<script>
+/* Auth da API: anexa o token em /api/* e volta ao login se o servidor responder 401 */
+(function(){
+  var _f = window.fetch.bind(window);
+  window.fetch = function(u, o){
+    var s = typeof u === 'string' ? u : (u && u.url) || '';
+    var isApi = s.indexOf('/api/') === 0 && s.indexOf('/api/auth/') !== 0;
+    if (isApi) {
+      try {
+        var t = localStorage.getItem('cuscuz_token');
+        if (t) { o = Object.assign({}, o); var h = {}; if (o.headers) { (o.headers instanceof Headers ? Array.from(o.headers.entries()) : Object.entries(o.headers)).forEach(function(kv){ h[kv[0]] = kv[1]; }); } h['Authorization'] = 'Bearer ' + t; o.headers = h; }
+      } catch (e) {}
+    }
+    return _f(u, o).then(function(r){
+      if (isApi && r.status === 401) {
+        try { localStorage.removeItem('cuscuz_token'); localStorage.removeItem('medplan_logged'); } catch (e) {}
+        var ls = document.getElementById('login-screen');
+        if (ls) ls.style.display = 'flex'; else if (!window.__authRedirected) { window.__authRedirected = true; location.href = '/'; }
+      }
+      return r;
+    });
+  };
+})();
+</script>
 <script defer src="https://unpkg.com/@phosphor-icons/web"></script>
 <style>
 /* ═══ Cronograma IA (Planejador) ═══ */
@@ -2628,14 +2652,19 @@ const safeUser=s=>String(s||'').toLowerCase().replace(/[^a-z0-9_-]/g,'')||'user'
 const hsh=s=>{let x=5381;for(const c of s)x=(x*33+c.charCodeAt(0))>>>0;return x.toString(36)};
 function setDot(st){const d=$('cloud-dot');if(d)d.style.background=st==='ok'?'var(--green)':st==='off'?'var(--text-disabled)':'var(--amber)'}
 
-function doLogin(){const u=cleanStr($('login-user').value.trim()),p=$('login-pass').value;
- if(!u||!p){$('login-error').style.display='block';return}
- const users=lsGet('cuscuz_users',{});
- if(users[u]&&users[u]!==hsh(p)){$('login-error').style.display='block';return}
- users[u]=hsh(p);lsSet('cuscuz_users',users);
+async function doLogin(){const u=cleanStr($('login-user').value.trim()),p=$('login-pass').value;
+ const err=$('login-error');
+ if(!u||!p){err.textContent='Informe usuário e senha';err.style.display='block';return}
+ try{
+  const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||!d.token){err.textContent=d.msg||'Usuário ou senha incorretos';err.style.display='block';return}
+  localStorage.setItem('cuscuz_token',d.token);
+ }catch(e){err.textContent='Servidor indisponível. Tente de novo em instantes.';err.style.display='block';return}
  SYNC_USER=u;localStorage.setItem('medplan_logged','1');localStorage.setItem('medplan_user',u);
- $('login-error').style.display='none';startApp()}
-function logout(){if(confirm('Sair? Os dados continuam salvos neste dispositivo.')){localStorage.removeItem('medplan_logged');location.reload()}}
+ err.style.display='none';startApp();
+ try{loadDriveFolder(DRIVE_ROOT_ID,'Cursos',false);loadQuestionsBankFromAPI(true)}catch(_){}}
+function logout(){if(confirm('Sair? Os dados continuam salvos neste dispositivo.')){localStorage.removeItem('medplan_logged');localStorage.removeItem('cuscuz_token');location.reload()}}
 function payload(){return{db:DB,done:[...DONE],fav:[...FAV],quiz:QUIZS,last:lsGet('acv_last',null),days:lsGet('acv_days',[]),sims:SIMS,decks:DECKS,wrong:[...WRONG],resumos:RESUMOS,fc:FCS,fcsrs:FCSRS}}
 function pushCloud(){if(!CLOUD_ON||!SYNC_USER)return;setDot('sync');
  FBDB.ref('users/'+safeUser(SYNC_USER)+'/state').set(payload()).then(()=>setDot('ok')).catch(()=>setDot('off'))}
@@ -5245,7 +5274,7 @@ window.addEventListener('DOMContentLoaded',()=>{
    searchInput.addEventListener('input', e=>searchDebounced(e.target.value));
    document.addEventListener('click', e => { if(!e.target.closest('#search-wrap')) srHide() });
  }
- if(localStorage.getItem('medplan_logged')==='1'){SYNC_USER=localStorage.getItem('medplan_user');startApp()}else refreshAll();
+ if(localStorage.getItem('medplan_logged')==='1'&&localStorage.getItem('cuscuz_token')){SYNC_USER=localStorage.getItem('medplan_user');startApp()}else refreshAll();
  updateWrongBtn();
  loadDriveFolder(DRIVE_ROOT_ID, 'Cursos', false);
  loadQuestionsBankFromAPI(true);

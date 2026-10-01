@@ -1,0 +1,12 @@
+# Mantém o Render (plano grátis) acordado: um ping a cada 10 minutos.
+name: keepalive
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/health
+        run: curl -fsS --max-time 60 --retry 3 --retry-delay 10 https://cuscuz-med.onrender.com/api/health

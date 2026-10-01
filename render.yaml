@@ -9,6 +9,9 @@ services:
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
+      # Senha do app (login). O Render gera sozinho; veja o valor em Environment > APP_PASSWORD
+      - key: APP_PASSWORD
+        generateValue: true
       # Credenciais do Hardworq — o Render pergunta na hora do deploy (não ficam no repo)
       - key: HARDWORQ_EMAIL
         sync: false

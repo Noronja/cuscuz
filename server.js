@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 import { execFile } from 'child_process';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
@@ -38,6 +39,72 @@ const HOST = '0.0.0.0';
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+/* ═══ AUTENTICAÇÃO DA API ═══
+   Todas as rotas /api/* (menos /api/health e /api/auth/login) exigem token.
+   O token é assinado (HMAC) com a APP_PASSWORD, vale 30 dias e sobrevive a reinícios. */
+app.set('trust proxy', 1);
+const APP_PASSWORD = process.env.APP_PASSWORD || '';
+const AUTH_SECRET = crypto.createHash('sha256').update('cuscuz-auth|' + APP_PASSWORD).digest();
+const AUTH_TTL_MS = 30 * 24 * 3600 * 1000;
+const IS_HOSTED = !!(process.env.RENDER || process.env.NODE_ENV === 'production');
+if (!APP_PASSWORD) {
+  console.warn(IS_HOSTED
+    ? '⛔ APP_PASSWORD não definida: a API está BLOQUEADA até você definir essa variável no Render.'
+    : '⚠️ APP_PASSWORD não definida: API aberta (modo local de desenvolvimento).');
+}
+function signToken() {
+  const exp = String(Date.now() + AUTH_TTL_MS);
+  const sig = crypto.createHmac('sha256', AUTH_SECRET).update(exp).digest('hex');
+  return exp + '.' + sig;
+}
+function verifyToken(token) {
+  if (typeof token !== 'string') return false;
+  const [exp, sig] = token.split('.');
+  if (!exp || !sig || !(Number(exp) > Date.now())) return false;
+  const good = crypto.createHmac('sha256', AUTH_SECRET).update(exp).digest('hex');
+  const a = Buffer.from(sig), b = Buffer.from(good);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+const loginAttempts = new Map(); // ip -> { n, reset }
+app.post('/api/auth/login', (req, res) => {
+  if (!APP_PASSWORD) {
+    return IS_HOSTED
+      ? res.status(503).json({ ok: false, msg: 'APP_PASSWORD não configurada no servidor.' })
+      : res.json({ ok: true, token: signToken() });
+  }
+  const now = Date.now();
+  const rec = loginAttempts.get(req.ip) || { n: 0, reset: now + 15 * 60 * 1000 };
+  if (now > rec.reset) { rec.n = 0; rec.reset = now + 15 * 60 * 1000; }
+  if (rec.n >= 10) return res.status(429).json({ ok: false, msg: 'Muitas tentativas. Aguarde 15 minutos.' });
+  const given = crypto.createHash('sha256').update(String((req.body && req.body.password) || '')).digest();
+  const real = crypto.createHash('sha256').update(APP_PASSWORD).digest();
+  if (!crypto.timingSafeEqual(given, real)) {
+    rec.n++; loginAttempts.set(req.ip, rec);
+    return res.status(401).json({ ok: false, msg: 'Senha incorreta.' });
+  }
+  loginAttempts.delete(req.ip);
+  res.json({ ok: true, token: signToken() });
+});
+app.use('/api', (req, res, next) => {
+  if (req.path === '/health' || req.path === '/auth/login') return next();
+  if (!APP_PASSWORD) {
+    if (IS_HOSTED) return res.status(503).json({ success: false, msg: 'APP_PASSWORD não configurada no servidor.' });
+    return next();
+  }
+  const h = req.headers.authorization || '';
+  if (verifyToken(h.startsWith('Bearer ') ? h.slice(7) : '')) return next();
+  res.status(401).json({ success: false, msg: 'Não autorizado. Faça login novamente.' });
+});
+
+/* ═══ ARQUIVOS ESTÁTICOS: nunca expor código, dados internos ou segredos ═══ */
+const BLOCKED_STATIC = /^\/(server\.js|package(-lock)?\.json|render\.yaml|DEPLOY\.md|README\.md|supabase-schema\.sql|metadata\.json|drive-tree-snapshot\.json|data(\/|$)|scripts(\/|$)|src(\/|$)|node_modules(\/|$)|\.)/i;
+app.use((req, res, next) => {
+  let p = '';
+  try { p = decodeURIComponent(req.path); } catch (_) { return res.status(400).end(); }
+  if (BLOCKED_STATIC.test(p) || p.includes('..')) return res.status(404).end();
+  next();
+});
 
 // Initialize Google Gemini Client with official @google/genai SDK
 const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -2799,6 +2866,7 @@ app.get('/api/planner/deck', async (req, res) => {
 
 // Serve static assets from root directory
 app.use(express.static(__dirname, {
+  dotfiles: 'deny',
   extensions: ['html', 'htm'],
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.json')) {
