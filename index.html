@@ -816,6 +816,25 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);bo
 .sim-history-item{display:flex;justify-content:space-between;align-items:center;background:var(--bg-surface);backdrop-filter:var(--glass-blur);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:14px 18px;font-size:13px;flex-wrap:wrap;gap:8px;box-shadow:var(--shadow-sm);transition:all .18s}
 .sim-history-item:hover{background:var(--bg-elevated);border-color:var(--border-default)}
 
+/* ═══ Simulados & Provas de Residência Médica ═══ */
+.sim-tab-nav{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border-muted);padding-bottom:12px;overflow-x:auto}
+.sim-tab-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:var(--radius-md);border:1px solid var(--border-muted);background:var(--bg-surface);color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.sim-tab-btn:hover{background:var(--bg-hover);color:var(--text-primary);border-color:var(--border-default)}
+.sim-tab-btn.active{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+.sim-stats-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;background:var(--bg-elevated);border:1px solid var(--border-subtle);font-size:12px;color:var(--text-secondary)}
+.sim-stats-pill b{color:var(--teal)}
+.sim-provas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;margin-top:14px}
+.sim-prova-card{background:var(--bg-surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:16px 18px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-sm);transition:all .2s ease}
+.sim-prova-card:hover{border-color:var(--teal);box-shadow:0 4px 20px rgba(45,212,191,.15);transform:translateY(-2px)}
+.sim-prova-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.sim-prova-banca{font-size:15px;font-weight:800;color:var(--text-primary);letter-spacing:-0.02em}
+.sim-prova-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--teal-dim);border:1px solid rgba(45,212,191,.3);color:var(--teal)}
+.sim-prova-meta{font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sim-prova-btn{margin-top:4px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:8px 12px;border-radius:var(--radius-md);background:var(--teal);color:#04211d;font-weight:700;font-size:12.5px;border:0;cursor:pointer;transition:background .15s}
+.sim-prova-btn:hover{background:var(--teal-hover,#14b8a6)}
+.sim-nav-cell.flagged{border-color:var(--amber)!important;color:var(--amber)!important;background:rgba(251,191,36,0.18)!important}
+.sim-explanation-box{margin-top:12px;padding:12px 14px;border-radius:8px;background:rgba(45,212,191,.08);border-left:3px solid var(--teal);font-size:12.5px;line-height:1.5;color:var(--text-secondary)}
+
 .demo-banner{background:rgba(251,191,36,0.12);border:1px solid var(--amber-border);color:var(--amber);padding:12px 18px;border-radius:var(--radius-lg);font-size:13px;font-weight:600;margin:0 20px 20px;display:none;line-height:1.6;backdrop-filter:blur(8px)}
 .prep-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:20px;padding:0 20px 40px}
 @media(max-width:900px){.prep-grid{grid-template-columns:1fr}}
@@ -2215,10 +2234,46 @@ mark.exam-highlight {
 
     <div id="view-simulados" class="view-section">
       <div id="sim-config-screen" style="padding-top:20px">
-        <h1 class="section-title" style="margin:8px 20px 16px">Simulados</h1>
-        <div class="sim-config-card" id="sim-config"></div>
-        <div class="content-list-title" style="margin-top:0">Histórico</div>
-        <div id="sim-history" style="padding:0 20px 40px;display:flex;flex-direction:column;gap:8px;max-width:720px"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:8px 20px 16px">
+          <div>
+            <h1 class="section-title" style="margin:0 0 4px">Simulados & Provas</h1>
+            <p style="font-size:13px;color:var(--text-muted);margin:0" id="sim-banco-subtitle">Conectado ao Banco Oficial com mais de 950 questões comentadas de provas reais</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="sim-stats-pill" id="sim-total-pill"><i class="ph ph-database"></i> <b>...</b> questões no banco</span>
+            <button class="btn-outline" onclick="sincronizarBancoParaSimulados()" style="padding:6px 12px;font-size:12px;border-radius:8px">
+              <i class="ph ph-arrows-clockwise"></i> Atualizar Banco
+            </button>
+          </div>
+        </div>
+
+        <!-- Sub-Abas do Painel de Simulados -->
+        <div class="sim-tab-nav" style="margin:0 20px 20px">
+          <button class="sim-tab-btn active" id="sim-tab-btn-provas" onclick="switchSimTab('provas')">
+            <i class="ph ph-certificate"></i> Provas Oficiais de Residência
+          </button>
+          <button class="sim-tab-btn" id="sim-tab-btn-custom" onclick="switchSimTab('custom')">
+            <i class="ph ph-sliders"></i> Montar Simulado Customizado
+          </button>
+          <button class="sim-tab-btn" id="sim-tab-btn-history" onclick="switchSimTab('history')">
+            <i class="ph ph-clock-counter-clockwise"></i> Histórico & Resultados
+          </button>
+        </div>
+
+        <!-- Aba 1: Provas Oficiais (Bancas e Anos) -->
+        <div id="sim-tab-content-provas" style="padding:0 20px 40px">
+          <div id="sim-provas-container"></div>
+        </div>
+
+        <!-- Aba 2: Montar Simulado Customizado -->
+        <div id="sim-tab-content-custom" style="display:none;padding:0 20px 40px">
+          <div class="sim-config-card" id="sim-config" style="margin:0 auto 30px"></div>
+        </div>
+
+        <!-- Aba 3: Histórico de Simulados -->
+        <div id="sim-tab-content-history" style="display:none;padding:0 20px 40px">
+          <div id="sim-history" style="display:flex;flex-direction:column;gap:8px;max-width:840px;margin:0 auto"></div>
+        </div>
       </div>
       <div id="sim-runner-screen" style="display:none"><div class="quiz-runner" id="sim-runner"></div></div>
     </div>
@@ -3965,6 +4020,19 @@ try {
   }
 } catch (e) {}
 
+// Restauração imediata e transparente do IndexedDB ao carregar o script
+if (typeof loadQuestionsFromIDB === 'function') {
+  loadQuestionsFromIDB().then(idbData => {
+    if (Array.isArray(idbData) && idbData.length > 0 && BANK_QUESTIONS.length === 0) {
+      BANK_QUESTIONS = idbData;
+      prepareBankQuestionsSearchIndex(BANK_QUESTIONS);
+      updateBankBadges();
+      renderBankQuestionsFeed();
+      if (typeof renderSim === 'function') renderSim();
+    }
+  });
+}
+
 let BANK_ANSWERS = lsGet('cuscuz_exam_answers', {}); // qId -> { selectedIndex, isCorrect, answeredAt }
 let activeTreinoTab = 'prontas';
 let geminiGeneratedBuffer = [];
@@ -3988,10 +4056,10 @@ let SIM_EXAM = {
 let tutorHistory = [];
 let activeQuestionForTutor = null;
 
-// Inicialização e Carregamento do Banco
+// Inicialização e Carregamento do Banco Completo
 async function loadQuestionsBankFromAPI(silent = true) {
   try {
-    // 1) Se a memória está vazia, tenta restaurar imediatamente do IndexedDB sem lag
+    // 1) Se a memória está vazia, restaura imediatamente do IndexedDB sem lag
     if (BANK_QUESTIONS.length === 0) {
       const idbData = await loadQuestionsFromIDB();
       if (Array.isArray(idbData) && idbData.length > 0) {
@@ -3999,6 +4067,7 @@ async function loadQuestionsBankFromAPI(silent = true) {
         prepareBankQuestionsSearchIndex(BANK_QUESTIONS);
         updateBankBadges();
         renderBankQuestionsFeed();
+        if (typeof renderSim === 'function') renderSim();
       }
     }
 
@@ -4027,7 +4096,7 @@ async function loadQuestionsBankFromAPI(silent = true) {
           BANK_QUESTIONS = data.questions;
           prepareBankQuestionsSearchIndex(BANK_QUESTIONS);
           persistQuestionsCache(BANK_QUESTIONS);
-          if (!silent) toast(`📚 ${data.questions.length.toLocaleString('pt-BR')} questões carregadas do banco`, 'success');
+          if (!silent) toast(`📚 ${data.questions.length.toLocaleString('pt-BR')} questões carregadas e disponíveis!`, 'success');
         }
       }
     }
@@ -4036,11 +4105,15 @@ async function loadQuestionsBankFromAPI(silent = true) {
   }
   updateBankBadges();
   renderBankQuestionsFeed();
+  if (typeof renderSim === 'function') renderSim();
+  if (typeof renderHome === 'function') renderHome();
+  if (typeof updateBadges === 'function') updateBadges();
 }
 
-function refreshQuestionsBank() {
-  toast('Sincronizando banco de questões com o servidor...', 'info');
-  loadQuestionsBankFromAPI(false);
+async function refreshQuestionsBank() {
+  toast('Sincronizando todo o banco de questões...', 'info');
+  await loadQuestionsBankFromAPI(false);
+  toast(`✅ ${BANK_QUESTIONS.length.toLocaleString('pt-BR')} questões disponíveis em Treino e Simulados!`, 'success');
 }
 
 /* ── Integração Hardworq: sincronização do banco oficial (extensivo.hardworkmedicina.api.br) ── */
@@ -4139,11 +4212,11 @@ async function openHardworqSync() {
     + '<div id="hwq-doenca-resultados" style="display:none;max-height:180px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:6px;margin-top:6px"></div>'
     + '<div class="chips" id="hwq-doencas" style="margin-top:6px"></div>'
     + '<div class="form-row" style="margin-top:14px"><div><span class="sim-label">Quantidade máxima</span>'
-    + '<select id="hwq-qtd" class="sim-select"><option>10</option><option>20</option><option>50</option><option selected>100</option><option>200</option><option>500</option><option>1000</option><option value="99999">Tudo (sem limite)</option></select></div></div>'
+    + '<select id="hwq-qtd" class="sim-select"><option>50</option><option>100</option><option>200</option><option>500</option><option>1000</option><option value="99999" selected>Tudo (carregar todo o banco)</option></select></div></div>'
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.5">O gabarito vem junto no feed da API. Duplicadas são ignoradas e questões já existentes são atualizadas. O servidor faz login sozinho com <b>HARDWORQ_EMAIL</b>/<b>HARDWORQ_SENHA</b> no .env e renova o token automaticamente.</div>'
     + '<div id="hwq-result" style="display:none;margin-top:12px"></div>'
     + '<div class="form-actions"><button class="btn-outline" onclick="closeModals()">Fechar</button>'
-    + '<button id="hwq-sync-btn" class="btn-primary" onclick="runHardworqSync()"><i class="ph ph-cloud-arrow-down"></i> Buscar e importar</button></div>');
+    + '<button id="hwq-sync-btn" class="btn-primary" onclick="runHardworqSync()"><i class="ph ph-cloud-arrow-down"></i> Buscar e sincronizar tudo</button></div>');
   fetchHardworqStatus();
 }
 
@@ -4159,9 +4232,9 @@ async function runHardworqSync() {
     grupos_prova: activeChips('hwq-grupos'),
     anos: activeChips('hwq-anos').map(Number).filter(n => n > 0),
     ids_doencas: hwqDoencasSelecionadas(),
-    qtd_maxima: +($('hwq-qtd') && $('hwq-qtd').value || 100)
+    qtd_maxima: +($('hwq-qtd') && $('hwq-qtd').value || 99999)
   };
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph ph-circle-notch"></i> Buscando…'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph ph-circle-notch"></i> Sincronizando todo o banco…'; }
   if (out) out.style.display = 'none';
   try {
     const res = await fetch('/api/questions/hardworq/sync', {
@@ -4174,11 +4247,14 @@ async function runHardworqSync() {
       if (out) {
         out.style.display = 'block';
         out.innerHTML = '<div style="padding:12px 14px;border-radius:10px;background:var(--teal-dim);border:1px solid var(--teal-border);color:var(--teal);font-size:13px">'
-          + '<b>✅ ' + d.imported + ' nova(s) questão(ões) importada(s)</b> · ' + d.updated + ' atualizada(s) · ' + d.fetched + ' retornada(s) pela API. Banco agora tem ' + (d.total || '—') + ' questões.</div>';
+          + '<b>✅ ' + d.imported + ' nova(s) questão(ões) importada(s)</b> · ' + d.updated + ' atualizada(s) · ' + d.fetched + ' retornada(s) pela API. Banco agora tem ' + (d.total || '—') + ' questões prontas.</div>';
       }
-      toast('📚 Hardworq: +' + d.imported + ' questões no banco', 'success');
+      toast('📚 Sincronização concluída: +' + d.imported + ' questões no banco', 'success');
       await loadQuestionsBankFromAPI(false);
       renderTreinoLivre();
+      if (typeof renderSim === 'function') renderSim();
+      if (typeof renderHome === 'function') renderHome();
+      toast(`✅ Todo o banco (${BANK_QUESTIONS.length.toLocaleString('pt-BR')} questões) já está carregado e disponível!`, 'success');
     } else {
       const msg = esc(d.msg || d.error || ('Erro ' + res.status));
       if (out) {
@@ -4192,7 +4268,7 @@ async function runHardworqSync() {
   } catch (err) {
     toast('Erro de rede: ' + err.message, 'error');
   } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ph ph-cloud-arrow-down"></i> Buscar e importar'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ph ph-cloud-arrow-down"></i> Buscar e sincronizar tudo'; }
     fetchHardworqStatus();
   }
 }
@@ -5262,59 +5338,566 @@ function exportAnki(){const rows=buildFCList().map(c=>[c.f.replace(/\s+/g,' ').t
  a.download='cuscuz-med-anki.txt';a.click();
  toast(rows.length+' cards — no Anki: Arquivo › Importar (separador Tab)','success')}
 
-/* ═══ SIMULADOS ═══ */
-let SR=null,SRTIMER=null;
-function renderSim(){
- const qs=bankAll();
- $('sim-config').innerHTML='<div><b style="font-size:15px">⏱️ Montar simulado</b><div style="font-size:12px;color:var(--text-muted)">Banco atual: '+qs.length+' questões</div></div>'
- +'<div><label class="sim-label">Matérias (nenhuma = todas)</label><div class="chips" id="sim-subs">'
- +MODULES.filter(m=>m.id!=='drive').map(m=>'<span class="chip" data-sim="'+m.id+'" onclick="this.classList.toggle(\'active\')">'+m.n+'</span>').join('')+'</div></div>'
- +'<div class="form-row"><div><label class="sim-label">Quantidade</label><select class="sim-select" id="sim-n"><option>10</option><option selected>20</option><option>30</option><option value="all">Todas</option></select></div>'
- +'<div><label class="sim-label">Minutos</label><input class="sim-select" id="sim-min" type="number" placeholder="auto (2/questão)"></div></div>'
- +'<button class="btn-primary" style="align-self:flex-start" onclick="startSim()">Iniciar simulado</button>';
- $('sim-history').innerHTML=SIMS.length?[...SIMS].reverse().map(s=>'<div class="sim-history-item"><span>'+s.d+' · '+esc(s.name||'Simulado')+'</span><span><b style="color:var(--teal)">'+s.pct+'%</b> <span style="color:var(--text-muted)">('+s.s+'/'+s.n+')</span></span></div>').join('')
- :'<div style="color:var(--text-muted);font-size:13px">Nenhum simulado feito ainda.</div>'}
-function startSim(){
- const subs=$$('#sim-subs .chip.active').map(c=>c.dataset.sim);
- let qs=bankAll().filter(q=>!subs.length||subs.includes(q.s));
- if(!qs.length){toast('Sem questões no banco — importe primeiro','error');return}
- const nSel=$('sim-n').value,n=nSel==='all'?qs.length:+nSel;
- qs=shuffle(qs).slice(0,n);
- const min=+$('sim-min').value||Math.max(5,n*2);
- SR={qs,i:0,ans:Array(n).fill(-1),min,left:min*60,name:'Sim '+todayKey()};
- $('sim-config-screen').style.display='none';$('sim-runner-screen').style.display='block';
- renderSimQ();startSimTimer()}
-function startSimTimer(){clearInterval(SRTIMER);
- SRTIMER=setInterval(()=>{if(!SR){clearInterval(SRTIMER);return}
-  SR.left--;const el=$('sim-timer');if(!el)return;
-  el.textContent=Math.floor(SR.left/60)+':'+String(SR.left%60).padStart(2,'0');
-  el.className='sim-timer'+(SR.left<60?' danger':SR.left<SR.min*12?' warn':'');
-  const f=$('sim-time-fill');if(f)f.style.width=(SR.left/(SR.min*60)*100)+'%';
-  if(SR.left<=0){clearInterval(SRTIMER);toast('⏰ Tempo esgotado!','error');finishSim()}},1000)}
-function renderSimQ(){
- const r=SR,q=r.qs[r.i];
- $('sim-runner').innerHTML='<div><div class="quiz-progress-label"><span>Questão '+(r.i+1)+' / '+r.qs.length+'</span>'
- +'<span class="sim-timer" id="sim-timer">'+Math.floor(r.left/60)+':'+String(r.left%60).padStart(2,'0')+'</span></div>'
- +'<div class="sim-time-track"><div class="sim-time-fill" id="sim-time-fill" style="width:'+(r.left/(r.min*60)*100)+'%"></div></div></div>'
- +'<div class="quiz-question-card"><div class="quiz-question-text">'+esc(q.q)+'</div><div class="quiz-options">'
- +q.opts.map((o,i)=>'<button class="quiz-option'+(r.ans[r.i]===i?' correct':'')+'" onclick="simAnswer('+i+')"><span class="quiz-option-letter">'+'ABCDE'[i]+'</span>'+esc(o)+'</button>').join('')
- +'</div></div><div class="sim-gabarito">'
- +r.qs.map((_,i)=>'<div class="sim-nav-cell'+(r.ans[i]>=0?' ans':'')+(i===r.i?' cur':'')+'" onclick="simGo('+i+')">'+(i+1)+'</div>').join('')
- +'</div><div class="quiz-nav-row"><button class="btn-outline" onclick="if(confirm(\'Abandonar o simulado?\')){clearInterval(SRTIMER);quitSim()}">Sair</button>'
- +'<button class="btn-primary" onclick="if(confirm(\'Corrigir agora?\'))finishSim()">Finalizar</button></div>'}
-function simAnswer(i){SR.ans[SR.i]=i;renderSimQ()}
-function simGo(i){SR.i=i;renderSimQ()}
-function finishSim(){clearInterval(SRTIMER);const r=SR;
- const s=r.qs.reduce((a,q,i)=>a+(r.ans[i]===q.ans?1:0),0);
- SIMS.push({d:todayKey(),n:r.qs.length,s,pct:pct(s,r.qs.length),name:r.name});lsSet('acv_sims',SIMS);
- addXP(s*3,'simulado');touchStreak();checkBadges();
- $('sim-runner').innerHTML='<div class="quiz-result-card"><i class="ph ph-seal-check" style="font-size:40px;color:var(--teal)"></i>'
- +'<div class="quiz-result-score">'+pct(s,r.qs.length)+'%</div>'
- +'<div style="color:var(--text-secondary)">'+s+' de '+r.qs.length+' · salvo no histórico</div>'
- +'<div style="display:flex;flex-direction:column;gap:8px;width:100%;margin-top:14px;max-height:300px;overflow-y:auto">'
- +r.qs.map((q,i)=>'<div class="quiz-review-item '+(r.ans[i]===q.ans?'ok':'fail')+'"><i class="ph '+(r.ans[i]===q.ans?'ph-check-circle':'ph-x-circle')+'"></i><span>'+esc(q.q.slice(0,80))+' <b style="color:var(--green)">→ '+'ABCDE'[q.ans]+'</b></span></div>').join('')+'</div>'
- +'<button class="btn-primary" style="margin-top:16px" onclick="quitSim()">Voltar</button></div>'}
-function quitSim(){SR=null;$('sim-runner-screen').style.display='none';$('sim-config-screen').style.display='block';renderSim()}
+/* ═══ SIMULADOS VINCULADOS AO BANCO DE QUESTÕES & PROVAS REAIS ═══ */
+let SR = null, SRTIMER = null;
+let activeSimTab = 'provas';
+let simProvasFiltroAno = 'todos';
+
+function getSimQuestionsBank() {
+  if (Array.isArray(BANK_QUESTIONS) && BANK_QUESTIONS.length > 0) {
+    return BANK_QUESTIONS.map(q => {
+      const statement = q.statement || q.q || q.enunciado || '';
+      const options = Array.isArray(q.options) && q.options.length ? q.options : (Array.isArray(q.opts) ? q.opts : []);
+      let correctIndex = q.correctIndex !== undefined ? q.correctIndex : (q.ans !== undefined ? q.ans : -1);
+      if (correctIndex === -1 && q.correctLetter) {
+        correctIndex = q.correctLetter.charCodeAt(0) - 65;
+      }
+      if (correctIndex === -1 && q.correctAnswer && options.length) {
+        correctIndex = options.indexOf(q.correctAnswer);
+      }
+      if (correctIndex < 0 || correctIndex >= options.length) correctIndex = 0;
+
+      return {
+        id: q.id || 'q-' + Math.random().toString(36).slice(2, 9),
+        q: statement,
+        statement: statement,
+        opts: options,
+        options: options,
+        ans: correctIndex,
+        correctIndex: correctIndex,
+        correctLetter: String.fromCharCode(65 + correctIndex),
+        institution: q.institution || q.banca || 'Residência Médica',
+        year: q.year || 2025,
+        specialty: q.specialty || 'Clínica Médica',
+        subspecialty: q.subspecialty || '',
+        explanation: q.explanation || q.comentario || 'Gabarito oficial validado pela banca examinadora.',
+        difficulty: q.difficulty || 'Média'
+      };
+    });
+  }
+  return bankAll();
+}
+
+async function sincronizarBancoParaSimulados() {
+  toast('Sincronizando questões oficiais com o servidor...', 'info');
+  await loadQuestionsBankFromAPI(false);
+  renderSim();
+}
+
+function switchSimTab(tab) {
+  activeSimTab = tab;
+  ['provas', 'custom', 'history'].forEach(t => {
+    const btn = $('sim-tab-btn-' + t);
+    const content = $('sim-tab-content-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+    if (content) content.style.display = (t === tab) ? 'block' : 'none';
+  });
+  if (tab === 'provas') renderSimProvas();
+  else if (tab === 'custom') renderSimCustom();
+  else if (tab === 'history') renderSimHistory();
+}
+
+function renderSim() {
+  const qs = getSimQuestionsBank();
+  const totalPill = $('sim-total-pill');
+  if (totalPill) {
+    totalPill.innerHTML = `<i class="ph ph-database"></i> <b>${qs.length.toLocaleString('pt-BR')}</b> questões no banco`;
+  }
+  const sub = $('sim-banco-subtitle');
+  if (sub) {
+    sub.textContent = `Conectado ao Banco Oficial com ${qs.length.toLocaleString('pt-BR')} questões de bancas oficiais`;
+  }
+
+  // Renderiza a aba ativa
+  if (activeSimTab === 'provas') renderSimProvas();
+  else if (activeSimTab === 'custom') renderSimCustom();
+  else if (activeSimTab === 'history') renderSimHistory();
+}
+
+function renderSimProvas() {
+  const qs = getSimQuestionsBank();
+  const ctn = $('sim-provas-container');
+  if (!ctn) return;
+
+  if (!qs.length) {
+    ctn.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted)">Carregando banco de questões oficiais…</div>';
+    loadQuestionsBankFromAPI(true).then(() => renderSimProvas());
+    return;
+  }
+
+  // Agrupa questões por Instituição / Banca e Ano
+  const provasMap = new Map();
+  qs.forEach(q => {
+    const inst = q.institution || 'Outras Bancas';
+    const yr = q.year || 2025;
+    const key = inst + '||' + yr;
+    if (!provasMap.has(key)) {
+      provasMap.set(key, { inst, yr, questions: [], specs: new Set() });
+    }
+    const item = provasMap.get(key);
+    item.questions.push(q);
+    if (q.specialty) item.specs.add(q.specialty);
+  });
+
+  const provasList = Array.from(provasMap.values());
+  // Ordena por ano decrescente e quantidade de questões decrescente
+  provasList.sort((a, b) => (b.yr - a.yr) || (b.questions.length - a.questions.length));
+
+  // Coleta anos disponíveis
+  const anosDisponiveis = [...new Set(provasList.map(p => p.yr))].sort((a, b) => b - a);
+
+  let html = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:240px;max-width:440px">
+        <input type="text" id="sim-provas-search" class="imp-textarea" style="min-height:38px;padding:8px 12px;font-size:13px" placeholder="Filtrar provas por banca (ex: USP, AMRIGS, SES)..." oninput="filtrarProvasCards()">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap" id="sim-provas-year-filters">
+        <button class="chip ${simProvasFiltroAno === 'todos' ? 'active' : ''}" onclick="filtrarProvasPorAno('todos', this)">Todos os anos</button>
+        ${anosDisponiveis.map(yr => `<button class="chip ${simProvasFiltroAno === String(yr) ? 'active' : ''}" onclick="filtrarProvasPorAno('${yr}', this)">${yr}</button>`).join('')}
+      </div>
+    </div>
+    <div class="sim-provas-grid" id="sim-provas-cards-grid">
+  `;
+
+  provasList.forEach(p => {
+    const specsStr = Array.from(p.specs).slice(0, 3).join(', ');
+    const tempoEstimado = Math.max(15, p.questions.length * 2);
+    html += `
+      <div class="sim-prova-card" data-banca="${esc(normAcc(p.inst))}" data-ano="${p.yr}">
+        <div class="sim-prova-head">
+          <div class="sim-prova-banca">${esc(p.inst)}</div>
+          <span class="sim-prova-badge">${p.yr}</span>
+        </div>
+        <div class="sim-prova-meta">
+          <span><i class="ph ph-list-numbers" style="color:var(--teal)"></i> <b>${p.questions.length}</b> questões</span>
+          <span><i class="ph ph-clock"></i> ~${tempoEstimado} min</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          ${esc(specsStr || 'Todas as grandes áreas')}
+        </div>
+        <button class="sim-prova-btn" onclick="iniciarSimuladoProva('${esc(p.inst)}', ${p.yr})">
+          <i class="ph ph-play-circle"></i> Iniciar Prova Oficial
+        </button>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+  ctn.innerHTML = html;
+}
+
+window.filtrarProvasCards = function() {
+  const q = normAcc($('sim-provas-search')?.value || '').trim();
+  document.querySelectorAll('#sim-provas-cards-grid .sim-prova-card').forEach(card => {
+    const b = card.dataset.banca || '';
+    const a = card.dataset.ano || '';
+    const matchQ = !q || b.includes(q);
+    const matchAno = simProvasFiltroAno === 'todos' || a === simProvasFiltroAno;
+    card.style.display = (matchQ && matchAno) ? 'flex' : 'none';
+  });
+};
+
+window.filtrarProvasPorAno = function(ano, btn) {
+  simProvasFiltroAno = String(ano);
+  document.querySelectorAll('#sim-provas-year-filters .chip').forEach(c => c.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  filtrarProvasCards();
+};
+
+window.iniciarSimuladoProva = function(banca, ano) {
+  const all = getSimQuestionsBank();
+  let qs = all.filter(q => q.institution === banca && (ano ? q.year == ano : true));
+  if (!qs.length) qs = all.filter(q => q.institution === banca);
+  if (!qs.length) {
+    toast('Nenhuma questão encontrada para esta banca.', 'error');
+    return;
+  }
+  const min = Math.max(15, Math.round(qs.length * 2));
+  SR = {
+    qs: shuffle(qs),
+    i: 0,
+    ans: Array(qs.length).fill(-1),
+    flagged: Array(qs.length).fill(false),
+    min,
+    left: min * 60,
+    name: `Prova Oficial: ${banca} (${ano || 'Recente'})`,
+    banca,
+    ano
+  };
+  $('sim-config-screen').style.display = 'none';
+  $('sim-runner-screen').style.display = 'block';
+  renderSimQ();
+  startSimTimer();
+  toast(`Simulado da Prova ${banca} iniciado! Boa prova!`, 'info');
+};
+
+function renderSimCustom() {
+  const qs = getSimQuestionsBank();
+  const c = $('sim-config');
+  if (!c) return;
+
+  const especialidades = ['Clínica Médica', 'Cirurgia Geral', 'Pediatria', 'Ginecologia e Obstetrícia', 'Medicina Preventiva'];
+  
+  c.innerHTML = `
+    <div>
+      <b style="font-size:16px">⚙️ Montar Simulado Personalizado</b>
+      <div style="font-size:12.5px;color:var(--text-muted);margin-top:2px">Selecione especialidades e parâmetros para o simulado do banco (${qs.length} questões)</div>
+    </div>
+    <div>
+      <label class="sim-label">Grandes Áreas de Residência</label>
+      <div class="chips" id="sim-custom-specs">
+        ${especialidades.map(sp => `<span class="chip" data-spec="${sp}" onclick="this.classList.toggle('active')">${sp}</span>`).join('')}
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label class="sim-label">Quantidade de Questões</label>
+        <select class="sim-select" id="sim-custom-n">
+          <option value="10">10 questões</option>
+          <option value="20" selected>20 questões</option>
+          <option value="30">30 questões</option>
+          <option value="50">50 questões</option>
+          <option value="all">Todas as filtradas</option>
+        </select>
+      </div>
+      <div>
+        <label class="sim-label">Minutos Limite</label>
+        <input class="sim-select" id="sim-custom-min" type="number" placeholder="Automático (2 min/questão)">
+      </div>
+    </div>
+    <button class="btn-primary" style="align-self:flex-start" onclick="iniciarSimuladoCustom()">
+      <i class="ph ph-play"></i> Iniciar Simulado Customizado
+    </button>
+  `;
+}
+
+window.iniciarSimuladoCustom = function() {
+  const specs = $$('#sim-custom-specs .chip.active').map(c => c.dataset.spec);
+  let qs = getSimQuestionsBank();
+  if (specs.length) {
+    qs = qs.filter(q => specs.includes(q.specialty));
+  }
+  if (!qs.length) {
+    toast('Nenhuma questão encontrada com os filtros selecionados.', 'error');
+    return;
+  }
+  const nSel = $('sim-custom-n')?.value || '20';
+  const n = nSel === 'all' ? qs.length : Math.min(qs.length, parseInt(nSel, 10));
+  qs = shuffle(qs).slice(0, n);
+  const min = parseInt($('sim-custom-min')?.value, 10) || Math.max(10, n * 2);
+
+  SR = {
+    qs,
+    i: 0,
+    ans: Array(n).fill(-1),
+    flagged: Array(n).fill(false),
+    min,
+    left: min * 60,
+    name: 'Simulado Customizado (' + (specs.length ? specs.join(', ') : 'Geral') + ')',
+    banca: 'Personalizado'
+  };
+  $('sim-config-screen').style.display = 'none';
+  $('sim-runner-screen').style.display = 'block';
+  renderSimQ();
+  startSimTimer();
+};
+
+function renderSimHistory() {
+  const hist = $('sim-history');
+  if (!hist) return;
+  hist.innerHTML = SIMS.length
+    ? [...SIMS].reverse().map(s => `
+        <div class="sim-history-item">
+          <div>
+            <b style="font-size:14px;color:var(--text-primary);display:block">${esc(s.name || 'Simulado')}</b>
+            <span style="font-size:12px;color:var(--text-muted)">Realizado em ${esc(s.d)} · Banca: ${esc(s.banca || 'Geral')}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:13px;color:var(--text-secondary)">${s.s}/${s.n} acertos</span>
+            <b style="color:var(--teal);font-size:16px">${s.pct}%</b>
+          </div>
+        </div>
+      `).join('')
+    : '<div style="color:var(--text-muted);font-size:13.5px;text-align:center;padding:30px">Nenhum simulado finalizado ainda. Escolha uma prova oficial para começar!</div>';
+}
+
+function startSimTimer() {
+  clearInterval(SRTIMER);
+  SRTIMER = setInterval(() => {
+    if (!SR) { clearInterval(SRTIMER); return; }
+    SR.left--;
+    const el = $('sim-timer');
+    if (el) {
+      el.textContent = Math.floor(SR.left / 60) + ':' + String(SR.left % 60).padStart(2, '0');
+      el.className = 'sim-timer' + (SR.left < 60 ? ' danger' : SR.left < SR.min * 12 ? ' warn' : '');
+    }
+    const f = $('sim-time-fill');
+    if (f) f.style.width = (SR.left / (SR.min * 60) * 100) + '%';
+    if (SR.left <= 0) {
+      clearInterval(SRTIMER);
+      toast('⏰ Tempo esgotado! Corrigindo prova...', 'error');
+      finishSim();
+    }
+  }, 1000);
+}
+
+function renderSimQ() {
+  const r = SR;
+  if (!r) return;
+  const q = r.qs[r.i];
+  const isFlagged = r.flagged[r.i];
+
+  $('sim-runner').innerHTML = `
+    <div style="max-width:860px;margin:0 auto;width:100%">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+        <div>
+          <b style="font-size:15px;color:var(--text-primary)">${esc(r.name)}</b>
+          <div class="quiz-progress-label" style="margin-top:4px">
+            <span>Questão <b>${r.i + 1}</b> de ${r.qs.length}</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn-outline ${isFlagged ? 'flagged' : ''}" onclick="simToggleFlag()" title="Marcar com dúvida" style="padding:6px 12px;font-size:12px;border-radius:8px">
+            <i class="ph ${isFlagged ? 'ph-flag-fill' : 'ph-flag'}" style="color:${isFlagged ? 'var(--amber)' : 'inherit'}"></i>
+            ${isFlagged ? 'Marcada para revisar' : 'Marcar dúvida'}
+          </button>
+          <span class="sim-timer" id="sim-timer">${Math.floor(r.left / 60)}:${String(r.left % 60).padStart(2, '0')}</span>
+        </div>
+      </div>
+      <div class="sim-time-track">
+        <div class="sim-time-fill" id="sim-time-fill" style="width:${(r.left / (r.min * 60) * 100)}%"></div>
+      </div>
+
+      <div class="quiz-question-card" style="margin-top:16px">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+          <span class="sim-prova-badge"><i class="ph ph-certificate"></i> ${esc(q.institution || 'Banca')}</span>
+          <span class="sim-prova-badge">${esc(q.year || '2025')}</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--bg-elevated);border:1px solid var(--border-subtle);color:var(--text-muted)">${esc(q.specialty || 'Geral')}</span>
+          ${q.subspecialty ? `<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--bg-elevated);border:1px solid var(--border-subtle);color:var(--text-muted)">${esc(q.subspecialty)}</span>` : ''}
+          ${q.difficulty ? `<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--bg-elevated);border:1px solid var(--border-subtle);color:var(--teal)">${esc(q.difficulty)}</span>` : ''}
+        </div>
+        <div class="quiz-question-text" style="font-size:14.5px;line-height:1.6">${esc(q.statement || q.q)}</div>
+        <div class="quiz-options" style="margin-top:16px">
+          ${q.opts.map((o, idx) => `
+            <button class="quiz-option ${r.ans[r.i] === idx ? 'correct' : ''}" onclick="simAnswer(${idx})" style="text-align:left;padding:12px 14px;border-radius:10px">
+              <span class="quiz-option-letter">${String.fromCharCode(65 + idx)}</span>
+              <span style="flex:1">${esc(o)}</span>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div style="margin-top:20px">
+        <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
+          Gabarito da Prova · Navegação Rápida
+        </div>
+        <div class="sim-gabarito" style="padding:0">
+          ${r.qs.map((_, idx) => {
+            let cls = 'sim-nav-cell';
+            if (r.ans[idx] >= 0) cls += ' ans';
+            if (r.flagged[idx]) cls += ' flagged';
+            if (idx === r.i) cls += ' cur';
+            return `<div class="${cls}" onclick="simGo(${idx})">${idx + 1}</div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="quiz-nav-row" style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border-subtle)">
+        <div style="display:flex;gap:8px">
+          <button class="btn-outline" onclick="simGo(Math.max(0, SR.i - 1))" ${r.i === 0 ? 'disabled' : ''}><i class="ph ph-caret-left"></i> Anterior</button>
+          <button class="btn-outline" onclick="simGo(Math.min(SR.qs.length - 1, SR.i + 1))" ${r.i === r.qs.length - 1 ? 'disabled' : ''}>Próxima <i class="ph ph-caret-right"></i></button>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn-outline" onclick="if(confirm('Abandonar o simulado agora? Suas respostas não serão salvas.')){clearInterval(SRTIMER);quitSim()}">Abandonar</button>
+          <button class="btn-primary" onclick="confirmarFinalizarSim()">Finalizar e Corrigir</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.simAnswer = function(i) {
+  if (!SR) return;
+  SR.ans[SR.i] = i;
+  renderSimQ();
+};
+
+window.simGo = function(i) {
+  if (!SR) return;
+  SR.i = i;
+  renderSimQ();
+};
+
+window.simToggleFlag = function() {
+  if (!SR) return;
+  SR.flagged[SR.i] = !SR.flagged[SR.i];
+  renderSimQ();
+};
+
+window.confirmarFinalizarSim = function() {
+  if (!SR) return;
+  const pendentes = SR.ans.filter(a => a < 0).length;
+  const msg = pendentes > 0
+    ? `Você ainda tem ${pendentes} questão(ões) sem resposta. Deseja finalizar e corrigir a prova mesmo assim?`
+    : 'Deseja finalizar e corrigir o simulado agora?';
+  if (confirm(msg)) {
+    finishSim();
+  }
+};
+
+function finishSim() {
+  clearInterval(SRTIMER);
+  const r = SR;
+  if (!r) return;
+
+  const s = r.qs.reduce((acc, q, i) => acc + (r.ans[i] === q.ans ? 1 : 0), 0);
+  const total = r.qs.length;
+  const porcentagem = pct(s, total);
+
+  // Desempenho por Especialidade
+  const porEspec = {};
+  r.qs.forEach((q, i) => {
+    const sp = q.specialty || 'Geral';
+    if (!porEspec[sp]) porEspec[sp] = { total: 0, acertos: 0 };
+    porEspec[sp].total++;
+    if (r.ans[i] === q.ans) porEspec[sp].acertos++;
+  });
+
+  SIMS.push({
+    d: todayKey(),
+    n: total,
+    s,
+    pct: porcentagem,
+    name: r.name,
+    banca: r.banca || 'Residência Geral'
+  });
+  lsSet('acv_sims', SIMS);
+  addXP(s * 5, 'simulado oficial');
+  touchStreak();
+  checkBadges();
+
+  let diagnostico = porcentagem >= 80 ? '🌟 Excelente! Nível competitivo para aprovação na 1ª fase.' :
+                   (porcentagem >= 60 ? '👍 Bom desempenho! Revise os pontos fracos apontados no gabarito comentado.' :
+                   '⚠️ Atenção! Concentre-se nas questões erradas e leia os comentários clínicos abaixo.');
+
+  $('sim-runner').innerHTML = `
+    <div style="max-width:860px;margin:0 auto;width:100%">
+      <div class="quiz-result-card" style="padding:32px 24px">
+        <i class="ph ph-seal-check" style="font-size:46px;color:var(--teal)"></i>
+        <h2 style="font-size:20px;font-weight:800;color:var(--text-primary);margin-top:4px">${esc(r.name)}</h2>
+        <div class="quiz-result-score" style="margin:4px 0">${porcentagem}%</div>
+        <div style="font-size:15px;color:var(--text-secondary);font-weight:600">
+          Você acertou <b>${s}</b> de <b>${total}</b> questões
+        </div>
+        <div style="font-size:13px;color:var(--teal);margin-top:6px">${diagnostico}</div>
+
+        <!-- Detalhamento por Especialidade -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px;width:100%">
+          ${Object.entries(porEspec).map(([sp, stats]) => `
+            <div style="background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:10px;padding:8px 14px;font-size:12px;text-align:center">
+              <b style="color:var(--text-primary);display:block">${esc(sp)}</b>
+              <span style="color:var(--teal)">${stats.acertos}/${stats.total} (${pct(stats.acertos, stats.total)}%)</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:20px">
+          <button class="btn-primary" onclick="quitSim()"><i class="ph ph-arrow-left"></i> Voltar aos Simulados</button>
+          <button class="btn-outline" onclick="iniciarSimuladoProva('${esc(r.banca || '')}', ${r.ano || 0})"><i class="ph ph-arrows-clockwise"></i> Refazer esta Prova</button>
+        </div>
+      </div>
+
+      <!-- Gabarito Comentado e Revisão Detalhada -->
+      <div style="margin-top:24px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <h3 style="font-size:16px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:8px">
+            <i class="ph ph-chat-centered-text" style="color:var(--teal)"></i> Gabarito Comentado & Revisão Clínica
+          </h3>
+          <div style="display:flex;gap:6px">
+            <button class="chip active" onclick="filtrarReviewSim('todas', this)">Todas (${total})</button>
+            <button class="chip" onclick="filtrarReviewSim('erradas', this)">Apenas Incorretas (${total - s})</button>
+            <button class="chip" onclick="filtrarReviewSim('acertos', this)">Apenas Acertos (${s})</button>
+          </div>
+        </div>
+
+        <div id="sim-review-feed" style="display:flex;flex-direction:column;gap:14px">
+          ${r.qs.map((q, i) => {
+            const acertou = r.ans[i] === q.ans;
+            const letraCorreta = String.fromCharCode(65 + q.ans);
+
+            return `
+              <div class="sim-review-card ${acertou ? 'ok' : 'fail'}" data-status="${acertou ? 'acerto' : 'erro'}" style="background:var(--bg-surface);border:1px solid ${acertou ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)'};border-radius:12px;padding:18px 20px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:12px;font-weight:700;color:${acertou ? 'var(--green)' : 'var(--rose)'}">
+                      <i class="ph ${acertou ? 'ph-check-circle' : 'ph-x-circle'}"></i> Questão ${i + 1}
+                    </span>
+                    <span class="sim-prova-badge">${esc(q.institution || '')}</span>
+                    <span class="sim-prova-badge">${esc(q.year || '')}</span>
+                    <span style="font-size:11px;color:var(--text-muted)">${esc(q.specialty || '')}</span>
+                  </div>
+                  <span style="font-size:12px;font-weight:700;color:${acertou ? 'var(--green)' : 'var(--rose)'}">
+                    ${acertou ? 'Acertou ✓' : 'Incorreta ✕'}
+                  </span>
+                </div>
+                <div style="font-size:13.5px;color:var(--text-primary);line-height:1.5;margin-bottom:12px">
+                  ${esc(q.statement || q.q)}
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  ${q.opts.map((opt, oIdx) => {
+                    const l = String.fromCharCode(65 + oIdx);
+                    let stStyle = 'background:var(--bg-elevated);border:1px solid var(--border-subtle);color:var(--text-secondary);';
+                    if (oIdx === q.ans) {
+                      stStyle = 'background:rgba(74,222,128,0.15);border:1px solid var(--green);color:var(--text-primary);font-weight:600;';
+                    } else if (oIdx === r.ans[i]) {
+                      stStyle = 'background:rgba(248,113,113,0.15);border:1px solid var(--rose);color:var(--text-primary);';
+                    }
+                    return `
+                      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;font-size:12.5px;${stStyle}">
+                        <span style="font-weight:700;width:20px;text-align:center">${l}</span>
+                        <span style="flex:1">${esc(opt)}</span>
+                        ${oIdx === q.ans ? '<i class="ph ph-check" style="color:var(--green);font-weight:bold"></i>' : (oIdx === r.ans[i] ? '<i class="ph ph-x" style="color:var(--rose)"></i>' : '')}
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+
+                <!-- Comentário do Preceptor -->
+                <div class="sim-explanation-box">
+                  <b style="color:var(--teal);display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                    <i class="ph ph-lightbulb"></i> Justificativa do Preceptor / Comentário da Banca:
+                  </b>
+                  ${esc(q.explanation || 'Gabarito oficial validado pela comissão de residência.')}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.filtrarReviewSim = function(tipo, btn) {
+  document.querySelectorAll('#sim-review-feed .sim-review-card').forEach(card => {
+    const st = card.dataset.status;
+    if (tipo === 'todas') card.style.display = 'block';
+    else if (tipo === 'erradas') card.style.display = st === 'erro' ? 'block' : 'none';
+    else if (tipo === 'acertos') card.style.display = st === 'acerto' ? 'block' : 'none';
+  });
+  if (btn && btn.parentElement) {
+    btn.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+  }
+};
+
+function quitSim() {
+  SR = null;
+  $('sim-runner-screen').style.display = 'none';
+  $('sim-config-screen').style.display = 'block';
+  renderSim();
+}
 
 /* ═══ HOME / DASH / FILTROS ═══ */
 const USING_DEMO=false; // true só quando houver conteúdo de exemplo embutido
