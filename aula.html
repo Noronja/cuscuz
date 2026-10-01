@@ -331,6 +331,59 @@
     border: 1px solid var(--border);
   }
   .score-badge b { color: var(--accent); }
+  .sim-nav-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 12px 0 16px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, .03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    align-items: center;
+  }
+  .sim-nav-grid-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-right: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .sim-nav-cell-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .15s;
+    user-select: none;
+  }
+  .sim-nav-cell-btn:hover {
+    border-color: var(--accent);
+    color: var(--text);
+    transform: translateY(-1px);
+  }
+  .sim-nav-cell-btn.correta {
+    background: rgba(74, 222, 128, .2) !important;
+    border-color: var(--ok) !important;
+    color: var(--ok) !important;
+  }
+  .sim-nav-cell-btn.errada {
+    background: rgba(248, 113, 113, .2) !important;
+    border-color: var(--danger) !important;
+    color: var(--danger) !important;
+  }
   .questao-card {
     background: rgba(255, 255, 255, .025);
     border: 1px solid var(--border);
@@ -338,6 +391,7 @@
     padding: 18px 20px;
     margin-bottom: 16px;
     transition: border-color .15s;
+    scroll-margin-top: 80px;
   }
   .questao-card:hover {
     border-color: var(--border-strong);
@@ -716,11 +770,11 @@
       </div>
     </div>
 
-    <!-- ═══ HUB INTERATIVO DA AULA: TREINO LIVRE + PDF INTERATIVO + MATERIAIS ═══ -->
+    <!-- ═══ HUB INTERATIVO DA AULA: SIMULADO DE 20 QUESTÕES + PDF INTERATIVO + MATERIAIS ═══ -->
     <div class="aula-card hub-card">
       <div class="hub-tabs">
         <button class="hub-tab-btn ativo" id="tab-btn-questoes" onclick="trocarHubTab('questoes')">
-          <i class="ph ph-exam"></i> Treino Livre da Aula <span class="tab-badge" id="badge-questoes-count">3</span>
+          <i class="ph ph-exam"></i> Simulado da Aula <span class="tab-badge" id="badge-questoes-count">20</span>
         </button>
         <button class="hub-tab-btn" id="tab-btn-pdf" onclick="trocarHubTab('pdf')">
           <i class="ph ph-file-pdf"></i> Apostila / PDF Interativo <span class="tab-badge" id="badge-pdf-count">0</span>
@@ -730,29 +784,32 @@
         </button>
       </div>
 
-      <!-- PAINEL 1: TREINO LIVRE (Match Dinâmico por Tags da Aula) -->
+      <!-- PAINEL 1: SIMULADO TESTE DE 20 QUESTÕES (Tags: Disciplina & Tema) -->
       <div class="hub-painel ativo" id="painel-questoes">
         <div class="questoes-header">
           <div>
             <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
-              <i class="ph ph-check-square-offset" style="color:var(--accent)"></i> Questões de Fixação Imediata
+              <i class="ph ph-exam" style="color:var(--accent)"></i> Simulado de Treino — 20 Questões Sincronizadas
             </h3>
             <div class="tags-lista" id="questoes-tags" style="margin-top:6px">
-              <span class="tag-pill"><i class="ph ph-tag"></i> Aguardando tags…</span>
+              <span class="tag-pill"><i class="ph ph-tag"></i> Extraindo tags da aula…</span>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:10px">
-            <span class="score-badge" id="treino-score">Desempenho: <b>0 de 0</b> respondidas</span>
-            <button class="btn" onclick="reiniciarTreinoLivre()" title="Refazer treino da aula" style="padding:6px 10px;font-size:12px">
+            <span class="score-badge" id="treino-score">Desempenho: <b>0 de 20</b> respondidas</span>
+            <button class="btn" onclick="reiniciarTreinoLivre()" title="Refazer simulado da aula" style="padding:6px 10px;font-size:12px">
               <i class="ph ph-arrow-counter-clockwise"></i> Refazer
             </button>
           </div>
         </div>
 
+        <!-- Grade de Navegação Rápida (1 a 20) -->
+        <div class="sim-nav-grid" id="sim-nav-grid" style="display:none"></div>
+
         <div id="questoes-conteiner">
           <div class="carregando">
             <i class="ph ph-circle-notch"></i>
-            Buscando questões recomendadas no banco por tags e ementa clínica…
+            Consultando banco de questões e montando simulado de 20 questões para esta videoaula…
           </div>
         </div>
       </div>
@@ -1034,46 +1091,106 @@ window.aulaRecarregar = function() {
   }
 };
 
-/* ════════════ 2. INTEGRAÇÃO DINÂMICA DE QUESTÕES (MATCH POR TAGS) ════════════ */
-async function carregarQuestoesDaAula(v) {
+/* ════════════ 2. EXTRAÇÃO DE TAGS E SIMULADO TESTE DE 20 QUESTÕES ════════════
+   Extrai as tags da videoaula ativa (Disciplina e Tema) e consulta automaticamente
+   o banco de questões para exibir um simulado teste de 20 questões de treino
+   sincronizadas com o conteúdo estudado. */
+function extrairTagsDaAula(v) {
+  if (!v) return { disciplina: 'Clínica Médica', tema: 'Medicina', curso: 'Geral', tags: [] };
+
+  const disciplina = v.disc || 'Geral';
+  // Isola e limpa o Tema clínico da aula removendo prefixos de aula e extensões
+  let tema = String(v.titulo || '')
+    .replace(/\.(mp4|webm|mkv|mov|pdf)$/i, '')
+    .replace(/^aula\s*\d+\s*[-–—:]\s*/i, '')
+    .replace(/^bloco\s*[a-z0-9]+\s*[-–—:]\s*/i, '')
+    .replace(/^modulo\s*\d+\s*[-–—:]\s*/i, '')
+    .trim();
+
+  const stopwords = new Set(['aula', 'bloco', 'curso', 'geral', 'parte', 'introducao', 'revisao', 'aspectos', 'gerais', 'conceitos', 'principais']);
+  const palavras = norm(tema).split(/[\s\-–—:,/]+/).filter(w => w.length > 3 && !stopwords.has(w));
+
+  const tags = [disciplina, tema, ...palavras.slice(0, 4)];
+  return {
+    disciplina,
+    tema,
+    curso: v.curso || 'Extensivo',
+    tags: [...new Set(tags)]
+  };
+}
+
+async function extrairTagsECarregarSimuladoTreino(v) {
   const ctn = $('questoes-conteiner');
   const tagsBox = $('questoes-tags');
-  ctn.innerHTML = '<div class="carregando"><i class="ph ph-circle-notch"></i>Buscando questões no banco para <b>' + esc(v.titulo) + '</b>…</div>';
+  const gridNav = $('sim-nav-grid');
 
-  // Extrai tags da aula
-  const tags = [v.disc, v.curso];
-  const palavrasChave = norm(v.titulo).split(/[\s\-–—:]+/).filter(w => w.length > 3 && !['aula', 'parte', 'bloco', 'curso', 'geral', 'introducao'].includes(w));
-  palavrasChave.slice(0, 3).forEach(w => tags.push(w));
+  const meta = extrairTagsDaAula(v);
 
-  tagsBox.innerHTML = tags.map(t => `<span class="tag-pill"><i class="ph ph-tag"></i> #${esc(t)}</span>`).join('');
+  // Exibe tags de Disciplina e Tema no topo
+  tagsBox.innerHTML = `
+    <span class="tag-pill" style="border-color:var(--accent);background:var(--accent-soft);color:var(--accent)">
+      <i class="ph ph-folder-open"></i> <b>Disciplina:</b> ${esc(meta.disciplina)}
+    </span>
+    <span class="tag-pill" style="border-color:rgba(56,189,248,.4);background:rgba(56,189,248,.12);color:#38bdf8">
+      <i class="ph ph-bookmark-simple"></i> <b>Tema:</b> ${esc(meta.tema)}
+    </span>
+    ${meta.tags.slice(2).map(t => `<span class="tag-pill"><i class="ph ph-tag"></i> #${esc(t)}</span>`).join('')}
+  `;
+
+  ctn.innerHTML = '<div class="carregando"><i class="ph ph-circle-notch"></i>Sincronizando simulado teste de 20 questões para <b>' + esc(meta.tema) + ' (' + esc(meta.disciplina) + ')</b>…</div>';
+  if (gridNav) gridNav.style.display = 'none';
 
   try {
-    const qUrl = `/api/questions/match?disciplina=${encodeURIComponent(v.disc)}&tema=${encodeURIComponent(v.titulo)}&curso=${encodeURIComponent(v.curso)}&limit=4`;
+    const qUrl = `/api/questions/match?disciplina=${encodeURIComponent(meta.disciplina)}&tema=${encodeURIComponent(meta.tema)}&curso=${encodeURIComponent(meta.curso)}&tags=${encodeURIComponent(meta.tags.join(','))}&limit=20`;
     const res = await fetch(qUrl);
     const data = await res.json();
     currentQuestions = (data && data.questions && data.questions.length) ? data.questions : [];
   } catch (e) {
-    console.warn('Erro ao buscar questões via API:', e.message);
+    console.warn('Erro ao buscar 20 questões do simulado:', e.message);
     currentQuestions = [];
   }
 
   // Atualiza contador da aba
   $('badge-questoes-count').textContent = currentQuestions.length;
   questionAnswers = {};
-  renderQuestoes();
+  renderSimuladoTreino();
 }
 
-function renderQuestoes() {
+// Compatibilidade de chamada
+window.carregarQuestoesDaAula = extrairTagsECarregarSimuladoTreino;
+
+function renderSimuladoTreino() {
   const ctn = $('questoes-conteiner');
+  const gridNav = $('sim-nav-grid');
+
   if (!currentQuestions.length) {
-    ctn.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13.5px">' +
-      '<i class="ph ph-magnifying-glass" style="font-size:28px;display:block;margin:0 auto 8px;color:var(--muted)"></i>' +
-      'Nenhuma questão encontrada para este tema específico no momento. Adicione novas questões na aba Questões & Simulados.' +
+    if (gridNav) gridNav.style.display = 'none';
+    ctn.innerHTML = '<div style="padding:28px;text-align:center;color:var(--muted);font-size:13.5px">' +
+      '<i class="ph ph-magnifying-glass" style="font-size:32px;display:block;margin:0 auto 10px;color:var(--muted)"></i>' +
+      'Nenhuma questão encontrada para este tema no banco. Acesse a aba Simulados para montar testes customizados.' +
       '</div>';
     atualizarScoreTreino();
     return;
   }
 
+  // Renderiza Grade de Navegação Rápida (1 a 20)
+  if (gridNav) {
+    gridNav.style.display = 'flex';
+    gridNav.innerHTML = `
+      <div class="sim-nav-grid-label"><i class="ph ph-list-numbers"></i> Questões (1-${currentQuestions.length}):</div>
+      ${currentQuestions.map((q, idx) => {
+        const resp = questionAnswers[q.id];
+        const corretaIdx = q.correctIndex !== undefined ? q.correctIndex : (q.correctAnswer ? q.options.indexOf(q.correctAnswer) : 0);
+        let cls = 'sim-nav-cell-btn';
+        if (resp !== undefined) {
+          cls += (resp === corretaIdx) ? ' correta' : ' errada';
+        }
+        return `<button class="${cls}" onclick="irParaQuestao(${idx})" title="Saltar para questão ${idx + 1}">${idx + 1}</button>`;
+      }).join('')}
+    `;
+  }
+
+  // Renderiza os 20 cartões de questão
   ctn.innerHTML = currentQuestions.map((q, qIndex) => {
     const resp = questionAnswers[q.id];
     const respondida = resp !== undefined;
@@ -1106,7 +1223,7 @@ function renderQuestoes() {
         <div class="questao-topo">
           <span class="questao-num"><i class="ph ph-number-circle-five"></i> Questão ${qIndex + 1} de ${currentQuestions.length}</span>
           <div class="questao-tags">
-            ${q.institution ? `<span>${esc(q.institution)}</span>` : ''}
+            ${q.institution ? `<span><i class="ph ph-certificate"></i> ${esc(q.institution)}</span>` : ''}
             ${q.year ? `<span>${esc(q.year)}</span>` : ''}
             <span>${esc(q.specialty || q.subspecialty || 'Medicina')}</span>
             ${q.difficulty ? `<span style="color:var(--accent)">${esc(q.difficulty)}</span>` : ''}
@@ -1124,24 +1241,34 @@ function renderQuestoes() {
   atualizarScoreTreino();
 }
 
+window.irParaQuestao = function(idx) {
+  if (!currentQuestions[idx]) return;
+  const el = $('card-' + currentQuestions[idx].id);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.style.borderColor = 'var(--accent)';
+    setTimeout(() => { el.style.borderColor = ''; }, 1200);
+  }
+};
+
 window.responderQuestao = function(qId, selectedIdx, correctIdx) {
   if (questionAnswers[qId] !== undefined) return;
   questionAnswers[qId] = selectedIdx;
   const isAcerto = selectedIdx === correctIdx;
 
   if (isAcerto) {
-    toast('Correto! Excelente raciocínio clínico.');
+    toast('Correto! Raciocínio clínico afinado.');
   } else {
-    toast('Incorreto. Confira o comentário e a justificativa clínica.');
+    toast('Incorreto. Leia o comentário do preceptor abaixo.');
   }
 
-  renderQuestoes();
+  renderSimuladoTreino();
 };
 
 window.reiniciarTreinoLivre = function() {
   questionAnswers = {};
-  renderQuestoes();
-  toast('Treino reiniciado! Responda novamente para fixar o conteúdo.');
+  renderSimuladoTreino();
+  toast('Simulado reiniciado! Teste seus conhecimentos novamente.');
 };
 
 function atualizarScoreTreino() {
@@ -1156,7 +1283,12 @@ function atualizarScoreTreino() {
   });
 
   const pct = respondidas ? Math.round((acertos / respondidas) * 100) : 0;
-  $('treino-score').innerHTML = `Desempenho: <b>${acertos} de ${respondidas}</b> acertadas (${pct}%)`;
+  $('treino-score').innerHTML = `Desempenho: <b>${acertos} de ${total}</b> acertadas (${pct}%)`;
+
+  // Se todas as questões foram respondidas, dá feedback final
+  if (total > 0 && respondidas === total) {
+    toast(`🎉 Simulado finalizado! Nota: ${pct}% (${acertos}/${total})`, 'success');
+  }
 }
 
 /* ════════════ 3. VISUALIZADOR DE PDF INTERATIVO EMBUTIDO ════════════ */

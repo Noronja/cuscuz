@@ -848,7 +848,7 @@ app.get('/api/questions/match', (req, res) => {
     const disciplina = String(req.query.disciplina || req.query.disc || '');
     const tema = String(req.query.tema || req.query.titulo || '');
     const curso = String(req.query.curso || '');
-    const limit = Math.max(3, Math.min(10, parseInt(req.query.limit, 10) || 4));
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 20));
 
     const stopwords = new Set(['de', 'da', 'do', 'das', 'dos', 'em', 'para', 'com', 'sem', 'por', 'sobre', 'que', 'uma', 'uns', 'umas', 'aula', 'curso', 'modulo', 'parte', 'bloco', 'extensivo', 'intensivo']);
     const normText = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
