@@ -419,6 +419,41 @@ app.all('/api/drive/stream/:id', async (req, res) => {
   }
 });
 
+// Download direto de PDFs do Google Drive para caching offline no IndexedDB
+app.get('/api/drive/pdf/:id', async (req, res) => {
+  const fileId = cleanDriveId(req.params.id);
+  if (!fileId) return res.status(400).send('ID de arquivo inválido');
+
+  try {
+    // 1. Tenta via Google Drive API v3 alt=media
+    let r = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&key=${DRIVE_API_KEY}`);
+    if (!r.ok) {
+      // 2. Fallback para usercontent download
+      r = await fetch(`https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`);
+    }
+
+    if (!r.ok) {
+      return res.status(r.status).send('Não foi possível obter o PDF do Google Drive');
+    }
+
+    const ct = r.headers.get('content-type') || 'application/pdf';
+    res.setHeader('Content-Type', ct.includes('text/html') ? 'application/pdf' : ct);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Disposition', 'inline');
+    const cl = r.headers.get('content-length');
+    if (cl) res.setHeader('Content-Length', cl);
+
+    const nodeStream = Readable.fromWeb(r.body);
+    nodeStream.pipe(res);
+    req.on('close', () => {
+      try { nodeStream.destroy(); } catch (e) {}
+    });
+  } catch (err) {
+    console.error('Erro ao baixar PDF para offline:', err);
+    if (!res.headersSent) res.status(500).send(err.message);
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
