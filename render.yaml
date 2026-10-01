@@ -25,6 +25,11 @@ services:
         value: "6"
       - key: HARDWORQ_MAX_BANK
         value: "2000"
+      # Google Drive API
+      - key: GOOGLE_DRIVE_API_KEY
+        sync: false
+      - key: GOOGLE_DRIVE_FOLDER_ID
+        value: "1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7"
       # Opcionais (deixe em branco se não usar; o app funciona sem elas, com recursos reduzidos)
       - key: GEMINI_API_KEY
         sync: false

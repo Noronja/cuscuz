@@ -126,6 +126,16 @@
 .pl-chip-choice{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;border:1px solid var(--border-muted);background:var(--bg-elevated);color:var(--text-primary);font-size:12.5px;font-weight:600;cursor:pointer;margin:4px 4px 0 0;transition:all .15s}
 .pl-chip-choice:hover{border-color:var(--teal);background:var(--bg-hover);transform:translateY(-1px)}
 .pl-chip-choice.selected{background:var(--teal);color:#fff;border-color:var(--teal);box-shadow:0 2px 8px rgba(0,212,184,0.3)}
+.pl-selector-card{background:var(--bg-surface);border:1px solid var(--border-muted);border-radius:12px;padding:14px 16px;cursor:pointer;transition:all .18s ease;display:flex;flex-direction:column;gap:5px}
+.pl-selector-card:hover{border-color:var(--teal);background:var(--bg-hover);transform:translateY(-2px)}
+.pl-selector-card.selected{border-color:var(--teal);background:rgba(13,148,136,0.12);box-shadow:0 0 0 2px var(--teal)}
+.pl-selector-card.selected-rose{border-color:var(--rose);background:rgba(244,63,94,0.12);box-shadow:0 0 0 2px var(--rose)}
+.pl-badge.atencao-prova{background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid rgba(239,68,68,0.4);font-weight:700}
+.pl-fase-badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:0.04em}
+.pl-fase-badge.aq{background:rgba(14,165,233,0.18);color:#38bdf8;border:1px solid rgba(14,165,233,0.3)}
+.pl-fase-badge.rev{background:rgba(16,185,129,0.18);color:#34d399;border:1px solid rgba(16,185,129,0.3)}
+.pl-fase-badge.sob{background:rgba(239,68,68,0.22);color:#f87171;border:1px solid rgba(239,68,68,0.4)}
+.pl-q-chip{display:inline-flex;align-items:center;padding:2px 7px;border-radius:5px;background:var(--bg-surface);border:1px solid var(--border-subtle);font-family:var(--font-mono);font-size:10.5px;color:var(--text-secondary);margin:2px}
 /* Modal de Estudo com Integração de Acervo */
 .pl-study-modal{display:flex;flex-direction:column;gap:16px;max-height:80vh;overflow-y:auto;padding-right:4px}
 .pl-study-card{background:var(--bg-elevated);border:1px solid var(--border-muted);border-radius:14px;padding:16px;transition:border-color .15s}
@@ -193,11 +203,48 @@
 .ac2-player{position:absolute;inset:0;width:100%;height:100%}
 .ac2-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:#000}
 .ac2-player iframe.ativo{display:block}
-.ac2-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--text-muted);font-size:14px;z-index:2;background:radial-gradient(circle at center,rgba(22,29,44,0.85) 0%,rgba(7,9,14,0.96) 100%)}
+.ac2-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--text-muted);font-size:14px;z-index:4;background:radial-gradient(circle at center,rgba(22,29,44,0.85) 0%,rgba(7,9,14,0.96) 100%)}
 .ac2-ph i{font-size:52px;color:var(--teal);filter:drop-shadow(0 4px 20px var(--teal-glow));transition:transform .2s ease}
 .ac2-ph:hover i{transform:scale(1.08)}
 .ac2-ph-title{font-size:16px;font-weight:700;color:var(--text-primary)}
 .ac2-ph-sub{font-size:13px;color:var(--text-muted);max-width:380px;text-align:center;line-height:1.4}
+
+/* ═══ Custom Liquid Glass Internal Player ═══ */
+.ac2-custom-controls{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none;background:linear-gradient(to bottom, rgba(3,5,8,0.4) 0%, transparent 20%, transparent 70%, rgba(3,5,8,0.88) 100%);transition:opacity .25s ease;opacity:0}
+.ac2-player-wrap:hover .ac2-custom-controls, .ac2-custom-controls.active, .ac2-custom-controls.paused{opacity:1}
+.ac2-ctrl-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:auto;cursor:pointer}
+.ac2-ctrl-pulse{width:68px;height:68px;border-radius:50%;background:rgba(13,22,34,0.78);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1.5px solid rgba(255,255,255,0.18);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 24px rgba(13,148,136,0.35);transition:all .2s cubic-bezier(0.16, 1, 0.3, 1)}
+.ac2-ctrl-pulse:hover{transform:scale(1.12);background:rgba(13,148,136,0.85);box-shadow:0 10px 40px rgba(13,148,136,0.55)}
+.ac2-ctrl-pulse i{margin-left:3px}
+
+.ac2-ctrl-bottom{pointer-events:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(to top, rgba(3,5,8,0.95) 0%, rgba(3,5,8,0.5) 75%, transparent 100%)}
+.ac2-timeline-wrap{position:relative;width:100%;height:18px;cursor:pointer;display:flex;align-items:center}
+.ac2-timeline{position:relative;width:100%;height:5px;border-radius:999px;background:rgba(255,255,255,0.14);transition:height .15s ease}
+.ac2-timeline-wrap:hover .ac2-timeline{height:8px}
+.ac2-timeline-buffer{position:absolute;left:0;top:0;height:100%;border-radius:999px;background:rgba(255,255,255,0.3);transition:width .2s ease;width:0%}
+.ac2-timeline-play{position:absolute;left:0;top:0;height:100%;border-radius:999px;background:linear-gradient(90deg, var(--teal, #0d9488), #38bdf8);box-shadow:0 0 12px rgba(56,189,248,0.6);width:0%}
+.ac2-timeline-handle{position:absolute;top:50%;left:0;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 10px rgba(0,0,0,0.5), 0 0 8px var(--teal);transform:translate(-50%, -50%) scale(0);transition:transform .15s ease;pointer-events:none}
+.ac2-timeline-wrap:hover .ac2-timeline-handle{transform:translate(-50%, -50%) scale(1)}
+.ac2-time-tooltip{position:absolute;bottom:24px;left:0;transform:translateX(-50%);padding:4px 8px;border-radius:6px;background:rgba(10,15,26,0.92);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:11px;font-family:'JetBrains Mono',monospace;pointer-events:none;display:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.4)}
+
+.ac2-ctrl-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ac2-ctrl-left{display:flex;align-items:center;gap:10px}
+.ac2-ctrl-right{display:flex;align-items:center;gap:10px}
+.ac2-cbtn{width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.9);display:inline-flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:all .15s ease;position:relative}
+.ac2-cbtn:hover{background:rgba(255,255,255,0.16);border-color:var(--teal);color:#fff;transform:scale(1.05)}
+.ac2-cbadge{position:absolute;font-size:8.5px;font-weight:800;bottom:3px;font-family:'JetBrains Mono',monospace}
+
+.ac2-vol-wrap{display:flex;align-items:center;gap:6px}
+.ac2-vol-slider{width:64px;height:4px;accent-color:var(--teal);cursor:pointer;opacity:0.8;transition:opacity .15s}
+.ac2-vol-slider:hover{opacity:1}
+.ac2-time-display{font-size:12px;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,0.85);margin-left:4px;display:flex;align-items:center;gap:5px}
+.ac2-time-sep{opacity:.4}
+
+.ac2-ctrl-sync{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px;background:rgba(13,148,136,0.12);border:1px solid rgba(13,148,136,0.3);font-size:11px;font-weight:600;color:var(--teal);font-family:'JetBrains Mono',monospace}
+.ac2-sync-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);animation:pulseDot 1.6s infinite}
+@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+
+.ac2-speed-btn{width:auto;padding:0 10px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--teal)}
 
 /* Barra inferior do player */
 .ac2-player-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:-6px;padding:2px 4px;font-size:12px;color:var(--text-muted);flex-wrap:wrap}
@@ -1122,6 +1169,45 @@ mark.exam-highlight {
 .sr-mod{margin-left:auto;font-size:10px;font-family:var(--font-mono);color:var(--text-muted);flex-shrink:0}
 .vid-thumb{width:66px;height:38px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bg-elevated)}
 
+/* ═══ RADAR MÉDICO: ATUALIZAÇÕES E EDITAIS (Liquid Glass Feed) ═══ */
+.radar-section{margin:20px 20px 32px;background:var(--bg-surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--border-default);border-radius:var(--radius-xl);padding:24px;box-shadow:var(--shadow-glass);position:relative;overflow:hidden}
+.radar-section::before{content:'';position:absolute;top:-40%;right:-10%;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(13,148,136,0.12) 0%,transparent 70%);pointer-events:none;z-index:0}
+.radar-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;position:relative;z-index:1;flex-wrap:wrap}
+.radar-header-left{display:flex;flex-direction:column;gap:4px}
+.radar-badge{display:inline-flex;align-items:center;gap:6px;width:fit-content;padding:4px 10px;border-radius:999px;background:linear-gradient(135deg,rgba(13,148,136,0.2),rgba(56,189,248,0.2));border:1px solid var(--teal-border);color:var(--teal);font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:2px}
+.radar-title{font-size:20px;font-weight:800;letter-spacing:-0.03em;color:var(--text-primary);margin:0}
+.radar-subtitle{font-size:13px;color:var(--text-secondary);max-width:620px;line-height:1.4}
+.radar-refresh-btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:6px 14px;border-radius:10px}
+.radar-refresh-btn .rotating{animation:spinRadar .9s linear infinite}
+@keyframes spinRadar{to{transform:rotate(360deg)}}
+
+.radar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;position:relative;z-index:1}
+.radar-card{background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow-sm);transition:all .22s cubic-bezier(0.16,1,0.3,1);position:relative}
+.radar-card:hover{transform:translateY(-3px);border-color:var(--teal-border);box-shadow:0 12px 28px rgba(0,0,0,0.35),0 0 16px rgba(13,148,136,0.18)}
+
+.radar-img-wrap{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#030508}
+.radar-img{width:100%;height:100%;object-fit:cover;transition:transform .3s ease}
+.radar-card:hover .radar-img{transform:scale(1.04)}
+.radar-cat-tag{position:absolute;top:10px;left:10px;padding:3px 9px;border-radius:6px;background:rgba(3,5,8,0.78);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.12);color:var(--teal);font-size:10.5px;font-weight:700;letter-spacing:0.02em}
+.radar-date-tag{position:absolute;bottom:8px;right:10px;padding:2px 8px;border-radius:5px;background:rgba(3,5,8,0.72);backdrop-filter:blur(6px);color:var(--text-muted);font-size:10px;font-family:var(--font-mono)}
+
+.radar-body{padding:16px;display:flex;flex-direction:column;gap:12px;flex:1}
+.radar-card-title{font-size:15px;font-weight:700;line-height:1.35;color:var(--text-primary);letter-spacing:-0.02em;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+.radar-ai-box{background:rgba(13,148,136,0.06);border:1px solid rgba(13,148,136,0.22);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.radar-ai-header{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:0.04em}
+.radar-ai-pillars{display:flex;flex-direction:column;gap:8px}
+.radar-pillar-item{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:9px 12px;display:flex;flex-direction:column;gap:4px;transition:border-color .15s}
+.radar-pillar-item:hover{border-color:var(--teal-border);background:var(--bg-elevated)}
+.radar-pillar-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--teal);letter-spacing:0.01em}
+.radar-pillar-tag.pratica{color:#38bdf8}
+.radar-pillar-tag.mudou{color:#fbbf24}
+.radar-pillar-desc{font-size:12px;color:var(--text-secondary);line-height:1.45}
+
+.radar-footer{margin-top:auto;padding-top:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--border-subtle)}
+.radar-link-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;background:var(--bg-hover);border:1px solid var(--border-default);color:var(--text-primary);font-size:12px;font-weight:600;text-decoration:none;transition:all .15s ease}
+.radar-link-btn:hover{background:var(--teal);color:#fff;border-color:var(--teal);transform:scale(1.02)}
+
 /* ═══ PLAYER v2 (vídeo direto + loading) ═══ */
 .close-btn{width:32px;height:32px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;color:var(--text-muted);background:var(--bg-hover);border:1px solid var(--border-subtle);transition:all .15s}
 .close-btn:hover{background:var(--bg-active);color:var(--text-primary);transform:scale(1.06)}
@@ -1409,6 +1495,24 @@ mark.exam-highlight {
       
       <div class="demo-banner" id="demo-banner"></div>
       <div id="resume-card"></div>
+
+      <!-- ════ RADAR MÉDICO: ATUALIZAÇÕES E EDITAIS (Estratégia MED + Resumos Gemini AI) ════ -->
+      <section class="radar-section" id="radar-section">
+        <div class="radar-header">
+          <div class="radar-header-left">
+            <div class="radar-badge"><i class="ph ph-sparkle"></i> Estratégia MED + Gemini AI</div>
+            <h2 class="radar-title">Radar Médico: Atualizações e Editais</h2>
+            <div class="radar-subtitle">Notícias recentes, diretrizes clínicas e editais de residência resumidos com pontos-chave para seus estudos</div>
+          </div>
+          <button class="btn-outline btn-sm radar-refresh-btn" id="radar-refresh-btn" onclick="fetchRadarMedico(true)" title="Recarregar e sincronizar notícias">
+            <i class="ph ph-arrows-clockwise" id="radar-refresh-icon"></i> Atualizar Radar
+          </button>
+        </div>
+        <div class="radar-grid" id="radar-grid">
+          <!-- Renderizado dinamicamente via fetchRadarMedico() -->
+        </div>
+      </section>
+
       <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 20px 16px;flex-wrap:wrap;gap:8px">
         <div>
           <h1 class="section-title" style="margin:0 0 4px">Cursos no Google Drive</h1>
@@ -1511,6 +1615,89 @@ mark.exam-highlight {
           <!-- 1. Video Player Responsivo -->
           <div class="ac2-player-wrap">
             <div class="ac2-player" id="ac2-player">
+              <video id="ac2-native-video" playsinline preload="auto" style="position:absolute;inset:0;width:100%;height:100%;background:#000;display:none;object-fit:contain;z-index:1"></video>
+
+              <!-- Custom Video Player Controls Overlay (Liquid Glass) -->
+              <div class="ac2-custom-controls" id="ac2-custom-controls">
+                <!-- Center Play/Pause big pulse button -->
+                <div class="ac2-ctrl-center" id="ac2-ctrl-center" onclick="ac2TogglePlay()">
+                  <div class="ac2-ctrl-pulse" id="ac2-ctrl-pulse"><i class="ph ph-play-fill" id="ac2-center-icon"></i></div>
+                </div>
+
+                <!-- Bottom Control Bar -->
+                <div class="ac2-ctrl-bottom">
+                  <!-- Progress Timeline Scrubber -->
+                  <div class="ac2-timeline-wrap" id="ac2-timeline-wrap">
+                    <div class="ac2-timeline" id="ac2-timeline">
+                      <div class="ac2-timeline-buffer" id="ac2-timeline-buffer"></div>
+                      <div class="ac2-timeline-play" id="ac2-timeline-play"></div>
+                      <div class="ac2-timeline-handle" id="ac2-timeline-handle"></div>
+                    </div>
+                    <div class="ac2-time-tooltip" id="ac2-time-tooltip">00:00</div>
+                  </div>
+
+                  <!-- Controls Row -->
+                  <div class="ac2-ctrl-row">
+                    <div class="ac2-ctrl-left">
+                      <!-- Play / Pause -->
+                      <button class="ac2-cbtn" id="ac2-play-btn" onclick="ac2TogglePlay()" title="Reproduzir / Pausar (Espaço)">
+                        <i class="ph ph-play-fill" id="ac2-play-icon"></i>
+                      </button>
+                      <!-- Rewind 10s -->
+                      <button class="ac2-cbtn" onclick="ac2SeekOffset(-10)" title="Voltar 10s (←)">
+                        <i class="ph ph-arrow-counter-clockwise"></i>
+                        <span class="ac2-cbadge">10</span>
+                      </button>
+                      <!-- Forward 10s -->
+                      <button class="ac2-cbtn" onclick="ac2SeekOffset(10)" title="Avançar 10s (→)">
+                        <i class="ph ph-arrow-clockwise"></i>
+                        <span class="ac2-cbadge">10</span>
+                      </button>
+
+                      <!-- Volume -->
+                      <div class="ac2-vol-wrap">
+                        <button class="ac2-cbtn" id="ac2-vol-btn" onclick="ac2ToggleMute()" title="Silenciar / Ativar som (M)">
+                          <i class="ph ph-speaker-high" id="ac2-vol-icon"></i>
+                        </button>
+                        <input type="range" class="ac2-vol-slider" id="ac2-vol-slider" min="0" max="1" step="0.05" value="1" oninput="ac2SetVolume(this.value)">
+                      </div>
+
+                      <!-- Time Display -->
+                      <div class="ac2-time-display">
+                        <span id="ac2-cur-time">00:00</span>
+                        <span class="ac2-time-sep">/</span>
+                        <span id="ac2-dur-time">00:00</span>
+                      </div>
+                    </div>
+
+                    <div class="ac2-ctrl-right">
+                      <!-- Buffer Sync Indicator Badge -->
+                      <div class="ac2-ctrl-sync" id="ac2-ctrl-sync" title="Status de sincronização do buffer com o servidor">
+                        <span class="ac2-sync-dot"></span>
+                        <span id="ac2-sync-text">Sincronizado</span>
+                      </div>
+
+                      <!-- Speed Selector Dropdown/Button -->
+                      <div class="ac2-speed-wrap">
+                        <button class="ac2-cbtn ac2-speed-btn" id="ac2-speed-btn" onclick="ac2CycleSpeed()" title="Velocidade de Reprodução">
+                          <b id="ac2-speed-label">1.0x</b>
+                        </button>
+                      </div>
+
+                      <!-- Picture-in-Picture -->
+                      <button class="ac2-cbtn" onclick="ac2TogglePiP()" title="Modo Picture-in-Picture (Janela Flutuante)">
+                        <i class="ph ph-picture-in-picture"></i>
+                      </button>
+
+                      <!-- Fullscreen -->
+                      <button class="ac2-cbtn" onclick="ac2ToggleFullscreen()" title="Tela Cheia (F)">
+                        <i class="ph ph-corners-out" id="ac2-fs-icon"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- Placeholder interativo (pode alternar para YouTube ou Google Drive) -->
               <div class="ac2-ph" id="ac2-ph" onclick="ac2IniciarPrimeira()">
                 <i class="ph ph-play-circle"></i>
@@ -1524,11 +1711,12 @@ mark.exam-highlight {
           <div class="ac2-player-bar">
             <div class="ac2-player-bar-left">
               <button class="ac2-navbtn" onclick="ac2ToggleNav()" title="Ocultar/mostrar menu lateral (Modo Cinema)"><i class="ph ph-sidebar-simple"></i></button>
-              <button class="ac2-navbtn" onclick="ac2Recarregar()" title="Recarregar vídeo (resolve eventuais falhas do Drive)"><i class="ph ph-arrow-clockwise"></i></button>
+              <button class="ac2-navbtn" onclick="ac2Recarregar()" title="Recarregar vídeo"><i class="ph ph-arrow-clockwise"></i></button>
+              <button class="ac2-navbtn" id="ac2-player-mode-btn" onclick="ac2AlternarModoPlayer()" title="Alternar entre Player Direto HD e Player do Google Drive"><i class="ph ph-film-strip"></i></button>
               <span class="ac2-buffer-txt" id="ac2-buffer"></span>
             </div>
             <div class="ac2-player-bar-right">
-              <span class="ac2-buffer-txt"><i class="ph ph-shield-check ok"></i> Player CDN Seguro</span>
+              <span class="ac2-buffer-txt" id="ac2-mode-label"><i class="ph ph-shield-check ok"></i> Player Nativo HD</span>
               <span>·</span>
               <span class="ac2-bmeta" id="ac2-bmeta"><i class="ph ph-lightning"></i> <b id="ac2-buffer-txt">HD 1080p</b></span>
             </div>
@@ -3389,14 +3577,32 @@ function openDriveItemById(fileId) {
   $('player-title').textContent = item.name;
   const fr = $('player-frame'), vd = $('player-video');
   vd.oncanplay = vd.onerror = null; vd.pause(); vd.removeAttribute('src'); vd.load();
-  vd.style.display = 'none'; fr.style.display = '';
 
   $('player-meta').textContent = currentFolderName + (isVideo ? ' · Videoaula' : ' · Material') + ' ↗';
   $('player-meta').onclick = () => window.open(u, '_blank');
 
-  fr.onload = () => showPLoading(false);
-  showPLoading(true);
-  fr.src = u;
+  if (isVideo) {
+    fr.style.display = 'none';
+    vd.style.display = '';
+    vd.src = '/api/drive/stream/' + encodeURIComponent(item.id);
+    vd.oncanplay = () => showPLoading(false);
+    vd.onerror = () => {
+      console.warn('Native video error in modal, fallback to iframe');
+      vd.style.display = 'none';
+      fr.style.display = '';
+      fr.onload = () => showPLoading(false);
+      fr.src = u;
+    };
+    showPLoading(true);
+    vd.load();
+    vd.play().catch(() => {});
+  } else {
+    vd.style.display = 'none';
+    fr.style.display = '';
+    fr.onload = () => showPLoading(false);
+    showPLoading(true);
+    fr.src = u;
+  }
 
   $('mark-btn').innerHTML = DONE.has(k) ? '✅ Concluído' : '<i class="ph ph-check-circle"></i> Marcar como concluído';
   $('mark-btn').onclick = () => {
@@ -4281,6 +4487,25 @@ function startTreinoSingle(qId) {
   startTreinoSimulator([q]);
 }
 
+function updateWrongBtn() {
+  const el = $('wrong-count');
+  if (el) el.textContent = (WRONG && WRONG.size) ? WRONG.size : 0;
+}
+
+function startWrongQuiz() {
+  if (!WRONG || WRONG.size === 0) {
+    toast('Nenhuma questão errada salva no Caderno de Erros!', 'info');
+    return;
+  }
+  const wrongQs = BANK_QUESTIONS.filter(q => WRONG.has(q.statement) || (BANK_ANSWERS[q.id] && !BANK_ANSWERS[q.id].isCorrect));
+  if (!wrongQs.length) {
+    toast('Nenhuma questão correspondente aos erros foi encontrada no banco atual.', 'warning');
+    return;
+  }
+  startTreinoSimulator(shuffle([...wrongQs]));
+  toast(`Caderno de Erros: ${wrongQs.length} questões carregadas para revisão ativa!`, 'success');
+}
+
 // Aba 2: Gerador Gemini AI
 function setGeminiPrompt(promptText) {
   const input = $('gemini-prompt-input');
@@ -5125,6 +5350,7 @@ function renderHome(){
   $('dash-stats').innerHTML='<div class="cards-grid" style="padding:0;gap:12px">'
   +stat('🎬','Videoaulas',vids)+stat('📄','Materiais',pdfs)+stat('✏️','Questões',qtot)
   +stat('⏱️','Horas de estudo',Math.floor(studyMin/60))+stat('⚡','XP',DB.xp)+stat('🔥','Sequência',DB.streak+' dias')+'</div>';
+  fetchRadarMedico();
 }
 function renderDash(){
  const d=$('dashboard'),items=DB.plan?DB.plan.items:[],dn=items.filter(i=>DB.done[i.d+'#'+i.ix]).length;
@@ -5263,6 +5489,7 @@ window.addEventListener('DOMContentLoaded',()=>{
  updateWrongBtn();
  loadDriveFolder(DRIVE_ROOT_ID, 'Cursos', false);
  loadQuestionsBankFromAPI(true);
+ fetchRadarMedico();
 });
 window.addEventListener('load',()=>{if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'});
 </script>
@@ -5577,8 +5804,10 @@ const plDiff = (a, b) => {
 
 // Estado do Onboarding do Mentor IA
 const PL_ONBOARD = {
+  modoEstudo: lsGet('pl_modo_estudo', 'hibrido'), // 'hibrido' ou 'foco_graduacao'
   horasDia: 4,
   energia: 'moderada', // 'alta' | 'moderada' | 'baixa'
+  diasEstagio: lsGet('pl_dias_estagio', [2, 4]), // dias de estágio (0-6)
   dificuldades: ['Cirurgia Geral', 'Pediatria'],
   dataResidencia: plAddDias(plHoje(), 90),
   pdfResidencia: null, // { nome, texto }
@@ -5604,14 +5833,16 @@ function renderPlannerIA() {
 
 /* ── 1. Fase de Onboarding (Sessão de Perguntas da IA - Mentor) ── */
 function renderPlannerOnboarding(root) {
+  const isFocoGrad = PL_ONBOARD.modoEstudo === 'foco_graduacao';
+
   root.innerHTML =
     '<div class="pl-chat-box">' +
       '<div class="pl-chat-head">' +
         '<div class="pl-chat-mentor">' +
           '<div class="pl-mentor-avatar"><i class="ph ph-brain"></i></div>' +
           '<div>' +
-            '<div style="font-size:15px;font-weight:800;color:var(--text-primary)">Mentor IA — Gerenciador de Cronograma</div>' +
-            '<div style="font-size:12px;color:var(--teal)">Sinergia Faculdade + Residência Médica · Algoritmo RAG</div>' +
+            '<div style="font-size:15px;font-weight:800;color:var(--text-primary)">Motor de Agendamento Inteligente</div>' +
+            '<div style="font-size:12px;color:var(--teal)">Ingestão de Ementas Oficiais · Método de 3 Fases · Modo Sobrevivência</div>' +
           '</div>' +
         '</div>' +
         '<div style="display:flex;gap:8px">' +
@@ -5625,45 +5856,95 @@ function renderPlannerOnboarding(root) {
         '<div class="pl-bubble bot">' +
           '<div class="pl-mentor-avatar" style="width:34px;height:34px;font-size:17px"><i class="ph ph-robot"></i></div>' +
           '<div class="pl-bubble-content">' +
-            '<b>Olá, futuro Residente!</b> Sou seu Mentor de Estudos e arquiteto de cronogramas inteligentes.<br>' +
-            'Minha missão é cruzar sua <b>rotina da faculdade</b> com a <b>preparação para a residência médica</b>.<br><br>' +
-            '🎓 <b>100% da Ementa da Faculdade Integrada:</b> garantimos a cobertura de todas as matérias, rodízios e internato da sua graduação, sem deixar nenhum conteúdo acadêmico para trás.<br>' +
-            '✨ <b>Algoritmo de Sinergia:</b> se a faculdade ensinar <i>Antibioticoterapia</i> em maio, puxamos o módulo de <i>Antibioticoterapia</i> do cursinho para maio também.<br>' +
-            '🛡️ <b>Proteção de Provas:</b> nas semanas de prova da faculdade, sua carga de residência é zerada para foco total nas notas da graduação.' +
+            '<b>Olá, estudante de Medicina!</b> Sou o <b>Motor de Agendamento Inteligente</b> da plataforma médica.<br>' +
+            'Minha função é ler seus cronogramas oficiais pré-montados (Manual da Faculdade e/ou Cursinho) e gerar um calendário extremamente racional, produtivo e realista.<br><br>' +
+            '🎯 <b>Modos de Estudo:</b> suporte completo ao <i>[Modo Híbrido: Faculdade + Residência]</i> e ao <i>[Modo Foco Total: Apenas Graduação]</i>.<br>' +
+            '🏥 <b>Racionalidade & Estágios:</b> dias de estágio ou aulas práticas são ponderados com carga horária reduzida (baixa energia).<br>' +
+            '📐 <b>O Método de 3 Fases:</b> 50% Aquisição (aulas/leitura), 30% Revisão Ativa diária (questões/SRS) e Modo Sobrevivência automático nas semanas de prova.' +
           '</div>' +
         '</div>' +
 
-        '<!-- Pergunta 1: Horas disponíveis -->' +
+        '<!-- Pergunta 1: Seletor de Modo de Estudo (Input do Usuário) -->' +
+        '<div class="pl-bubble bot">' +
+          '<div class="pl-mentor-avatar" style="width:34px;height:34px;font-size:17px"><i class="ph ph-compass"></i></div>' +
+          '<div class="pl-bubble-content" style="width:100%">' +
+            '<b>1. Qual o seu objetivo de estudo atual? (Seletor de Modo)</b><br>' +
+            '<span style="font-size:12px;color:var(--text-muted)">Escolha seu direcionamento. No Modo Foco Total, a IA suspende todas as metas de cursinho e foca 100% na faculdade.</span><br>' +
+            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin-top:10px">' +
+              '<div class="pl-selector-card ' + (!isFocoGrad ? 'selected' : '') + '" onclick="plSetModoEstudo(\'hibrido\')">' +
+                '<div style="font-weight:700;font-size:13.5px;color:var(--teal);display:flex;align-items:center;gap:6px">' +
+                  '<i class="ph ph-git-merge"></i> [Modo Híbrido: Faculdade + Residência]' +
+                '</div>' +
+                '<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">' +
+                  'Harmoniza a ementa da graduação com o cursinho de residência médica com máxima sinergia de tempo.' +
+                '</div>' +
+              '</div>' +
+              '<div class="pl-selector-card ' + (isFocoGrad ? 'selected-rose' : '') + '" onclick="plSetModoEstudo(\'foco_graduacao\')">' +
+                '<div style="font-weight:700;font-size:13.5px;color:var(--rose);display:flex;align-items:center;gap:6px">' +
+                  '<i class="ph ph-graduation-cap"></i> [Modo Foco Total: Apenas Graduação]' +
+                '</div>' +
+                '<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">' +
+                  'Suspende temporariamente todas as metas do cursinho e redistribui apenas a ementa da faculdade e datas de provas.' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<!-- Pergunta 2: Dias de Estágio / Aulas Práticas (Baixa Energia) -->' +
+        '<div class="pl-bubble bot">' +
+          '<div class="pl-mentor-avatar" style="width:34px;height:34px;font-size:17px"><i class="ph ph-first-aid-kit"></i></div>' +
+          '<div class="pl-bubble-content">' +
+            '<b>2. Em quais dias você tem Estágio Hospitalar / Aulas Práticas?</b><br>' +
+            '<span style="font-size:12px;color:var(--text-muted)">A IA programa menor carga horária nesses dias (dias de baixa energia) para manter o cronograma realista.</span><br>' +
+            '<div style="margin-top:10px">' +
+              [
+                { dow: 1, label: 'Segunda' },
+                { dow: 2, label: 'Terça' },
+                { dow: 3, label: 'Quarta' },
+                { dow: 4, label: 'Quinta' },
+                { dow: 5, label: 'Sexta' },
+                { dow: 6, label: 'Sábado' },
+                { dow: 0, label: 'Domingo' }
+              ].map(d => {
+                const sel = (PL_ONBOARD.diasEstagio || []).includes(d.dow);
+                return '<button class="pl-chip-choice' + (sel ? ' selected' : '') + '" onclick="plToggleDiaEstagio(' + d.dow + ')">' + (sel ? '✓ ' : '+ ') + d.label + '</button>';
+              }).join('') +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<!-- Pergunta 3: Horas disponíveis nos dias normais -->' +
         '<div class="pl-bubble bot">' +
           '<div class="pl-mentor-avatar" style="width:34px;height:34px;font-size:17px"><i class="ph ph-clock"></i></div>' +
           '<div class="pl-bubble-content">' +
-            '<b>1. Quantas horas por dia da semana</b> você tem disponíveis para o estudo extraclasse?<br>' +
+            '<b>3. Quantas horas por dia</b> você tem disponíveis para estudo extraclasse nos dias regulares?<br>' +
             '<div style="margin-top:10px">' +
               [2, 3, 4, 5, 6].map(h => '<button class="pl-chip-choice' + (PL_ONBOARD.horasDia === h ? ' selected' : '') + '" onclick="plSetHoras(' + h + ')">' + h + ' horas/dia</button>').join('') +
             '</div>' +
           '</div>' +
         '</div>' +
 
-        '<!-- Pergunta 2: Nível de Energia pós-faculdade -->' +
+        '<!-- Pergunta 4: Nível de Energia pós-faculdade -->' +
         '<div class="pl-bubble bot">' +
           '<div class="pl-mentor-avatar" style="width:34px;height:34px;font-size:17px"><i class="ph ph-battery-charging"></i></div>' +
           '<div class="pl-bubble-content">' +
-            '<b>2. Qual o seu nível de energia pós-faculdade / internato?</b><br>' +
-            '<span style="font-size:12px;color:var(--text-muted)">Adequamos o tamanho dos blocos de estudo e a distribuição para os fins de semana.</span><br>' +
+            '<b>4. Qual o seu nível geral de energia?</b><br>' +
+            '<span style="font-size:12px;color:var(--text-muted)">Adequamos o tamanho dos blocos de estudo e pausas regenerativas.</span><br>' +
             '<div style="margin-top:10px">' +
-              '<button class="pl-chip-choice' + (PL_ONBOARD.energia === 'alta' ? ' selected' : '') + '" onclick="plSetEnergia(\'alta\')">⚡ Alta Energia (Ritmo intenso constante)</button>' +
-              '<button class="pl-chip-choice' + (PL_ONBOARD.energia === 'moderada' ? ' selected' : '') + '" onclick="plSetEnergia(\'moderada\')">⚖️ Moderada (Blocos equilibrados com pausas)</button>' +
-              '<button class="pl-chip-choice' + (PL_ONBOARD.energia === 'baixa' ? ' selected' : '') + '" onclick="plSetEnergia(\'baixa\')">🔋 Baixa / Esgotado (Revisões leves na semana, foco no sábado/domingo)</button>' +
+              '<button class="pl-chip-choice' + (PL_ONBOARD.energia === 'alta' ? ' selected' : '') + '" onclick="plSetEnergia(\'alta\')">⚡ Alta Energia (Ritmo constante)</button>' +
+              '<button class="pl-chip-choice' + (PL_ONBOARD.energia === 'moderada' ? ' selected' : '') + '" onclick="plSetEnergia(\'moderada\')">⚖️ Moderada (Blocos equilibrados)</button>' +
+              '<button class="pl-chip-choice' + (PL_ONBOARD.energia === 'baixa' ? ' selected' : '') + '" onclick="plSetEnergia(\'baixa\')">🔋 Baixa / Cansado (Revisões leves na semana)</button>' +
             '</div>' +
           '</div>' +
         '</div>' +
 
-        '<!-- Pergunta 3: Matérias de maior dificuldade -->' +
+        '<!-- Pergunta 5: Matérias de maior dificuldade -->' +
         '<div class="pl-bubble bot">' +
           '<div class="pl-mentor-avatar" style="width:34px;height:34px;font-size:17px"><i class="ph ph-books"></i></div>' +
           '<div class="pl-bubble-content">' +
-            '<b>3. Quais matérias você considera de maior dificuldade ou calcanhar de Aquiles?</b><br>' +
-            '<span style="font-size:12px;color:var(--text-muted)">Essas disciplinas terão peso maior e mais ciclos de revisão ativa.</span><br>' +
+            '<b>5. Quais matérias você considera de maior dificuldade?</b><br>' +
+            '<span style="font-size:12px;color:var(--text-muted)">Essas disciplinas terão maior prioridade de revisão ativa.</span><br>' +
             '<div style="margin-top:10px">' +
               ['Clínica Médica', 'Cirurgia Geral', 'Pediatria', 'Ginecologia e Obstetrícia', 'Medicina Preventiva'].map(mat => {
                 const sel = PL_ONBOARD.dificuldades.includes(mat);
@@ -5673,30 +5954,32 @@ function renderPlannerOnboarding(root) {
           '</div>' +
         '</div>' +
 
-        '<!-- Pergunta 4: Data Alvo da Residência -->' +
-        '<div class="pl-bubble bot">' +
-          '<div class="pl-mentor-avatar" style="width:34px;height:34px;font-size:17px"><i class="ph ph-target"></i></div>' +
-          '<div class="pl-bubble-content">' +
-            '<b>4. Qual a data da sua principal prova de residência médica alvo (ex: ENARE, USP, UNIFESP)?</b><br>' +
-            '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
-              '<input type="date" id="pl-onboard-data-resid" class="pl-input" value="' + PL_ONBOARD.dataResidencia + '" onchange="PL_ONBOARD.dataResidencia = this.value" style="max-width:180px">' +
-              '<span style="font-size:12px;color:var(--text-muted)">Geralmente novembro/dezembro de 2026</span>' +
+        (!isFocoGrad ? (
+          '<!-- Pergunta 6: Data Alvo da Residência -->' +
+          '<div class="pl-bubble bot">' +
+            '<div class="pl-mentor-avatar" style="width:34px;height:34px;font-size:17px"><i class="ph ph-target"></i></div>' +
+            '<div class="pl-bubble-content">' +
+              '<b>6. Data da principal prova de residência médica alvo (ENARE, USP, etc.):</b><br>' +
+              '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+                '<input type="date" id="pl-onboard-data-resid" class="pl-input" value="' + PL_ONBOARD.dataResidencia + '" onchange="PL_ONBOARD.dataResidencia = this.value" style="max-width:180px">' +
+                '<span style="font-size:12px;color:var(--text-muted)">Novembro/Dezembro</span>' +
+              '</div>' +
             '</div>' +
-          '</div>' +
-        '</div>' +
+          '</div>'
+        ) : '') +
 
-        '<!-- Pergunta 5: Áreas de Texto Livres (Sem limite de caracteres) -->' +
+        '<!-- Ingestão de Cronogramas Pré-Montados (Manual Faculdade & Cursinho) -->' +
         '<div class="pl-bubble bot" style="max-width:96%">' +
           '<div class="pl-mentor-avatar" style="width:34px;height:34px;font-size:17px"><i class="ph ph-article"></i></div>' +
           '<div class="pl-bubble-content" style="width:100%">' +
-            '<b>5. Envio dos Cronogramas e Atualizações (Áreas de Texto Livres & Sem Limite):</b><br>' +
-            '<span style="font-size:12px;color:var(--text-muted)">Cole diretamente os textos completos da faculdade, do cursinho e quaisquer atualizações ou notas. O motor Gemini integrará 100% dos temas sem alucinações.</span><br>' +
+            '<b>' + (!isFocoGrad ? '7.' : '6.') + ' Ingestão de Cronogramas Pré-Montados (Manual do Aluno & Cursinho):</b><br>' +
+            '<span style="font-size:12px;color:var(--text-muted)">A IA lerá os documentos oficiais como base de dados fiel, sem criar temas do zero.</span><br>' +
 
             '<div class="pl-textareas-container">' +
               '<!-- 1. Cronograma e Ementa da Faculdade -->' +
               '<div class="pl-textarea-card">' +
                 '<div class="pl-textarea-header">' +
-                  '<div class="pl-textarea-title"><i class="ph ph-graduation-cap" style="color:var(--rose);font-size:18px"></i> 1) Cronograma e Ementa Completa da Faculdade</div>' +
+                  '<div class="pl-textarea-title"><i class="ph ph-graduation-cap" style="color:var(--rose);font-size:18px"></i> 1) Manual do Aluno & Ementa Completa da Faculdade</div>' +
                   '<div class="pl-textarea-actions">' +
                     '<span class="pl-unlimited-badge"><i class="ph ph-infinity"></i> Sem limite</span>' +
                     '<button type="button" class="pl-textarea-paste-btn" onclick="plColarClipboard(\'pl-texto-faculdade\', \'pl-count-faculdade\')"><i class="ph ph-clipboard-text"></i> Colar</button>' +
@@ -5704,7 +5987,7 @@ function renderPlannerOnboarding(root) {
                     '<button type="button" class="pl-textarea-paste-btn" onclick="$(\'pl-texto-faculdade\').value=\'\';plAtualizarContador(\'pl-texto-faculdade\', \'pl-count-faculdade\')">Limpar</button>' +
                   '</div>' +
                 '</div>' +
-                '<textarea id="pl-texto-faculdade" class="pl-textarea-field" rows="6" placeholder="Cole aqui o cronograma completo da faculdade, manual do aluno, plano de ensino, datas das provas P1/P2/Sub, rotações de internato e matérias lecionadas..." oninput="plAtualizarContador(\'pl-texto-faculdade\', \'pl-count-faculdade\')">' + esc(PL_ONBOARD.textoFaculdade || '') + '</textarea>' +
+                '<textarea id="pl-texto-faculdade" class="pl-textarea-field" rows="6" placeholder="Cole aqui o manual do aluno, ementa da faculdade, plano de ensino, datas das provas P1/P2/Sub/TBLs, rotações de internato e temas lecionados..." oninput="plAtualizarContador(\'pl-texto-faculdade\', \'pl-count-faculdade\')">' + esc(PL_ONBOARD.textoFaculdade || '') + '</textarea>' +
                 '<div class="pl-textarea-footer">' +
                   '<span id="pl-count-faculdade">' + (PL_ONBOARD.textoFaculdade || '').length.toLocaleString('pt-BR') + ' caracteres · Sem limite</span>' +
                   '<span style="color:var(--teal);font-weight:700">100% Obrigatório Integrar</span>' +
@@ -5712,36 +5995,48 @@ function renderPlannerOnboarding(root) {
                 '<input type="file" id="pl-pdf-faculdade-file" accept="application/pdf" style="display:none" onchange="plCarregarPdfOnboard(this, \'faculdade\')">' +
               '</div>' +
 
-              '<!-- 2. Cronograma de Residência Médica -->' +
-              '<div class="pl-textarea-card">' +
-                '<div class="pl-textarea-header">' +
-                  '<div class="pl-textarea-title"><i class="ph ph-first-aid" style="color:var(--teal);font-size:18px"></i> 2) Cronograma de Estudo para Residência (Cursinho)</div>' +
-                  '<div class="pl-textarea-actions">' +
-                    '<span class="pl-unlimited-badge"><i class="ph ph-infinity"></i> Sem limite</span>' +
-                    '<button type="button" class="pl-textarea-paste-btn" onclick="plColarClipboard(\'pl-texto-residencia\', \'pl-count-residencia\')"><i class="ph ph-clipboard-text"></i> Colar</button>' +
-                    '<button type="button" class="pl-textarea-paste-btn" onclick="$(\'pl-pdf-cursinho-file\').click()"><i class="ph ph-file-pdf"></i> Anexar PDF</button>' +
-                    '<button type="button" class="pl-textarea-paste-btn" onclick="$(\'pl-texto-residencia\').value=\'\';plAtualizarContador(\'pl-texto-residencia\', \'pl-count-residencia\')">Limpar</button>' +
+              '<!-- 2. Cronograma de Cursinho de Residência Médica -->' +
+              (isFocoGrad ? (
+                '<div class="pl-textarea-card" style="opacity:0.75;border:1px dashed var(--amber);background:rgba(245,158,11,0.04)">' +
+                  '<div class="pl-textarea-header">' +
+                    '<div class="pl-textarea-title"><i class="ph ph-pause-circle" style="color:var(--amber);font-size:18px"></i> 2) Cronograma de Cursinho (Suspenso Temporariamente)</div>' +
+                    '<span class="pl-unlimited-badge" style="color:var(--amber);background:rgba(245,158,11,0.15);border-color:var(--amber)"><i class="ph ph-pause"></i> Foco Total Graduação</span>' +
                   '</div>' +
-                '</div>' +
-                '<textarea id="pl-texto-residencia" class="pl-textarea-field" rows="6" placeholder="Cole aqui o cronograma do cursinho de residência médica: Medcurso, Estratégia MED, Sanar, Hardwork, apostilas, semanas e blocos..." oninput="plAtualizarContador(\'pl-texto-residencia\', \'pl-count-residencia\')">' + esc(PL_ONBOARD.textoResidencia || '') + '</textarea>' +
-                '<div class="pl-textarea-footer">' +
-                  '<span id="pl-count-residencia">' + (PL_ONBOARD.textoResidencia || '').length.toLocaleString('pt-BR') + ' caracteres · Sem limite</span>' +
-                  '<span>Base de Residência</span>' +
-                '</div>' +
-                '<input type="file" id="pl-pdf-cursinho-file" accept="application/pdf" style="display:none" onchange="plCarregarPdfOnboard(this, \'residencia\')">' +
-              '</div>' +
+                  '<div style="font-size:12.5px;color:var(--text-secondary);padding:6px 0;line-height:1.5">' +
+                    '⏸️ <b>Metas de Cursinho Suspensas:</b> Como você ativou o <b>[Modo Foco Total: Apenas Graduação]</b>, a IA suspendeu temporariamente as metas do cursinho e redistribuirá 100% da sua carga horária apenas na ementa da faculdade e datas de avaliação.' +
+                  '</div>' +
+                '</div>'
+              ) : (
+                '<div class="pl-textarea-card">' +
+                  '<div class="pl-textarea-header">' +
+                    '<div class="pl-textarea-title"><i class="ph ph-first-aid" style="color:var(--teal);font-size:18px"></i> 2) Cronograma do Cursinho de Residência (Medcurso, Estratégia, etc.)</div>' +
+                    '<div class="pl-textarea-actions">' +
+                      '<span class="pl-unlimited-badge"><i class="ph ph-infinity"></i> Sem limite</span>' +
+                      '<button type="button" class="pl-textarea-paste-btn" onclick="plColarClipboard(\'pl-texto-residencia\', \'pl-count-residencia\')"><i class="ph ph-clipboard-text"></i> Colar</button>' +
+                      '<button type="button" class="pl-textarea-paste-btn" onclick="$(\'pl-pdf-cursinho-file\').click()"><i class="ph ph-file-pdf"></i> Anexar PDF</button>' +
+                      '<button type="button" class="pl-textarea-paste-btn" onclick="$(\'pl-texto-residencia\').value=\'\';plAtualizarContador(\'pl-texto-residencia\', \'pl-count-residencia\')">Limpar</button>' +
+                    '</div>' +
+                  '</div>' +
+                  '<textarea id="pl-texto-residencia" class="pl-textarea-field" rows="6" placeholder="Cole aqui o cronograma do cursinho de residência médica: Medcurso, Estratégia MED, Sanar, Hardwork, apostilas, semanas e blocos..." oninput="plAtualizarContador(\'pl-texto-residencia\', \'pl-count-residencia\')">' + esc(PL_ONBOARD.textoResidencia || '') + '</textarea>' +
+                  '<div class="pl-textarea-footer">' +
+                    '<span id="pl-count-residencia">' + (PL_ONBOARD.textoResidencia || '').length.toLocaleString('pt-BR') + ' caracteres · Sem limite</span>' +
+                    '<span>Base de Residência</span>' +
+                  '</div>' +
+                  '<input type="file" id="pl-pdf-cursinho-file" accept="application/pdf" style="display:none" onchange="plCarregarPdfOnboard(this, \'residencia\')">' +
+                '</div>'
+              )) +
 
               '<!-- 3. Atualizações do Cronograma, Observações e Ajustes -->' +
               '<div class="pl-textarea-card" style="border-color:rgba(0,163,137,0.3);background:rgba(0,163,137,0.03)">' +
                 '<div class="pl-textarea-header">' +
-                  '<div class="pl-textarea-title"><i class="ph ph-bell-ringing" style="color:var(--amber);font-size:18px"></i> 3) Atualizações do Cronograma, Observações & Ajustes</div>' +
+                  '<div class="pl-textarea-title"><i class="ph ph-bell-ringing" style="color:var(--amber);font-size:18px"></i> 3) Atualizações do Cronograma, Observações & Ajustes (Gatilhos de Prova)</div>' +
                   '<div class="pl-textarea-actions">' +
                     '<span class="pl-unlimited-badge"><i class="ph ph-infinity"></i> Sem limite</span>' +
                     '<button type="button" class="pl-textarea-paste-btn" onclick="plColarClipboard(\'pl-atualizacoes-notas\', \'pl-count-notas\')"><i class="ph ph-clipboard-text"></i> Colar</button>' +
                     '<button type="button" class="pl-textarea-paste-btn" onclick="$(\'pl-atualizacoes-notas\').value=\'\';plAtualizarContador(\'pl-atualizacoes-notas\', \'pl-count-notas\')">Limpar</button>' +
                   '</div>' +
                 '</div>' +
-                '<textarea id="pl-atualizacoes-notas" class="pl-textarea-field" rows="4" placeholder="Adicione aqui atualizações do cronograma, matérias que você já adiantou, semanas de férias/internato, imprevistos ou qualquer instrução personalizada para a IA..." oninput="plAtualizarContador(\'pl-atualizacoes-notas\', \'pl-count-notas\')">' + esc(PL_ONBOARD.atualizacoesNotas || '') + '</textarea>' +
+                '<textarea id="pl-atualizacoes-notas" class="pl-textarea-field" rows="4" placeholder="Adicione aqui datas de provas, TBLs, trocas de plantão, semanas de prova ou imprevistos para a IA calibrar o Modo Sobrevivência..." oninput="plAtualizarContador(\'pl-atualizacoes-notas\', \'pl-count-notas\')">' + esc(PL_ONBOARD.atualizacoesNotas || '') + '</textarea>' +
                 '<div class="pl-textarea-footer">' +
                   '<span id="pl-count-notas">' + (PL_ONBOARD.atualizacoesNotas || '').length.toLocaleString('pt-BR') + ' caracteres · Sem limite</span>' +
                   '<span style="color:var(--amber);font-weight:700">Prioridade Máxima na IA</span>' +
@@ -5754,15 +6049,30 @@ function renderPlannerOnboarding(root) {
 
       '<div style="padding:18px 22px;background:var(--bg-elevated);border-top:1px solid var(--border-muted)">' +
         '<button class="pl-cta glass-shimmer" id="pl-btn-gerar-sinergia" onclick="plExecutarGeracaoSinergia()">' +
-          '<i class="ph ph-magic-wand"></i> Gerar Cronograma Inteligente com Sinergia & Proteção de Provas' +
+          '<i class="ph ph-magic-wand"></i> ' + (isFocoGrad ? 'Gerar Cronograma [Modo Foco Total: Apenas Graduação]' : 'Gerar Cronograma [Modo Híbrido: Faculdade + Residência]') +
         '</button>' +
         '<div id="pl-onboard-loading" style="display:none;text-align:center;padding:12px;font-size:13px;color:var(--text-muted)">' +
           '<i class="ph ph-circle-notch" style="animation:spin 1s linear infinite;display:inline-block;font-size:18px;margin-right:6px"></i>' +
-          'Cruzando ementas da faculdade com residência e aplicando blindagem de provas…' +
+          'Estruturando calendário racional no Método de 3 Fases…' +
         '</div>' +
       '</div>' +
     '</div>';
 }
+
+window.plSetModoEstudo = function (m) {
+  PL_ONBOARD.modoEstudo = m;
+  lsSet('pl_modo_estudo', m);
+  renderPlannerOnboarding($('planner-ia-root'));
+};
+
+window.plToggleDiaEstagio = function (dow) {
+  PL_ONBOARD.diasEstagio = PL_ONBOARD.diasEstagio || [];
+  const idx = PL_ONBOARD.diasEstagio.indexOf(dow);
+  if (idx >= 0) PL_ONBOARD.diasEstagio.splice(idx, 1);
+  else PL_ONBOARD.diasEstagio.push(dow);
+  lsSet('pl_dias_estagio', PL_ONBOARD.diasEstagio);
+  renderPlannerOnboarding($('planner-ia-root'));
+};
 
 window.plAtualizarContador = function (id, countId) {
   const el = $(id);
@@ -5878,14 +6188,16 @@ window.plExecutarGeracaoSinergia = async function () {
     lsSet('pl_atualizacoes_notas', txtNotas);
 
     const payload = {
+      modoEstudo: PL_ONBOARD.modoEstudo || 'hibrido',
+      diasEstagio: PL_ONBOARD.diasEstagio || [],
       horasDia: PL_ONBOARD.horasDia,
       energiaPosFaculdade: PL_ONBOARD.energia,
       materiasDificuldade: PL_ONBOARD.dificuldades,
       dataAlvoResidencia: PL_ONBOARD.dataResidencia || plAddDias(plHoje(), 120),
       textoFaculdade: txtFac,
-      textoResidencia: txtRes,
+      textoResidencia: PL_ONBOARD.modoEstudo === 'foco_graduacao' ? '' : txtRes,
       atualizacoesNotas: txtNotas,
-      pdfResidenciaTexto: (PL_ONBOARD.pdfResidencia && PL_ONBOARD.pdfResidencia.texto) || txtRes,
+      pdfResidenciaTexto: PL_ONBOARD.modoEstudo === 'foco_graduacao' ? '' : ((PL_ONBOARD.pdfResidencia && PL_ONBOARD.pdfResidencia.texto) || txtRes),
       pdfFaculdadeTexto: (PL_ONBOARD.pdfFaculdade && PL_ONBOARD.pdfFaculdade.texto) || txtFac,
       provasFaculdade: [],
       materias: [
@@ -5959,6 +6271,16 @@ window.plVoltarCalendario = function () {
 window.plAbrirOnboarding = function () {
   lsSet('planner-ia-mode', 'onboard');
   renderPlannerIA();
+};
+
+window.plAlternarModoAtivo = async function () {
+  const plan = lsGet('planner-ia-plan', null);
+  const atual = plan?.config?.modoEstudo || plan?.modoAtivo || PL_ONBOARD.modoEstudo || 'hibrido';
+  const novoModo = (atual === 'foco_graduacao' || String(atual).includes('Graduação')) ? 'hibrido' : 'foco_graduacao';
+  PL_ONBOARD.modoEstudo = novoModo;
+  lsSet('pl_modo_estudo', novoModo);
+  toast(`Alternando para [${novoModo === 'foco_graduacao' ? 'Modo Foco Total: Apenas Graduação' : 'Modo Híbrido: Faculdade + Residência'}]…`, 'info');
+  await plExecutarGeracaoSinergia();
 };
 
 /* ── Modal de Atualizações do Cronograma (Área 3 Contínua & Mutável) ── */
@@ -6094,12 +6416,18 @@ function renderPlannerCalendario(root, plan) {
   const diasProtegidos = plan.dias.filter(d => d.protecaoProvas).length;
 
   const calMode = lsGet('planner-cal-mode', 'semanal');
+  const isFocoGrad = plan?.config?.modoEstudo === 'foco_graduacao' || plan?.modoAtivo === 'foco_graduacao' || String(plan?.modoAtivo).includes('Graduação') || String(plan?.descricaoModo).includes('Graduação');
 
   root.innerHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 14px;flex-wrap:wrap;gap:12px">' +
       '<div>' +
         '<h1 class="section-title" style="margin:0"><i class="ph ph-calendar-gear" style="color:var(--teal)"></i> Gerenciador de Cronograma IA</h1>' +
-        '<div style="font-size:12.5px;color:var(--text-muted);margin-top:2px">Sinergia Faculdade + Residência · Proteção de Provas Ativa</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">' +
+          '<span class="chip" style="background:' + (isFocoGrad ? 'rgba(244,63,94,0.15);color:var(--rose);border-color:var(--rose)' : 'var(--teal-dim);color:var(--teal)') + ';font-weight:700;font-size:11.5px">' +
+            '<i class="' + (isFocoGrad ? 'ph ph-graduation-cap' : 'ph ph-git-merge') + '"></i> ' + esc(plan.descricaoModo || (isFocoGrad ? 'Modo Foco Total: Apenas Graduação' : 'Modo Híbrido: Faculdade + Residência')) +
+          '</span>' +
+          '<button class="btn-outline btn-sm" onclick="plAlternarModoAtivo()" title="Alternar entre Foco Total e Modo Híbrido"><i class="ph ph-swap"></i> ' + (isFocoGrad ? 'Mudar para Modo Híbrido' : 'Mudar para Foco Total (Graduação)') + '</button>' +
+        '</div>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
         '<!-- Alternador Semanal / Mensal -->' +
@@ -6117,6 +6445,7 @@ function renderPlannerCalendario(root, plan) {
       '</div>' +
     '</div>' +
 
+    (isFocoGrad ? '<div class="pl-lock" style="margin-bottom:12px;background:rgba(244,63,94,0.08);border-color:rgba(244,63,94,0.3);color:var(--text-primary)">🎓 <b>Modo Foco Total Ativo:</b> Metas do cursinho suspensas temporariamente. Toda a sua carga horária está concentrada na ementa da graduação e preparação para provas da faculdade.</div>' : '') +
     (plan.aviso ? '<div class="pl-lock" style="margin-bottom:12px">ℹ️ ' + esc(plan.aviso) + '</div>' : '') +
 
     '<!-- KPIs Dinâmicos -->' +
@@ -6174,32 +6503,53 @@ function plRenderSemanas(plan) {
 
 function plDiaCard(d, hoje) {
   const classes = ['pl-dia'];
-  if (d.tipo === 'prova') classes.push('prova');
-  if (d.tipo === 'vespera') classes.push('vespera');
-  if (d.protecaoProvas) classes.push('protecao');
+  const isAtençãoProva = d.statusAlerta === 'Atenção para Prova' || d.protecaoProvas;
+  if (d.tipo === 'prova' || d.statusAlerta === 'Dia de Prova') classes.push('prova');
+  if (isAtençãoProva) classes.push('protecao');
   if (d.data === hoje) classes.push('hoje');
   if (d.data < hoje) classes.push('passado');
 
   let badge = '';
-  if (d.tipo === 'prova') badge = '<span class="pl-badge prova">Prova</span>';
-  else if (d.protecaoProvas) badge = '<span class="pl-badge protecao">🛡️ Blindagem</span>';
-  else if (d.tipo === 'vespera') badge = '<span class="pl-badge vespera">Véspera</span>';
+  if (d.tipo === 'prova' || d.statusAlerta === 'Dia de Prova') {
+    badge = '<span class="pl-badge prova">🎯 Prova</span>';
+  } else if (isAtençãoProva) {
+    badge = '<span class="pl-badge atencao-prova" title="Modo Sobrevivência Ativo">🚨 Atenção Prova (' + (d.diasAteProva != null ? d.diasAteProva + 'd' : 'Urgente') + ')</span>';
+  }
+  if (d.isEstagio) {
+    badge += ' <span class="pl-badge" style="background:rgba(245,158,11,0.18);color:#f59e0b" title="Estágio / Aula Prática">🏥 Estágio</span>';
+  }
 
   const blocos = d.blocos.map(b => {
     let cls = 'conteudo';
-    if (b.tipo === 'prova') cls = 'prova';
-    else if (b.protecao) cls = 'protecao';
-    else if (b.sinergia) cls = 'sinergia';
-    else if (b.tipo && b.tipo.startsWith('revisao')) cls = 'revisao';
+    let iconFase = '📖';
+    let tagFase = 'Aquisição (50%)';
+
+    if (b.tipo === 'prova') {
+      cls = 'prova';
+      iconFase = '🎯';
+      tagFase = 'Prova Oficial';
+    } else if (b.fase === 'sobrevivencia' || b.tipo === 'simulado_prova' || b.tipo === 'revisao_intensiva') {
+      cls = 'protecao';
+      iconFase = '🚨';
+      tagFase = 'Modo Sobrevivência';
+    } else if (b.fase === 'revisao_ativa' || (b.tipo && b.tipo.startsWith('revisao'))) {
+      cls = 'revisao';
+      iconFase = '🧠';
+      tagFase = 'Revisão Ativa (30%)';
+    } else if (b.fase === 'consolidacao' || b.tipo === 'questoes') {
+      cls = 'conteudo';
+      iconFase = '✏️';
+      tagFase = 'Fixação (20%)';
+    }
 
     const tagSinergia = b.sinergia ? '<span class="sinergia-tag">⚡ Sinergia</span>' : '';
     const nome = b.tipo === 'prova'
       ? esc(b.prova || 'Prova Oficial')
-      : esc((b.materia || '') + (b.tema ? ' — ' + b.tema : ''));
+      : esc((b.materia ? b.materia + ': ' : '') + (b.tema ? b.tema : 'Estudo'));
 
     return '<button class="pl-bloco ' + cls + (b.status === 'feito' ? ' feito' : '') + '" onclick="plOpenBloco(\'' + d.data + '\',\'' + b.id + '\')">' +
       tagSinergia +
-      '<b>' + (b.protecao ? '🛡️ Foco Faculdade' : (plTipoLabel[b.tipo] || b.tipo)) + '</b>' +
+      '<b>' + iconFase + ' ' + tagFase + '</b>' +
       nome +
     '</button>';
   }).join('');
@@ -6342,88 +6692,133 @@ window.plOpenBloco = function (data, blocoId) {
   plOpenDashboardRico(data, bloco);
 };
 
-/* Dashboard Rico de Estudo (Vídeo, Questões, PDFs e Flashcards) */
+/* Dashboard Rico de Estudo (O Método de 3 Fases: Aquisição, Revisão Ativa e Modo Sobrevivência) */
 function plOpenDashboardRico(data, b) {
+  const plan = lsGet('planner-ia-plan', null);
+  const diaObj = plan?.dias?.find(d => d.data === data) || {};
   const tema = b.tema || 'Estudo';
   const materia = b.materia || 'Geral';
   const { aula, materiais } = plAcharNoAcervo(materia, tema);
 
+  const modoAtivoLabel = diaObj.modoAtivo || (plan?.config?.modoEstudo === 'foco_graduacao' ? 'Modo Foco Total: Apenas Graduação' : 'Modo Híbrido: Faculdade + Residência');
+  const statusAlertaLabel = diaObj.statusAlerta || (diaObj.protecaoProvas ? 'Atenção para Prova' : 'Normal');
+  const emSobrevivencia = statusAlertaLabel === 'Atenção para Prova' || diaObj.protecaoProvas;
+
+  const bEstudo = diaObj.blocoEstudo || {
+    tema,
+    materia,
+    horas: b.horas || 2,
+    tempoMin: Math.round((b.horas || 2) * 60),
+    desc: 'Primeiro contato com a matéria (50% do tempo do dia).'
+  };
+  const bRevisao = diaObj.blocoRevisao || {
+    tema,
+    materia,
+    horas: 1.2,
+    tempoMin: 72,
+    questoesIds: ['q-rev-01', 'q-rev-02', 'q-rev-03', 'q-rev-04', 'q-rev-05'],
+    desc: 'Revisão ativa diária obrigatória por repetição espaçada. NUNCA releitura passiva.'
+  };
+  const bSob = diaObj.blocoSobrevivencia;
+
   // Link direto para aula do acervo
   const videoHtml = aula
-    ? '<div class="pl-study-card">' +
-        '<h4><i class="ph ph-play-circle" style="color:var(--teal);font-size:18px"></i> Videoaula no Acervo</h4>' +
-        '<div style="font-size:13px;font-weight:700;color:var(--text-primary)">' + esc(aula.titulo) + '</div>' +
+    ? '<div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:12px;margin-top:8px">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--text-primary)"><i class="ph ph-play-circle" style="color:var(--teal)"></i> ' + esc(aula.titulo) + '</div>' +
         '<div style="font-size:11.5px;color:var(--text-muted);margin:3px 0 10px">' + esc(aula.curso) + ' · ' + esc(aula.disc) + ' · HD 1080p</div>' +
         '<button class="pl-study-btn primary" onclick="plIrParaAula(\'' + aula.id + '\')"><i class="ph ph-play"></i> Assistir no Video Player LMS</button>' +
       '</div>'
-    : '<div class="pl-study-card">' +
-        '<h4><i class="ph ph-play-circle" style="color:var(--teal)"></i> Videoaula no Acervo</h4>' +
-        '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px">Vídeo oficial recomendado para ' + esc(materia) + '.</div>' +
-        '<button class="pl-study-btn primary" onclick="go(\'view-acervo\')"><i class="ph ph-folder-notch-open"></i> Abrir Acervo de Aulas</button>' +
+    : '<div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:12px;margin-top:8px">' +
+        '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:8px">Videoaula recomendada para ' + esc(materia) + ': ' + esc(bEstudo.tema || tema) + '.</div>' +
+        '<button class="pl-study-btn primary" onclick="go(\'view-acervo\')"><i class="ph ph-folder-notch-open"></i> Abrir Acervo de Videoaulas</button>' +
       '</div>';
 
-  // Link direto para Questões
-  const questoesHtml =
-    '<div class="pl-study-card">' +
-      '<h4><i class="ph ph-exam" style="color:var(--violet);font-size:18px"></i> Banco de Questões</h4>' +
-      '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px">Pratique com questões comentadas de residência médica focadas em <b>' + esc(tema) + '</b>.</div>' +
-      '<button class="pl-study-btn secondary" onclick="plTreinarTema(\'' + esc(materia).replace(/'/g, '') + '\',\'' + esc(tema).replace(/'/g, '') + '\')"><i class="ph ph-target"></i> Resolver Questões deste Tema (Simulador)</button>' +
-    '</div>';
+  const questoesChips = (bRevisao.questoesIds || []).map(id => '<span class="pl-q-chip">#' + esc(id) + '</span>').join('');
 
-  // Materiais e PDFs desta aula
-  const matsList = (materiais && materiais.length)
-    ? materiais.slice(0, 4).map(m =>
-        '<a class="material-chip" href="https://drive.google.com/file/d/' + m.id + '/view" target="_blank" rel="noopener" style="margin-bottom:6px">' +
-          '<span class="pdf-icon"><i class="ph ph-file-pdf"></i></span>' +
-          '<div class="mat-info"><span class="mat-title">' + esc(m.nome) + '</span><span class="mat-sub">PDF · Download</span></div>' +
-          '<i class="ph ph-download-simple mat-dl"></i>' +
-        '</a>'
-      ).join('')
-    : '<div style="display:flex;flex-direction:column;gap:6px">' +
-        '<a class="material-chip" href="https://drive.google.com" target="_blank" rel="noopener">' +
-          '<span class="pdf-icon"><i class="ph ph-file-pdf"></i></span>' +
-          '<div class="mat-info"><span class="mat-title">Resumo Esquematizado — ' + esc(tema) + '.pdf</span><span class="mat-sub">PDF de Revisão Direcionada</span></div>' +
-          '<i class="ph ph-download-simple mat-dl"></i>' +
-        '</a>' +
-        '<a class="material-chip" href="https://drive.google.com" target="_blank" rel="noopener">' +
-          '<span class="pdf-icon"><i class="ph ph-file-pdf"></i></span>' +
-          '<div class="mat-info"><span class="mat-title">Caderno de Mapas Mentais — ' + esc(materia) + '.pdf</span><span class="mat-sub">Apostila Completa</span></div>' +
-          '<i class="ph ph-download-simple mat-dl"></i>' +
-        '</a>' +
+  // Fase C (Modo Sobrevivência / Atenção para Prova)
+  let faseSobrevivenciaHtml = '';
+  if (emSobrevivencia || bSob?.ativada) {
+    const nomeProva = bSob?.provaNome || diaObj.provaProxima?.nome || 'Avaliação da Faculdade';
+    const diasFaltam = diaObj.diasAteProva != null ? diaObj.diasAteProva : 'poucos';
+    faseSobrevivenciaHtml =
+      '<div class="pl-study-card" style="border-color:rgba(239,68,68,0.5);background:rgba(239,68,68,0.06);margin-bottom:12px">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">' +
+          '<span class="pl-fase-badge sob">Fase C · Modo Sobrevivência (Gatilho Ativo)</span>' +
+          '<span style="font-weight:700;color:var(--rose);font-size:12px">🚨 Faltam ' + diasFaltam + ' dias para a prova</span>' +
+        '</div>' +
+        '<h4 style="color:var(--rose)"><i class="ph ph-warning-octagon"></i> ' + esc(nomeProva) + '</h4>' +
+        '<div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">' +
+          '<b>Diretriz de Sobrevivência:</b> Aulas inéditas canceladas pela IA. Foco 100% em resolução de provas antigas da faculdade, simulados da banca e fechamento intensivo de checklists.' +
+        '</div>' +
+        '<button class="pl-study-btn primary" style="background:var(--rose);border-color:var(--rose)" onclick="plTreinarTema(\'' + esc(materia).replace(/'/g, '') + '\',\'' + esc(nomeProva).replace(/'/g, '') + '\')">' +
+          '<i class="ph ph-exam"></i> Resolver Provas Antigas & Simulado da Faculdade' +
+        '</button>' +
       '</div>';
-
-  const materiaisHtml =
-    '<div class="pl-study-card">' +
-      '<h4><i class="ph ph-file-pdf" style="color:var(--rose);font-size:18px"></i> Materiais e PDFs desta Aula</h4>' +
-      matsList +
-    '</div>';
-
-  // Badge de Sinergia ou Proteção
-  let badgeHeader = '';
-  if (b.sinergia) {
-    badgeHeader = '<div class="pl-badge sinergia" style="margin-bottom:8px;display:inline-block">⚡ Sinergia 100%: Faculdade e Residência alinhadas</div>';
-  } else if (b.protecao) {
-    badgeHeader = '<div class="pl-badge protecao" style="margin-bottom:8px;display:inline-block">🛡️ Blindagem de Prova da Faculdade Ativa</div>';
   }
+
+  // Header badges
+  const isFocoTotal = String(modoAtivoLabel).includes('Graduação');
+  const modeBadge = '<span class="chip" style="background:' + (isFocoTotal ? 'rgba(244,63,94,0.15);color:var(--rose);border-color:var(--rose)' : 'var(--teal-dim);color:var(--teal)') + ';font-weight:700;font-size:11px">' +
+    esc(modoAtivoLabel) + '</span>';
+  const alertBadge = emSobrevivencia
+    ? '<span class="pl-badge atencao-prova" style="margin-left:6px">🚨 ' + esc(statusAlertaLabel) + '</span>'
+    : '<span class="pl-badge" style="margin-left:6px;background:rgba(16,185,129,0.12);color:var(--green)">✓ ' + esc(statusAlertaLabel) + '</span>';
 
   openModal(
     '<div class="modal-title">' +
-      '<span>' + esc(tema) + '</span>' +
+      '<div>' +
+        '<div>📅 ' + esc(data.slice(8) + '/' + data.slice(5, 7) + '/' + data.slice(0, 4)) + ' — ' + esc(tema) + '</div>' +
+        '<div style="margin-top:6px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">' + modeBadge + alertBadge + '</div>' +
+      '</div>' +
       '<button class="modal-close"><i class="ph ph-x"></i></button>' +
     '</div>' +
     '<div class="pl-study-modal">' +
-      badgeHeader +
-      '<div style="font-size:12.5px;color:var(--text-muted);margin-top:-6px">' +
-        esc(materia) + ' · Dificuldade: ' + esc(b.dificuldade || 'Médio') + ' · Duração estimada: ~' + (b.horas || 2) + 'h' +
-      '</div>' +
-      videoHtml +
-      questoesHtml +
-      materiaisHtml +
+      faseSobrevivenciaHtml +
+
+      '<!-- Fase A: Área de Estudo (Aquisição · 50% do tempo) -->' +
       '<div class="pl-study-card">' +
-        '<h4><i class="ph ph-cards" style="color:var(--teal)"></i> Estudo Ativo & Flashcards</h4>' +
-        '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:10px">Fixação ativa com repetição espaçada (SRS).</div>' +
-        '<button class="pl-study-btn secondary" onclick="plFlashcards(\'' + esc(materia).replace(/'/g, '') + '\',\'' + esc(tema).replace(/'/g, '') + '\')"><i class="ph ph-cards"></i> Abrir Flashcards SRS</button>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">' +
+          '<span class="pl-fase-badge aq">Fase A · Área de Estudo (Aquisição · 50%)</span>' +
+          '<span style="font-size:11.5px;color:var(--text-muted)">' + (bEstudo.horas || 2) + 'h (' + (bEstudo.tempoMin || 120) + ' min)</span>' +
+        '</div>' +
+        '<h4><i class="ph ph-book-open" style="color:#38bdf8"></i> ' + esc(bEstudo.tema || tema) + '</h4>' +
+        '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">' +
+          (bEstudo.cancelada
+            ? '<span style="color:var(--rose);font-weight:700">🚫 Aulas inéditas suspensas: Modo Sobrevivência ativo para foco nas provas da faculdade.</span>'
+            : 'Primeiro contato com a matéria. Alocação de videoaula completa no LMS e leitura dirigida da apostila.') +
+        '</div>' +
+        (!bEstudo.cancelada ? videoHtml : '') +
       '</div>' +
+
+      '<!-- Fase B: Área de Revisão (Estudo Ativo · 30% do tempo) -->' +
+      '<div class="pl-study-card">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">' +
+          '<span class="pl-fase-badge rev">Fase B · Área de Revisão (Estudo Ativo · 30%)</span>' +
+          '<span style="font-size:11.5px;color:var(--green);font-weight:700">Repetição Espaçada</span>' +
+        '</div>' +
+        '<h4><i class="ph ph-arrows-clockwise" style="color:var(--green)"></i> ' + esc(bRevisao.tema || tema) + '</h4>' +
+        '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">' +
+          '⚠️ <b>Diretriz de Produtividade:</b> Bloco obrigatório e diário. NUNCA aloque revisão passiva (reler resumo). Active recall com flashcards e resolução de questões.' +
+        '</div>' +
+        (questoesChips ? '<div style="margin-bottom:10px;display:flex;gap:4px;flex-wrap:wrap"><span style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:3px"><i class="ph ph-hash"></i> Questões Vinculadas:</span> ' + questoesChips + '</div>' : '') +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+          '<button class="pl-study-btn secondary" onclick="plTreinarTema(\'' + esc(materia).replace(/'/g, '') + '\',\'' + esc((bRevisao.tema || tema)).replace(/'/g, '') + '\')"><i class="ph ph-target"></i> Resolver Questões</button>' +
+          '<button class="pl-study-btn secondary" onclick="plFlashcards(\'' + esc(materia).replace(/'/g, '') + '\',\'' + esc((bRevisao.tema || tema)).replace(/'/g, '') + '\')"><i class="ph ph-cards"></i> Flashcards SRS</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<!-- Materiais e Apostilas em PDF -->' +
+      '<div class="pl-study-card">' +
+        '<h4><i class="ph ph-file-pdf" style="color:var(--rose)"></i> Apostilas & Materiais em PDF</h4>' +
+        '<div style="display:flex;flex-direction:column;gap:6px">' +
+          '<a class="material-chip" href="https://drive.google.com" target="_blank" rel="noopener">' +
+            '<span class="pdf-icon"><i class="ph ph-file-pdf"></i></span>' +
+            '<div class="mat-info"><span class="mat-title">Apostila Completa — ' + esc(tema) + '.pdf</span><span class="mat-sub">Manual do Aluno & Diretrizes</span></div>' +
+            '<i class="ph ph-download-simple mat-dl"></i>' +
+          '</a>' +
+        '</div>' +
+      '</div>' +
+
       '<div style="padding-top:6px;display:flex;gap:10px">' +
         '<button class="pl-cta" onclick="plConcluirBloco(\'' + data + '\',\'' + b.id + '\')"><i class="ph ph-check-circle"></i> Concluir Bloco de Estudo (+20 XP)</button>' +
       '</div>' +
@@ -7075,20 +7470,633 @@ function ac2Trim(idAtivo) {
   }
 }
 
-function ac2Ativar(id) {
-  document.querySelectorAll('#ac2-player iframe.ativo').forEach(x => x.classList.remove('ativo'));
-  let f = AC2.iframes.get(id);
-  if (!f) {
-    const v = AC2.indice.get(id);
-    f = ac2CriarIframe(v, true);
-  } else {
-    f.classList.add('ativo');
+let ac2ControlsTimer = null;
+const speeds = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+let currentSpeedIdx = 1;
+
+function fmtTime(sec) {
+  if (isNaN(sec) || sec < 0) return '00:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) {
+    return h + ':' + String(m % 60).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   }
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+window.ac2TogglePlay = function () {
+  const nv = $('ac2-native-video');
+  if (!nv) return;
+  if (nv.paused) {
+    nv.play().catch(() => {});
+  } else {
+    nv.pause();
+  }
+};
+
+window.ac2SeekOffset = function (sec) {
+  const nv = $('ac2-native-video');
+  if (!nv || !nv.duration) return;
+  nv.currentTime = Math.max(0, Math.min(nv.duration, nv.currentTime + sec));
+  ac2WakeControls();
+};
+
+window.ac2SetVolume = function (vol) {
+  const nv = $('ac2-native-video');
+  if (!nv) return;
+  nv.volume = Math.max(0, Math.min(1, vol));
+  nv.muted = nv.volume === 0;
+  ac2UpdateVolIcon();
+};
+
+window.ac2ToggleMute = function () {
+  const nv = $('ac2-native-video');
+  if (!nv) return;
+  nv.muted = !nv.muted;
+  const slider = $('ac2-vol-slider');
+  if (slider) slider.value = nv.muted ? 0 : nv.volume;
+  ac2UpdateVolIcon();
+};
+
+function ac2UpdateVolIcon() {
+  const nv = $('ac2-native-video');
+  const ic = $('ac2-vol-icon');
+  if (!ic || !nv) return;
+  if (nv.muted || nv.volume === 0) ic.className = 'ph ph-speaker-slash';
+  else if (nv.volume < 0.5) ic.className = 'ph ph-speaker-low';
+  else ic.className = 'ph ph-speaker-high';
+}
+
+window.ac2CycleSpeed = function () {
+  currentSpeedIdx = (currentSpeedIdx + 1) % speeds.length;
+  const spd = speeds[currentSpeedIdx];
+  const nv = $('ac2-native-video');
+  if (nv) nv.playbackRate = spd;
+  const lbl = $('ac2-speed-label');
+  if (lbl) lbl.textContent = spd.toFixed(1) + 'x';
+  toast(`⚡ Velocidade ajustada para ${spd.toFixed(2).replace(/\.00$/, '')}x`, 'info');
+  ac2WakeControls();
+};
+
+window.ac2TogglePiP = async function () {
+  const nv = $('ac2-native-video');
+  if (!nv) return;
+  try {
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+    } else if (nv.requestPictureInPicture) {
+      await nv.requestPictureInPicture();
+    }
+  } catch (err) {
+    toast('Picture-in-Picture não suportado neste navegador', 'warn');
+  }
+};
+
+window.ac2ToggleFullscreen = function () {
+  const wrap = document.querySelector('.ac2-player-wrap');
+  if (!wrap) return;
+  if (!document.fullscreenElement) {
+    if (wrap.requestFullscreen) wrap.requestFullscreen();
+    else if (wrap.webkitRequestFullscreen) wrap.webkitRequestFullscreen();
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+  }
+};
+
+function ac2WakeControls() {
+  const ctrl = $('ac2-custom-controls');
+  if (!ctrl) return;
+  ctrl.classList.add('active');
+  clearTimeout(ac2ControlsTimer);
+  const nv = $('ac2-native-video');
+  if (nv && !nv.paused) {
+    ac2ControlsTimer = setTimeout(() => {
+      ctrl.classList.remove('active');
+    }, 2800);
+  }
+}
+
+// Sincronização automática contínua de buffer e timeline
+function ac2SyncBuffer() {
+  const nv = $('ac2-native-video');
+  if (!nv || !nv.duration) return;
+  const d = nv.duration;
+  let bufferedEnd = 0;
+  for (let i = 0; i < nv.buffered.length; i++) {
+    if (nv.buffered.start(i) <= nv.currentTime && nv.buffered.end(i) >= nv.currentTime) {
+      bufferedEnd = nv.buffered.end(i);
+      break;
+    }
+    if (nv.buffered.end(i) > bufferedEnd) {
+      bufferedEnd = nv.buffered.end(i);
+    }
+  }
+  const pct = Math.min(100, Math.round((bufferedEnd / d) * 100));
+  const bEl = $('ac2-timeline-buffer');
+  if (bEl) bEl.style.width = pct + '%';
+
+  const syncTxt = $('ac2-sync-text');
+  if (syncTxt) syncTxt.textContent = pct >= 98 ? '100% Sincronizado' : `Buffer: ${pct}%`;
+
+  const bStatus = $('ac2-buffer');
+  if (bStatus) {
+    bStatus.innerHTML = pct >= 98
+      ? '<i class="ph ph-check-circle ok"></i> Buffer 100% sincronizado'
+      : `<i class="ph ph-lightning" style="color:var(--teal)"></i> Buffer dinâmico: <b>${pct}%</b> em cache`;
+  }
+}
+
+function ac2OnTimeUpdate() {
+  const nv = $('ac2-native-video');
+  if (!nv || !nv.duration) return;
+  const cur = nv.currentTime;
+  const d = nv.duration;
+  const pct = Math.min(100, (cur / d) * 100);
+
+  const pEl = $('ac2-timeline-play');
+  if (pEl) pEl.style.width = pct + '%';
+  const hEl = $('ac2-timeline-handle');
+  if (hEl) hEl.style.left = pct + '%';
+
+  const curEl = $('ac2-cur-time');
+  if (curEl) curEl.textContent = fmtTime(cur);
+
+  // Sincroniza buffer periodicamente
+  ac2SyncBuffer();
+
+  // Salva progresso a cada 3 segundos
+  if (AC2.atualId && Math.floor(cur) % 3 === 0) {
+    lsSet('med_pos_' + AC2.atualId, cur);
+  }
+}
+
+function ac2OnLoadedMetadata() {
+  const nv = $('ac2-native-video');
+  if (!nv) return;
+  const dEl = $('ac2-dur-time');
+  if (dEl && nv.duration) dEl.textContent = fmtTime(nv.duration);
+  const durBadge = $('ac2-dur');
+  if (durBadge && nv.duration) durBadge.textContent = Math.round(nv.duration / 60) + ' min';
+
+  // Retoma de onde o aluno parou
+  if (AC2.atualId) {
+    const saved = lsGet('med_pos_' + AC2.atualId, 0);
+    if (saved && saved > 5 && saved < (nv.duration - 15)) {
+      nv.currentTime = saved;
+      toast(`⏱️ Retomando aula de onde você parou: ${fmtTime(saved)}`, 'info');
+    }
+  }
+  ac2SyncBuffer();
+}
+
+function ac2SetPlayingState(playing) {
+  const ctrl = $('ac2-custom-controls');
+  const ic = $('ac2-play-icon');
+  const cPulse = $('ac2-center-icon');
+  if (ic) ic.className = playing ? 'ph ph-pause-fill' : 'ph ph-play-fill';
+  if (cPulse) cPulse.className = playing ? 'ph ph-pause-fill' : 'ph ph-play-fill';
+  if (ctrl) {
+    ctrl.classList.toggle('paused', !playing);
+  }
+  if (playing) ac2WakeControls();
+}
+
+function ac2InitNativeVideoListeners() {
+  const nv = $('ac2-native-video');
+  if (!nv || nv.dataset.listenersBound) return;
+  nv.dataset.listenersBound = '1';
+
+  nv.addEventListener('timeupdate', ac2OnTimeUpdate);
+  nv.addEventListener('progress', ac2SyncBuffer);
+  nv.addEventListener('loadedmetadata', ac2OnLoadedMetadata);
+  nv.addEventListener('play', () => ac2SetPlayingState(true));
+  nv.addEventListener('pause', () => ac2SetPlayingState(false));
+  nv.addEventListener('ended', () => {
+    ac2SetPlayingState(false);
+    if (AC2.atualId) {
+      DONE.add('drive:' + AC2.atualId);
+      lsSet('acv_done', [...DONE]);
+      addXP(5, 'videoaula concluída');
+      toast('🎉 Aula concluída! +5 XP somados ao seu perfil', 'success');
+      ac2Progresso();
+    }
+  });
+
+  // Timeline scrub handling
+  const tWrap = $('ac2-timeline-wrap');
+  const tTip = $('ac2-time-tooltip');
+  if (tWrap) {
+    let isDragging = false;
+    const seekTo = (e) => {
+      const rect = tWrap.getBoundingClientRect();
+      const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      if (nv.duration) {
+        nv.currentTime = pos * nv.duration;
+        ac2OnTimeUpdate();
+      }
+    };
+    tWrap.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      seekTo(e);
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (isDragging) seekTo(e);
+      if (tTip && tWrap.contains(e.target) && nv.duration) {
+        const rect = tWrap.getBoundingClientRect();
+        const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        tTip.style.left = (pos * 100) + '%';
+        tTip.textContent = fmtTime(pos * nv.duration);
+        tTip.style.display = 'block';
+      }
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+    tWrap.addEventListener('mouseleave', () => { if (tTip) tTip.style.display = 'none'; });
+  }
+
+  // Hover wake
+  const pWrap = document.querySelector('.ac2-player-wrap');
+  if (pWrap) {
+    pWrap.addEventListener('mousemove', ac2WakeControls);
+    pWrap.addEventListener('mouseleave', () => {
+      if (nv && !nv.paused) {
+        const ctrl = $('ac2-custom-controls');
+        if (ctrl) ctrl.classList.remove('active');
+      }
+    });
+  }
+
+  // Atalhos de teclado no player
+  document.addEventListener('keydown', (e) => {
+    if (['input', 'textarea'].includes((document.activeElement.tagName || '').toLowerCase())) return;
+    const acSec = $('view-acervo');
+    if (!acSec || !acSec.classList.contains('active')) return;
+    if (e.code === 'Space' || e.code === 'KeyK') {
+      e.preventDefault();
+      ac2TogglePlay();
+    } else if (e.code === 'ArrowLeft') {
+      e.preventDefault();
+      ac2SeekOffset(-10);
+    } else if (e.code === 'ArrowRight') {
+      e.preventDefault();
+      ac2SeekOffset(10);
+    } else if (e.code === 'KeyF') {
+      e.preventDefault();
+      ac2ToggleFullscreen();
+    } else if (e.code === 'KeyM') {
+      e.preventDefault();
+      ac2ToggleMute();
+    }
+  });
+}
+
+// ═══ Media Source Extensions (MSE) Buffer Controller ═══
+class AC2MSEPlayer {
+  constructor(videoEl) {
+    this.video = videoEl;
+    this.mediaSource = null;
+    this.sourceBuffer = null;
+    this.abortController = null;
+    this.streamUrl = null;
+    this.fileLength = 0;
+    this.nextByte = 0;
+    this.chunkSize = 2.5 * 1024 * 1024; // 2.5MB fatias granulares
+    this.isFetching = false;
+    this.isMseActive = false;
+  }
+
+  isSupported() {
+    return 'MediaSource' in window && (
+      MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E, mp4a.40.2"') ||
+      MediaSource.isTypeSupported('video/mp4; codecs="avc1.64001F, mp4a.40.2"') ||
+      MediaSource.isTypeSupported('video/mp4')
+    );
+  }
+
+  destroy() {
+    if (this.abortController) {
+      try { this.abortController.abort(); } catch (e) {}
+      this.abortController = null;
+    }
+    if (this.sourceBuffer && this.mediaSource && this.mediaSource.readyState === 'open') {
+      try { this.mediaSource.removeSourceBuffer(this.sourceBuffer); } catch (e) {}
+    }
+    this.sourceBuffer = null;
+    this.mediaSource = null;
+    this.isFetching = false;
+    this.isMseActive = false;
+  }
+
+  load(streamUrl, onFallback) {
+    this.destroy();
+    this.streamUrl = streamUrl;
+
+    if (!this.isSupported()) {
+      return onFallback();
+    }
+
+    try {
+      this.mediaSource = new MediaSource();
+      const msUrl = URL.createObjectURL(this.mediaSource);
+      this.video.src = msUrl;
+      this.isMseActive = true;
+
+      this.mediaSource.addEventListener('sourceopen', async () => {
+        try {
+          const supportedMime = MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E, mp4a.40.2"')
+            ? 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'
+            : (MediaSource.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/mp4; codecs="avc1.64001F, mp4a.40.2"');
+
+          this.sourceBuffer = this.mediaSource.addSourceBuffer(supportedMime);
+          this.sourceBuffer.mode = 'segments';
+
+          this.sourceBuffer.addEventListener('error', (e) => {
+            console.warn('MSE SourceBuffer error, alternando de forma transparente para Range HTTP:', e);
+            this.destroy();
+            onFallback();
+          });
+
+          await this.startPipeline(onFallback);
+        } catch (err) {
+          console.warn('Falha ao abrir SourceBuffer MSE:', err);
+          this.destroy();
+          onFallback();
+        }
+      }, { once: true });
+    } catch (e) {
+      console.warn('Erro ao instanciar MediaSource:', e);
+      this.destroy();
+      onFallback();
+    }
+  }
+
+  async startPipeline(onFallback) {
+    this.abortController = new AbortController();
+    try {
+      const headRes = await fetch(this.streamUrl, { method: 'HEAD', signal: this.abortController.signal });
+      const len = headRes.headers.get('content-length');
+      this.fileLength = len ? parseInt(len, 10) : 0;
+      this.nextByte = 0;
+      this.fetchNextChunk(onFallback);
+    } catch (e) {
+      if (this.abortController?.signal.aborted) return;
+      this.destroy();
+      onFallback();
+    }
+  }
+
+  async fetchNextChunk(onFallback) {
+    if (!this.isMseActive || this.isFetching || !this.sourceBuffer || this.sourceBuffer.updating) return;
+    if (this.fileLength > 0 && this.nextByte >= this.fileLength) return;
+
+    if (this.video && this.video.buffered.length) {
+      const cur = this.video.currentTime;
+      let bufEnd = 0;
+      for (let i = 0; i < this.video.buffered.length; i++) {
+        if (this.video.buffered.start(i) <= cur && this.video.buffered.end(i) >= cur) {
+          bufEnd = this.video.buffered.end(i);
+        }
+      }
+      if (bufEnd - cur > 45) {
+        setTimeout(() => this.fetchNextChunk(onFallback), 1500);
+        return;
+      }
+    }
+
+    this.isFetching = true;
+    const endByte = this.fileLength > 0
+      ? Math.min(this.fileLength - 1, this.nextByte + this.chunkSize - 1)
+      : this.nextByte + this.chunkSize - 1;
+
+    try {
+      const res = await fetch(this.streamUrl, {
+        headers: { 'Range': `bytes=${this.nextByte}-${endByte}` },
+        signal: this.abortController?.signal
+      });
+
+      if (!res.ok && res.status !== 206) {
+        throw new Error('Range HTTP status ' + res.status);
+      }
+
+      const buf = await res.arrayBuffer();
+      if (!this.sourceBuffer || !this.mediaSource || this.mediaSource.readyState !== 'open') return;
+
+      const appendPromise = new Promise((resolve, reject) => {
+        const onUpdate = () => {
+          this.sourceBuffer.removeEventListener('updateend', onUpdate);
+          this.sourceBuffer.removeEventListener('error', onError);
+          resolve();
+        };
+        const onError = (e) => {
+          this.sourceBuffer.removeEventListener('updateend', onUpdate);
+          this.sourceBuffer.removeEventListener('error', onError);
+          reject(e);
+        };
+        this.sourceBuffer.addEventListener('updateend', onUpdate);
+        this.sourceBuffer.addEventListener('error', onError);
+        try {
+          this.sourceBuffer.appendBuffer(buf);
+        } catch (appendErr) {
+          reject(appendErr);
+        }
+      });
+
+      await appendPromise;
+      this.nextByte = endByte + 1;
+      this.isFetching = false;
+
+      if (typeof ac2SyncBuffer === 'function') ac2SyncBuffer();
+
+      if (this.fileLength === 0 || this.nextByte < this.fileLength) {
+        setTimeout(() => this.fetchNextChunk(onFallback), 50);
+      } else if (this.mediaSource.readyState === 'open') {
+        try { this.mediaSource.endOfStream(); } catch (e) {}
+      }
+    } catch (err) {
+      this.isFetching = false;
+      if (this.abortController?.signal.aborted) return;
+      console.warn('Erro ao processar segmento MSE, aplicando fallback transparente:', err.message);
+      this.destroy();
+      onFallback();
+    }
+  }
+}
+
+let ac2PlayerMode = lsGet('ac2_player_mode', 'native'); // 'native' (HTML5 stream direto) | 'drive' (iframe)
+
+window.ac2AlternarModoPlayer = function () {
+  ac2PlayerMode = ac2PlayerMode === 'native' ? 'drive' : 'native';
+  lsSet('ac2_player_mode', ac2PlayerMode);
+  const lbl = $('ac2-mode-label');
+  if (lbl) {
+    lbl.innerHTML = ac2PlayerMode === 'native'
+      ? '<i class="ph ph-shield-check ok"></i> Player Interno HD'
+      : '<i class="ph ph-google-logo" style="color:var(--teal)"></i> Player Google Drive';
+  }
+  if (AC2.atualId) ac2Ativar(AC2.atualId);
+  toast(ac2PlayerMode === 'native' ? '▶ Player Interno Liquid Glass ativado' : '▶ Player Oficial do Google Drive ativado', 'info');
+};
+
+function ac2Ativar(id) {
   const ph = $('ac2-ph');
   if (ph) ph.style.display = 'none';
-  AC2.ordem = AC2.ordem.filter(x => x !== id);
-  AC2.ordem.unshift(id);
-  ac2Trim(id);
+
+  const nv = $('ac2-native-video');
+  const ctrl = $('ac2-custom-controls');
+  const iframes = document.querySelectorAll('#ac2-player iframe');
+  const lbl = $('ac2-mode-label');
+  if (lbl) {
+    lbl.innerHTML = ac2PlayerMode === 'native'
+      ? '<i class="ph ph-shield-check ok"></i> Player Interno HD'
+      : '<i class="ph ph-google-logo" style="color:var(--teal)"></i> Player Google Drive';
+  }
+
+  if (ac2PlayerMode === 'native') {
+    iframes.forEach(x => { x.classList.remove('ativo'); x.style.display = 'none'; });
+    if (ctrl) ctrl.style.display = 'flex';
+    if (nv) {
+      nv.style.display = 'block';
+      nv.classList.add('ativo');
+      ac2InitNativeVideoListeners();
+      const streamUrl = '/api/drive/stream/' + encodeURIComponent(id);
+      if (nv.getAttribute('data-vid') !== id) {
+        nv.setAttribute('data-vid', id);
+        if (!window.ac2MSE) window.ac2MSE = new AC2MSEPlayer(nv);
+        window.ac2MSE.load(streamUrl, () => {
+          nv.src = streamUrl;
+          nv.load();
+          nv.play().catch(() => {});
+        });
+        nv.play().catch(() => {});
+      }
+      nv.onerror = () => {
+        console.warn('Native video error, fallback to Google Drive iframe viewer');
+        ac2PlayerMode = 'drive';
+        ac2Ativar(id);
+        toast('⚠️ Stream direto indisponível, alternado para o player do Google Drive', 'info');
+      };
+    }
+  } else {
+    if (window.ac2MSE) window.ac2MSE.destroy();
+    if (ctrl) ctrl.style.display = 'none';
+    if (nv) {
+      nv.pause();
+      nv.removeAttribute('src');
+      nv.removeAttribute('data-vid');
+      nv.style.display = 'none';
+      nv.classList.remove('ativo');
+    }
+    iframes.forEach(x => { x.style.display = ''; });
+    document.querySelectorAll('#ac2-player iframe.ativo').forEach(x => x.classList.remove('ativo'));
+    let f = AC2.iframes.get(id);
+    if (!f) {
+      const v = AC2.indice.get(id);
+      f = ac2CriarIframe(v, true);
+    } else {
+      f.classList.add('ativo');
+    }
+    AC2.ordem = AC2.ordem.filter(x => x !== id);
+    AC2.ordem.unshift(id);
+    ac2Trim(id);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RADAR MÉDICO CLIENT CONTROLLER (Estratégia MED + Gemini AI)
+// ══════════════════════════════════════════════════════════════════
+let RADAR_DATA = null;
+
+async function fetchRadarMedico(force = false) {
+  const grid = $('radar-grid');
+  const ic = $('radar-refresh-icon');
+  if (ic) ic.classList.add('rotating');
+
+  if (!RADAR_DATA && grid) {
+    grid.innerHTML = [1, 2, 3].map(() => `
+      <div class="radar-card" style="opacity:0.6;pointer-events:none">
+        <div class="radar-img-wrap" style="background:var(--bg-hover)"></div>
+        <div class="radar-body">
+          <div style="height:18px;width:70%;background:var(--border-muted);border-radius:6px;margin-bottom:8px"></div>
+          <div style="height:80px;background:var(--border-subtle);border-radius:8px"></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  try {
+    const res = await fetch('/api/radar-medico' + (force ? '?refresh=true' : ''));
+    if (!res.ok) throw new Error('Status ' + res.status);
+    const data = await res.json();
+    if (data && Array.isArray(data.articles)) {
+      RADAR_DATA = data.articles;
+      renderRadarMedico(data.articles);
+      if (force) toast('✨ Radar Médico atualizado com notícias recentes do Estratégia MED!', 'success');
+    }
+  } catch (err) {
+    console.warn('Erro ao carregar Radar Médico:', err);
+    if (!RADAR_DATA && grid) {
+      grid.innerHTML = `
+        <div style="grid-column:1/-1;text-align:center;padding:28px 16px;color:var(--text-muted);font-size:13px">
+          Não foi possível sincronizar o Radar Médico no momento.
+          <div style="margin-top:10px">
+            <button class="btn-outline btn-sm" onclick="fetchRadarMedico(true)"><i class="ph ph-arrows-clockwise"></i> Tentar novamente</button>
+          </div>
+        </div>
+      `;
+    }
+  } finally {
+    if (ic) ic.classList.remove('rotating');
+  }
+}
+
+function renderRadarMedico(articles) {
+  const grid = $('radar-grid');
+  if (!grid || !articles) return;
+
+  grid.innerHTML = articles.map(art => {
+    const res = art.resumoEstrategico || {};
+    const imp = res.implementacoes || (art.bullets?.[0] || '').replace(/^Implementações:\s*/i, '');
+    const pra = res.praticaClinica || (art.bullets?.[1] || '').replace(/^Prática Clínica:\s*/i, '');
+    const mud = res.oQueMudou || (art.bullets?.[2] || '').replace(/^O Que Mudou:\s*/i, '');
+
+    return `
+      <div class="radar-card">
+        <div class="radar-img-wrap">
+          <img class="radar-img" src="${art.img}" alt="${esc(art.title)}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&auto=format&fit=crop&q=80'">
+          <span class="radar-cat-tag">${esc(art.category || 'Atualidades')}</span>
+          ${art.date ? `<span class="radar-date-tag">${esc(art.date)}</span>` : ''}
+        </div>
+        <div class="radar-body">
+          <h3 class="radar-card-title" title="${esc(art.title)}">${esc(art.title)}</h3>
+          
+          <div class="radar-ai-box">
+            <div class="radar-ai-header"><i class="ph ph-sparkle"></i> Resumo Estratégico · Mudanças & Nova Diretriz</div>
+            <div class="radar-ai-pillars">
+              <div class="radar-pillar-item">
+                <span class="radar-pillar-tag"><i class="ph ph-list-checks"></i> Quais são as implementações</span>
+                <span class="radar-pillar-desc">${esc(imp)}</span>
+              </div>
+              <div class="radar-pillar-item">
+                <span class="radar-pillar-tag pratica"><i class="ph ph-stethoscope"></i> Relevante para a prática clínica</span>
+                <span class="radar-pillar-desc">${esc(pra)}</span>
+              </div>
+              <div class="radar-pillar-item">
+                <span class="radar-pillar-tag mudou"><i class="ph ph-arrows-left-right"></i> O que mudou de fato</span>
+                <span class="radar-pillar-desc">${esc(mud)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="radar-footer">
+            <span style="font-size:11px;color:var(--text-muted)"><i class="ph ph-newspaper"></i> Portal Estratégia MED</span>
+            <a href="${art.link}" target="_blank" rel="noopener noreferrer" class="radar-link-btn">
+              Ler Matéria Completa <i class="ph ph-arrow-up-right"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 function ac2Buffer() {
@@ -7098,10 +8106,12 @@ function ac2Buffer() {
   const prox = AC2.LISTA.slice(i + 1, i + 2);
   const proxMeta = AC2.LISTA.slice(i + 1, i + 4);
   const st = $('ac2-buffer');
+  if (st) st.innerHTML = '<i class="ph ph-check-circle ok"></i> Aula pronta para reprodução';
+
   ac2Info([AC2.atualId, ...proxMeta.map(v => v.id)]).then(infos => {
-    const a = infos[0], mb = $('ac2-bmeta');
+    const a = (infos && infos[0]) || null, mb = $('ac2-bmeta');
+    if (mb) mb.classList.remove('carregando');
     if (a && a.sizeMB) {
-      if (mb) mb.classList.remove('carregando');
       const partes = [a.sizeMB + ' MB'];
       if (a.durLabel) {
         partes.push(a.durLabel);
@@ -7116,17 +8126,14 @@ function ac2Buffer() {
       const bufTxt = $('ac2-buffer-txt');
       if (bufTxt) bufTxt.textContent = 'HD 1080p';
     }
-    if (prox[0] && st) {
-      const tam = infos[1] && infos[1].sizeMB ? ' (' + infos[1].sizeMB + ' MB' + (infos[1].durLabel ? ', ' + infos[1].durLabel : '') + ')' : '';
-      st.innerHTML = '<i class="ph ph-lightning carregando"></i> Buffer inteligente: pré-carregando <b>&nbsp;' + esc(prox[0].titulo) + '&nbsp;</b>' + esc(tam) + '…';
-      setTimeout(() => {
-        if (AC2.iframes.has(prox[0].id)) {
-          st.innerHTML = '<i class="ph ph-check-circle ok"></i> Buffer: <b>&nbsp;' + esc(prox[0].titulo) + '&nbsp;</b> pré-carregada.';
-        }
-      }, 4500);
-    } else if (st) {
+    if (st) {
       st.innerHTML = '<i class="ph ph-check-circle ok"></i> Aula pronta para reprodução';
     }
+  }).catch(() => {
+    const mb = $('ac2-bmeta');
+    if (mb) mb.classList.remove('carregando');
+    const bufTxt = $('ac2-buffer-txt');
+    if (bufTxt) bufTxt.textContent = 'HD 1080p';
   });
   prox.forEach(v => {
     if (!AC2.iframes.has(v.id)) ac2CriarIframe(v, false);
@@ -7140,6 +8147,18 @@ window.ac2ToggleNav = function () {
 };
 
 window.ac2Recarregar = function () {
+  if (ac2PlayerMode === 'native') {
+    const nv = $('ac2-native-video');
+    if (nv && AC2.atualId) {
+      const cur = nv.currentTime;
+      nv.src = '/api/drive/stream/' + encodeURIComponent(AC2.atualId);
+      nv.load();
+      if (cur > 0) nv.currentTime = cur;
+      nv.play().catch(() => {});
+      toast('↻ Vídeo recarregado no player nativo', 'info');
+      return;
+    }
+  }
   const f = document.querySelector('#ac2-player iframe.ativo');
   if (!f) return;
   const src = f.src;
@@ -7170,8 +8189,8 @@ window.ac2Abrir = function (id, silencioso) {
   const dis = $('ac2-disc'); if (dis) dis.textContent = v.disc;
   const vws = $('ac2-views'); if (vws) vws.textContent = ac2CalcularViews(id) + ' visualizações';
   const dur = $('ac2-dur'); if (dur) dur.textContent = '38 min';
-  const bmeta = $('ac2-bmeta'); if (bmeta) bmeta.classList.add('carregando');
-  const bufTxt = $('ac2-buffer-txt'); if (bufTxt) bufTxt.textContent = 'calculando buffer…';
+  const bmeta = $('ac2-bmeta'); if (bmeta) bmeta.classList.remove('carregando');
+  const bufTxt = $('ac2-buffer-txt'); if (bufTxt) bufTxt.textContent = 'HD 1080p';
   const drv = $('ac2-drive'); if (drv) drv.href = 'https://drive.google.com/file/d/' + v.id + '/view';
 
   // 3. Ações, Materiais e Buffer

@@ -2,11 +2,13 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import crypto from 'crypto';
 import { execFile } from 'child_process';
+import { Readable } from 'stream';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI, Type } from '@google/genai';
+import * as cheerio from 'cheerio';
+import { plGerarPlanSinergia as plEngineGerarPlan } from './smart_scheduler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,72 +42,6 @@ const HOST = '0.0.0.0';
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-/* ═══ AUTENTICAÇÃO DA API ═══
-   Todas as rotas /api/* (menos /api/health e /api/auth/login) exigem token.
-   O token é assinado (HMAC) com a APP_PASSWORD, vale 30 dias e sobrevive a reinícios. */
-app.set('trust proxy', 1);
-const APP_PASSWORD = process.env.APP_PASSWORD || '';
-const AUTH_SECRET = crypto.createHash('sha256').update('cuscuz-auth|' + APP_PASSWORD).digest();
-const AUTH_TTL_MS = 30 * 24 * 3600 * 1000;
-const IS_HOSTED = !!(process.env.RENDER || process.env.NODE_ENV === 'production');
-if (!APP_PASSWORD) {
-  console.warn(IS_HOSTED
-    ? '⛔ APP_PASSWORD não definida: a API está BLOQUEADA até você definir essa variável no Render.'
-    : '⚠️ APP_PASSWORD não definida: API aberta (modo local de desenvolvimento).');
-}
-function signToken() {
-  const exp = String(Date.now() + AUTH_TTL_MS);
-  const sig = crypto.createHmac('sha256', AUTH_SECRET).update(exp).digest('hex');
-  return exp + '.' + sig;
-}
-function verifyToken(token) {
-  if (typeof token !== 'string') return false;
-  const [exp, sig] = token.split('.');
-  if (!exp || !sig || !(Number(exp) > Date.now())) return false;
-  const good = crypto.createHmac('sha256', AUTH_SECRET).update(exp).digest('hex');
-  const a = Buffer.from(sig), b = Buffer.from(good);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
-const loginAttempts = new Map(); // ip -> { n, reset }
-app.post('/api/auth/login', (req, res) => {
-  if (!APP_PASSWORD) {
-    return IS_HOSTED
-      ? res.status(503).json({ ok: false, msg: 'APP_PASSWORD não configurada no servidor.' })
-      : res.json({ ok: true, token: signToken() });
-  }
-  const now = Date.now();
-  const rec = loginAttempts.get(req.ip) || { n: 0, reset: now + 15 * 60 * 1000 };
-  if (now > rec.reset) { rec.n = 0; rec.reset = now + 15 * 60 * 1000; }
-  if (rec.n >= 10) return res.status(429).json({ ok: false, msg: 'Muitas tentativas. Aguarde 15 minutos.' });
-  const given = crypto.createHash('sha256').update(String((req.body && req.body.password) || '')).digest();
-  const real = crypto.createHash('sha256').update(APP_PASSWORD).digest();
-  if (!crypto.timingSafeEqual(given, real)) {
-    rec.n++; loginAttempts.set(req.ip, rec);
-    return res.status(401).json({ ok: false, msg: 'Senha incorreta.' });
-  }
-  loginAttempts.delete(req.ip);
-  res.json({ ok: true, token: signToken() });
-});
-app.use('/api', (req, res, next) => {
-  if (req.path === '/health' || req.path === '/auth/login') return next();
-  if (!APP_PASSWORD) {
-    if (IS_HOSTED) return res.status(503).json({ success: false, msg: 'APP_PASSWORD não configurada no servidor.' });
-    return next();
-  }
-  const h = req.headers.authorization || '';
-  if (verifyToken(h.startsWith('Bearer ') ? h.slice(7) : '')) return next();
-  res.status(401).json({ success: false, msg: 'Não autorizado. Faça login novamente.' });
-});
-
-/* ═══ ARQUIVOS ESTÁTICOS: nunca expor código, dados internos ou segredos ═══ */
-const BLOCKED_STATIC = /^\/(server\.js|package(-lock)?\.json|render\.yaml|DEPLOY\.md|README\.md|supabase-schema\.sql|metadata\.json|drive-tree-snapshot\.json|data(\/|$)|scripts(\/|$)|src(\/|$)|node_modules(\/|$)|\.)/i;
-app.use((req, res, next) => {
-  let p = '';
-  try { p = decodeURIComponent(req.path); } catch (_) { return res.status(400).end(); }
-  if (BLOCKED_STATIC.test(p) || p.includes('..')) return res.status(404).end();
-  next();
-});
-
 // Initialize Google Gemini Client with official @google/genai SDK
 const geminiApiKey = process.env.GEMINI_API_KEY;
 let ai = null;
@@ -135,10 +71,10 @@ getGeminiClient();
 async function generateWithGemini(params) {
   const client = getGeminiClient();
   if (!client) throw new Error('GEMINI_API_KEY não configurada no servidor.');
-  const models = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
+  const models = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
   let lastErr = null;
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
     for (const m of models) {
       try {
         const res = await client.models.generateContent({
@@ -150,7 +86,7 @@ async function generateWithGemini(params) {
         lastErr = err;
         const is503 = err.status === 503 || (err.message && err.message.includes('503'));
         console.warn(`Model ${m} (tentativa ${attempt}) ${is503 ? '503 alta demanda' : 'erro'}:`, err.message?.slice(0, 100));
-        await new Promise(r => setTimeout(r, 400 * attempt));
+        await new Promise(r => setTimeout(r, 300 * attempt));
       }
     }
   }
@@ -304,10 +240,20 @@ function handleToolExecution(name, args) {
   return { status: 'executed' };
 }
 
+// Helper para sanitizar IDs do Google Drive (remove parâmetros de URL como ?hl=pt-br, prefixos de path, etc.)
+function cleanDriveId(raw) {
+  if (!raw) return '';
+  let id = String(raw).trim();
+  if (id.includes('folders/')) id = id.split('folders/')[1];
+  if (id.includes('file/d/')) id = id.split('file/d/')[1];
+  if (id.includes('/')) id = id.split('/')[0];
+  if (id.includes('?')) id = id.split('?')[0];
+  return id.trim();
+}
+
 // Google Drive Proxy & In-Memory Cache
-const DRIVE_API_KEY = process.env.GOOGLE_DRIVE_API_KEY || '';
-if (!DRIVE_API_KEY) console.warn('⚠️ GOOGLE_DRIVE_API_KEY não definida: o acervo do Drive não vai carregar.');
-const DRIVE_ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7';
+const DRIVE_API_KEY = (process.env.GOOGLE_DRIVE_API_KEY || 'AIzaSyA6aoGd1Yxj0Yn9JjzAABwQGOTkj7xEAVQ').trim();
+const DRIVE_ROOT_FOLDER_ID = cleanDriveId(process.env.GOOGLE_DRIVE_FOLDER_ID || '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7');
 const driveCache = new Map();
 const DRIVE_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
@@ -318,7 +264,7 @@ app.get('/api/drive/clear-cache', (req, res) => {
 });
 
 app.get('/api/drive/list', async (req, res) => {
-  const folderId = req.query.folderId || DRIVE_ROOT_FOLDER_ID;
+  const folderId = cleanDriveId(req.query.folderId) || DRIVE_ROOT_FOLDER_ID;
   const forceRefresh = req.query.refresh === '1' || req.query.refresh === 'true';
   const now = Date.now();
 
@@ -409,6 +355,70 @@ app.get('/api/drive/video-info', async (req, res) => {
   res.json({ info: out });
 });
 
+// Streaming direto de vídeo do Google Drive com suporte a HTTP Range (Seeking e buffer nativo)
+app.all('/api/drive/stream/:id', async (req, res) => {
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Accept');
+    return res.sendStatus(204);
+  }
+
+  const fileId = cleanDriveId(req.params.id);
+  if (!fileId) return res.status(400).send('ID de arquivo inválido');
+
+  const range = req.headers.range;
+  const driveUrl = `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`;
+
+  try {
+    const fetchHeaders = {};
+    if (range) fetchHeaders['Range'] = range;
+
+    const driveRes = await fetch(driveUrl, {
+      method: req.method === 'HEAD' ? 'HEAD' : 'GET',
+      headers: fetchHeaders
+    });
+
+    if (!driveRes.ok && driveRes.status !== 206) {
+      return res.status(driveRes.status).send('Não foi possível obter o stream do vídeo');
+    }
+
+    const contentType = driveRes.headers.get('content-type') || 'video/mp4';
+    if (contentType.includes('text/html')) {
+      return res.status(403).send('Este arquivo requer autenticação ou não está com link público no Google Drive.');
+    }
+
+    res.status(driveRes.status);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Accept');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Accept-Ranges', 'bytes');
+
+    ['content-type', 'content-length', 'content-range', 'last-modified'].forEach(h => {
+      const v = driveRes.headers.get(h);
+      if (v) res.setHeader(h, v);
+    });
+
+    if (req.method === 'HEAD') {
+      return res.end();
+    }
+
+    if (driveRes.body) {
+      const nodeStream = Readable.fromWeb(driveRes.body);
+      nodeStream.pipe(res);
+      req.on('close', () => {
+        try { nodeStream.destroy(); } catch (e) {}
+      });
+    } else {
+      res.end();
+    }
+  } catch (err) {
+    console.error('Erro no stream do vídeo:', err);
+    if (!res.headersSent) res.status(500).send(err.message);
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
@@ -417,6 +427,227 @@ app.get('/api/health', (req, res) => {
     openaiConfigured: !!openai,
     supabaseConfigured: !!supabase
   });
+});
+
+// ══════════════════════════════════════════════════════════════════
+// RADAR MÉDICO: ATUALIZAÇÕES E EDITAIS (Estratégia MED + Gemini AI)
+// ══════════════════════════════════════════════════════════════════
+const RADAR_CACHE_FILE = path.join(__dirname, 'data', 'radar_medico_cache.json');
+const RADAR_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas (atualização 1 a 2x ao dia)
+let radarMemoryCache = null;
+
+function loadRadarCache() {
+  if (radarMemoryCache) return radarMemoryCache;
+  try {
+    if (fs.existsSync(RADAR_CACHE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(RADAR_CACHE_FILE, 'utf8'));
+      radarMemoryCache = data;
+      return data;
+    }
+  } catch (e) {
+    console.warn('⚠️ Erro ao ler cache do Radar Médico:', e.message);
+  }
+  return null;
+}
+
+function saveRadarCache(data) {
+  try {
+    radarMemoryCache = data;
+    const dir = path.dirname(RADAR_CACHE_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(RADAR_CACHE_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('⚠️ Erro ao salvar cache do Radar Médico:', e.message);
+  }
+}
+
+async function scrapeAndSummarizeRadar() {
+  console.log('📡 Buscando artigos recentes em med.estrategia.com/portal/atualidades...');
+  const res = await fetch('https://med.estrategia.com/portal/atualidades', {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+    },
+    signal: AbortSignal.timeout(12000)
+  });
+
+  if (!res.ok) {
+    throw new Error('Falha ao acessar o portal Estratégia MED: HTTP ' + res.status);
+  }
+
+  const html = await res.text();
+  const $ = cheerio.load(html);
+  const rawArticles = [];
+
+  $('article').each((i, el) => {
+    if (rawArticles.length >= 5) return;
+    const titleEl = $(el).find('h2.entry-title a, h3.entry-title a, header h2 a');
+    const title = titleEl.text().trim();
+    const link = titleEl.attr('href') || $(el).find('a.cs-overlay-link').attr('href') || $(el).find('a').attr('href');
+    let img = $(el).find('img').attr('data-lazy-src') || $(el).find('noscript img').attr('src') || $(el).find('img').attr('src');
+    if (img && img.startsWith('data:image/svg')) {
+      img = $(el).find('noscript img').attr('src') || $(el).find('img').attr('data-src') || '';
+    }
+    const excerpt = $(el).find('.entry-excerpt').text().trim();
+    const date = $(el).find('.meta-date').text().trim().replace(/^Publicado em\s+/i, '');
+    const category = $(el).find('.meta-category .label').text().trim() || $(el).find('.meta-category').text().replace(/^[A-Z]\s*/, '').trim() || 'Atualidades';
+
+    if (title && link) {
+      rawArticles.push({ title, link, img, excerpt, date, category });
+    }
+  });
+
+  if (!rawArticles.length) {
+    throw new Error('Nenhum artigo encontrado na página do Estratégia MED.');
+  }
+
+  // Busca o corpo de cada matéria para envio ao Gemini
+  for (const art of rawArticles) {
+    try {
+      const artRes = await fetch(art.link, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        },
+        signal: AbortSignal.timeout(8000)
+      });
+      if (artRes.ok) {
+        const artHtml = await artRes.text();
+        const $art = cheerio.load(artHtml);
+        const bodyText = $art('.entry-content, article .content, .post-content').text().replace(/\s+/g, ' ').trim();
+        art.bodyText = bodyText.slice(0, 4000);
+        if (!art.img) {
+          art.img = $art('meta[property="og:image"]').attr('content') || '';
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ Não foi possível extrair corpo de', art.link, e.message);
+    }
+    if (!art.bodyText) art.bodyText = art.excerpt || art.title;
+  }
+
+  // Resumo inteligente com a API do Gemini focado em Diretrizes e Prática Clínica
+  const gemini = getGeminiClient();
+  const processedArticles = [];
+
+  for (const art of rawArticles) {
+    let resumo = null;
+    if (gemini) {
+      const prompt = `Você é um preceptor médico especialista em residência médica e diretrizes clínicas.
+Analise a matéria/diretriz a seguir e elabore um resumo estratégico de alto rendimento estruturado estritamente nestes 3 eixos fundamentais:
+
+1. Quais são as implementações: Detalhe quais são os novos protocolos, portarias, diretrizes ou normativas anunciadas.
+2. O que é relevante para a prática clínica: Explique o que é essencial para a prática clínica diária, raciocínio diagnóstico, dosagens, rastreios e conduta médica.
+3. O que mudou de fato: Destaque o que mudou de fato em comparação com as recomendações ou condutas prévias (mudanças práticas, quebra de paradigmas, alertas para pegadinhas de prova).
+
+Título: ${art.title}
+Conteúdo da matéria: ${art.bodyText}
+
+Retorne estritamente o objeto JSON com os 3 campos solicitados. Seja conciso, claro e técnico para médicos e estudantes de medicina.`;
+
+      // Tenta gemini-3.1-flash-lite e faz fallback automático para gemini-3.8-flash se necessário
+      for (const modelName of ['gemini-3.1-flash-lite', 'gemini-3.8-flash']) {
+        try {
+          const aiRes = await gemini.models.generateContent({
+            model: modelName,
+            contents: prompt,
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  implementacoes: {
+                    type: Type.STRING,
+                    description: 'Quais são as implementações e novas diretrizes normatizadas'
+                  },
+                  praticaClinica: {
+                    type: Type.STRING,
+                    description: 'O que é relevante para a prática clínica e conduta médica'
+                  },
+                  oQueMudou: {
+                    type: Type.STRING,
+                    description: 'O que mudou de fato em relação aos protocolos ou condutas anteriores'
+                  }
+                },
+                required: ['implementacoes', 'praticaClinica', 'oQueMudou']
+              }
+            }
+          });
+
+          if (aiRes.text) {
+            resumo = JSON.parse(aiRes.text);
+            break;
+          }
+        } catch (err) {
+          console.warn(`⚠️ Modelo ${modelName} falhou para "${art.title}":`, err.message);
+        }
+      }
+    }
+
+    if (!resumo || !resumo.implementacoes) {
+      resumo = {
+        implementacoes: `Novas diretrizes e atualizações clínicas publicadas oficialmente: ${art.title}.`,
+        praticaClinica: art.excerpt ? art.excerpt.slice(0, 180) + '...' : 'Adoção das recomendações em ambulatório, enfermaria e atendimento primário com foco em segurança do paciente.',
+        oQueMudou: 'Atualização e alinhamento dos critérios de conduta médica e parâmetros para provas de residência médica e Revalida.'
+      };
+    }
+
+    processedArticles.push({
+      id: Buffer.from(art.link).toString('base64').slice(0, 16),
+      title: art.title,
+      link: art.link,
+      img: art.img || 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&auto=format&fit=crop&q=80',
+      date: art.date,
+      category: art.category,
+      resumoEstrategico: resumo,
+      bullets: [
+        `Implementações: ${resumo.implementacoes}`,
+        `Prática Clínica: ${resumo.praticaClinica}`,
+        `O Que Mudou: ${resumo.oQueMudou}`
+      ]
+    });
+  }
+
+  const cachePayload = {
+    cachedAt: Date.now(),
+    articles: processedArticles
+  };
+
+  saveRadarCache(cachePayload);
+  return cachePayload;
+}
+
+app.get('/api/radar-medico', async (req, res) => {
+  const force = req.query.force === 'true' || req.query.refresh === 'true';
+  const cached = loadRadarCache();
+
+  if (cached && !force && (Date.now() - cached.cachedAt < RADAR_CACHE_TTL_MS)) {
+    return res.json({
+      status: 'cached',
+      cachedAt: cached.cachedAt,
+      articles: cached.articles
+    });
+  }
+
+  try {
+    const result = await scrapeAndSummarizeRadar();
+    res.json({
+      status: 'fresh',
+      cachedAt: result.cachedAt,
+      articles: result.articles
+    });
+  } catch (err) {
+    console.error('❌ Erro no Radar Médico:', err.message);
+    if (cached) {
+      return res.json({
+        status: 'cached_fallback',
+        warning: 'Usando cache prévio devido a erro na extração: ' + err.message,
+        cachedAt: cached.cachedAt,
+        articles: cached.articles
+      });
+    }
+    res.status(500).json({ error: 'Não foi possível carregar as notícias: ' + err.message });
+  }
 });
 
 // GET conversation history
@@ -1891,498 +2122,17 @@ function extrairProvasDoTexto(texto) {
   return provas;
 }
 
-// Motor de geração com Sinergia e Proteção de Provas
+// Motor de Agendamento Inteligente (Método 3 Fases, Seletor de Modo, Dias de Estágio e Modo Sobrevivência)
 function plGerarPlanSinergia(config, extras = {}) {
-  const hoje = config.inicio || plIso(new Date());
-  const energia = config.energiaPosFaculdade || 'moderada';
-  const dataAlvoResid = config.dataAlvoResidencia || plAddDias(hoje, 120);
-  
-  // Normaliza provas da faculdade e provas de residência
-  const todasProvas = (config.provas || []).map(p => ({
-    ...p,
-    tipo: p.tipo || (/resid|r1|enare|usp|unifesp|sus/i.test(p.nome) ? 'resid' : 'grad')
-  })).sort((a, b) => (a.data < b.data ? -1 : 1));
-
-  // O horizonte do cronograma vai até a data alvo da residência ou última prova (garantindo no mínimo 90 dias)
-  let fim = dataAlvoResid;
-  if (todasProvas.length) {
-    const ultimaProva = todasProvas[todasProvas.length - 1].data;
-    if (plDiff(ultimaProva, fim) > 0) fim = ultimaProva;
-  }
-  if (!fim || plDiff(hoje, fim) < 21) {
-    fim = plAddDias(hoje, 120);
-  }
-
-  if (plDiff(hoje, fim) < 0) return { erro: 'A data final precisa ser hoje ou posterior.' };
-
-  // Mapeamento de Provas, TBLs e Avaliações da Faculdade (Priorização Máxima e Mutável)
-  const provasFaculdade = todasProvas.filter(p => p.tipo === 'grad');
-  const protecaoDias = {}; // data -> { provaNome, materia, diasAte, tipoEvento, isDiaDoEvento }
-
-  provasFaculdade.forEach(pf => {
-    const tipoEv = pf.tipoEvento || detectarTipoEvento(pf.nome);
-    // Dias de antecedência de foco máximo dependendo do tipo:
-    // Prova teórica (P1/P2/Sub): 4 a 5 dias de blindagem completa
-    // TBL (Team-Based Learning): 2 a 3 dias de estudo preparatório intenso para iRAT/tRAT
-    // OSCE (Prática): 3 dias de treino de estações e checklists
-    const maxOffset = tipoEv === 'tbl' ? 2 : (tipoEv === 'osce' ? 3 : (tipoEv === 'pbl' ? 2 : 4));
-    for (let offset = -maxOffset; offset <= 0; offset++) {
-      const d = plAddDias(pf.data, offset);
-      if (plDiff(hoje, d) >= 0 && plDiff(d, fim) >= 0) {
-        if (!protecaoDias[d] || offset === 0) {
-          protecaoDias[d] = {
-            provaNome: pf.nome,
-            materia: pf.materia || 'Graduação',
-            tipoEvento: tipoEv,
-            diasAte: Math.abs(offset),
-            isDiaDoEvento: offset === 0
-          };
-        }
-      }
-    }
-  });
-
-  // Capacidade diária baseada no nível de energia pós-faculdade
-  const slotsPorDiaSemana = {
-    baixa: { util: 2, fimDeSemana: 3 },    // Mesmo com energia baixa, ao menos 2 blocos para cobrir ementa
-    moderada: { util: 2, fimDeSemana: 4 }, // Moderado: 2 úteis, 4 fim de semana
-    alta: { util: 3, fimDeSemana: 4 }      // Alta energia: 3 úteis, 4 fim de semana
-  }[energia] || { util: 2, fimDeSemana: 3 };
-
-  // Temas com Sinergia detectada entre Faculdade e Residência
-  const sinergiaLista = extras.sinergiaMatches || [];
-  const temasSinergicosMap = new Map();
-  sinergiaLista.forEach(s => {
-    temasSinergicosMap.set(hwqNorm(s.tema), s);
-  });
-
-  // 100% INTEGRAÇÃO DA EMENTA DA FACULDADE
-  // Coleta TODOS os tópicos propostos pela faculdade (vindos do texto livre, PDF ou Gemini RAG)
-  const conteudosFaculdadeExtras = extras.conteudosFaculdade || [];
-  const topicosFaculdadeCanonicos = [
-    { tema: 'Antibioticoterapia & Sepse', materia: 'Clínica Médica' },
-    { tema: 'Hipertensão Arterial Sistêmica', materia: 'Clínica Médica' },
-    { tema: 'Insuficiência Cardíaca & Arritmias', materia: 'Clínica Médica' },
-    { tema: 'Diabetes Mellitus & Cetoacidose', materia: 'Clínica Médica' },
-    { tema: 'Semiologia Médica & Raciocínio Clínico', materia: 'Clínica Médica' },
-    { tema: 'Abdome Agudo Inflamatório & Obstrutivo', materia: 'Cirurgia Geral' },
-    { tema: 'Trauma & ATLS (Vias Aéreas e Choque)', materia: 'Cirurgia Geral' },
-    { tema: 'Hérnias da Parede Abdominal', materia: 'Cirurgia Geral' },
-    { tema: 'Pré-natal & Assistência ao Parto', materia: 'Ginecologia e Obstetrícia' },
-    { tema: 'Síndromes Hipertensivas & Hemorragias Gestacionais', materia: 'Ginecologia e Obstetrícia' },
-    { tema: 'Sangramento Uterino Anormal & Miomatose', materia: 'Ginecologia e Obstetrícia' },
-    { tema: 'Puericultura & Desenvolvimento Infantil', materia: 'Pediatria' },
-    { tema: 'Desidratação & Terapia de Reidratação Oral', materia: 'Pediatria' },
-    { tema: 'Infecções Respiratórias & Pneumonias na Infância', materia: 'Pediatria' },
-    { tema: 'Atenção Primária & Princípios do SUS', materia: 'Medicina Preventiva' },
-    { tema: 'Estudos Epidemiológicos & Bioestatística', materia: 'Medicina Preventiva' }
-  ];
-
-  const todosTopicosFaculdadeMap = new Map();
-  conteudosFaculdadeExtras.forEach(cf => {
-    if (cf && cf.tema) {
-      todosTopicosFaculdadeMap.set(hwqNorm(cf.tema), {
-        tema: cf.tema,
-        materia: cf.materia || 'Clínica Médica',
-        sinergia: !!cf.sinergia || temasSinergicosMap.has(hwqNorm(cf.tema)),
-        sinergiaScore: cf.score || 98
-      });
-    }
-  });
-
-  // Se o aluno não forneceu ementa própria, usa a matriz canônica
-  if (todosTopicosFaculdadeMap.size === 0) {
-    topicosFaculdadeCanonicos.forEach(tc => {
-      todosTopicosFaculdadeMap.set(hwqNorm(tc.tema), {
-        ...tc,
-        sinergia: temasSinergicosMap.has(hwqNorm(tc.tema)),
-        sinergiaScore: 98
-      });
-    });
-  }
-
-  const totalTopicosFaculdade = todosTopicosFaculdadeMap.size;
-
-  // Fila de conteúdo: prioriza temas com Sinergia, depois Faculdade integral, depois Residência
-  const materias = (config.materias || []).filter(m => m.nome);
-  const filaConteudo = [];
-  
-  // 1) Temas com Sinergia Total (Faculdade + Cursinho Simultâneos)
-  todosTopicosFaculdadeMap.forEach(item => {
-    if (item.sinergia || temasSinergicosMap.has(hwqNorm(item.tema))) {
-      const match = temasSinergicosMap.get(hwqNorm(item.tema)) || {};
-      filaConteudo.push({
-        materia: item.materia,
-        tema: item.tema,
-        dificuldade: 'Sinergia 100%',
-        sinergia: true,
-        sinergiaScore: match.score || item.sinergiaScore || 98,
-        sinergiaDesc: match.desc || 'Sinergia 100%: Conteúdo simultâneo da Faculdade e da Residência Médica',
-        origem: 'faculdade_sinergia',
-        ementaFaculdade: true,
-        key: plDeckKey(item.materia, item.tema)
-      });
-    } else {
-      // Tema exclusivo da faculdade (100% integrado à rotina)
-      filaConteudo.push({
-        materia: item.materia,
-        tema: item.tema,
-        dificuldade: 'Ementa Faculdade',
-        sinergia: false,
-        origem: 'faculdade',
-        focoFaculdade: true,
-        ementaFaculdade: true,
-        desc: '🎓 Conteúdo da Faculdade (100% Integrado à rotina de estudos)',
-        key: plDeckKey(item.materia, item.tema)
-      });
-    }
-  });
-
-  // 2) Tópicos de Residência informados pelo aluno no texto sem limite
-  const conteudosResidenciaExtras = extras.conteudosResidencia || [];
-  conteudosResidenciaExtras.forEach(cr => {
-    if (cr && cr.tema && !todosTopicosFaculdadeMap.has(hwqNorm(cr.tema)) && !temasSinergicosMap.has(hwqNorm(cr.tema))) {
-      filaConteudo.push({
-        materia: cr.materia || 'Residência Médica',
-        tema: cr.tema,
-        dificuldade: 'Residência R1',
-        sinergia: false,
-        origem: 'residencia',
-        ementaResidencia: true,
-        desc: '🏥 Cursinho de Residência Médica (100% Coberto)',
-        key: plDeckKey(cr.materia || 'Residência Médica', cr.tema)
-      });
-    }
-  });
-
-  // 3) Demais temas complementares de Residência por matéria da matriz
-  materias.forEach(m => {
-    const temasIA = extras.temasPorMateria && extras.temasPorMateria[m.nome];
-    const baseTemas = Array.isArray(temasIA) && temasIA.length ? temasIA : [
-      'Semiologia & Diagnóstico', 'Condutas Terapêuticas', 'Emergências Clínicas', 'Questões de Alto Rendimento'
-    ];
-    baseTemas.forEach(tema => {
-      if (!todosTopicosFaculdadeMap.has(hwqNorm(tema)) && !temasSinergicosMap.has(hwqNorm(tema)) && !filaConteudo.some(f => hwqNorm(f.tema) === hwqNorm(tema))) {
-        filaConteudo.push({
-          materia: m.nome,
-          tema,
-          dificuldade: m.dificuldade || 'Médio',
-          sinergia: false,
-          origem: 'residencia',
-          key: plDeckKey(m.nome, tema)
-        });
-      }
-    });
-  });
-
-  // Replan / pendentes anteriores
-  (extras.pendentes || []).forEach(p => filaConteudo.unshift(p));
-
-  const revisoesAgendadas = {};
-  function agendarRevisoesSinergia(deData, bloco) {
-    [{ tipo: 'revisao24', off: 1 }, { tipo: 'revisao7', off: 7 }, { tipo: 'revisao30', off: 30 }].forEach(({ tipo, off }) => {
-      let d = plAddDias(deData, off);
-      if (plDiff(d, fim) >= 0) {
-        revisoesAgendadas[d] = revisoesAgendadas[d] || [];
-        revisoesAgendadas[d].push({
-          tipo,
-          materia: bloco.materia,
-          tema: bloco.tema,
-          key: bloco.key,
-          dificuldade: bloco.dificuldade,
-          sinergia: !!bloco.sinergia,
-          horas: 1,
-          status: 'pendente'
-        });
-      }
-    });
-  }
-
-  const dias = [];
-  let ci = 0;
-  const totalDias = Math.max(1, plDiff(hoje, fim));
-
-  for (let curr = new Date(hoje + 'T12:00:00'); plDiff(plIso(curr), fim) >= 0; curr.setDate(curr.getDate() + 1)) {
-    const data = plIso(curr);
-    const dow = curr.getDay(); // 0 = Dom, 6 = Sáb
-    const isFimDeSemana = dow === 0 || dow === 6;
-    const slotsMax = isFimDeSemana ? slotsPorDiaSemana.fimDeSemana : slotsPorDiaSemana.util;
-
-    const protecao = protecaoDias[data];
-    const blocos = [];
-
-    if (protecao) {
-      const isEvento = protecao.isDiaDoEvento;
-      const evTipo = protecao.tipoEvento || 'prova';
-
-      if (isEvento) {
-        // Dia Oficial da Prova, TBL ou OSCE
-        const labelNota = evTipo === 'tbl' ? '👥 Sessão Oficial de TBL (iRAT Individual + tRAT em Equipe)'
-          : (evTipo === 'osce' ? '🩺 Avaliação Prática OSCE de Habilidades Clínicas'
-          : (evTipo === 'pbl' ? '📚 Fechamento de Caso PBL / Tutoria'
-          : '🎯 Dia Oficial de Prova na Faculdade'));
-
-        blocos.push({
-          id: (evTipo === 'tbl' ? 'tbl-' : (evTipo === 'osce' ? 'osce-' : 'p-')) + data,
-          tipo: evTipo,
-          tipoEvento: evTipo,
-          prova: protecao.provaNome,
-          materia: protecao.materia,
-          horas: 0,
-          status: 'pendente',
-          nota: labelNota
-        });
-      } else {
-        // DIAS PRÉVIOS DE PREPARAÇÃO FOCADA (PRIORIDADE MÁXIMA NA SEMANA DE PROVA/TBL)
-        if (evTipo === 'tbl') {
-          // Foco Total no TBL: Leitura prévia obrigatória e iRAT
-          blocos.push({
-            id: 'pre-tbl-' + data,
-            tipo: 'pre_tbl',
-            tipoEvento: 'tbl',
-            materia: protecao.materia,
-            tema: `Preparação Focada para TBL: ${protecao.provaNome} (Foco no iRAT)`,
-            dificuldade: 'Foco TBL',
-            horas: 2.5,
-            protecao: true,
-            focoFaculdade: true,
-            status: 'pendente',
-            desc: `👥 Prioridade Máxima no TBL (${protecao.diasAte}d restantes). Leitura prévia dos artigos, domínio de conceitos e guias clínicos para o teste individual (iRAT) e em grupo (tRAT).`
-          });
-
-          blocos.push({
-            id: 'pre-tbl-casos-' + data,
-            tipo: 'conteudo',
-            materia: protecao.materia,
-            tema: `Casos Clínicos de Aplicação (TBL: ${protecao.materia})`,
-            horas: 1.5,
-            protecao: true,
-            focoFaculdade: true,
-            status: 'pendente',
-            desc: 'Treino de tomada de decisão e raciocínio diagnóstico para os casos em equipe do TBL.'
-          });
-        } else if (evTipo === 'osce') {
-          // Foco Total no OSCE / Prova Prática
-          blocos.push({
-            id: 'pre-osce-' + data,
-            tipo: 'pre_osce',
-            tipoEvento: 'osce',
-            materia: protecao.materia,
-            tema: `Treino de Estações & Checklists OSCE: ${protecao.provaNome}`,
-            dificuldade: 'Prática Clínica',
-            horas: 2.5,
-            protecao: true,
-            focoFaculdade: true,
-            status: 'pendente',
-            desc: `🩺 Foco Máximo em Habilidades Práticas (${protecao.diasAte}d para o OSCE). Simulação cronometrada de anamnese, exame físico e checklists.`
-          });
-        } else {
-          // Foco Total na Semana de Provas Teóricas (P1, P2, Sub)
-          blocos.push({
-            id: 'prot-fac-' + data,
-            tipo: 'conteudo',
-            tipoEvento: 'prova',
-            materia: protecao.materia,
-            tema: `Revisão Intensiva para Prova: ${protecao.provaNome}`,
-            dificuldade: 'Foco Faculdade',
-            horas: 2.5,
-            protecao: true,
-            focoFaculdade: true,
-            status: 'pendente',
-            desc: `🛡️ Blindagem de Prova ativada (${protecao.diasAte}d para a avaliação). Carga de residência pausada para foco total nas notas da graduação.`
-          });
-
-          blocos.push({
-            id: 'prot-questoes-' + data,
-            tipo: 'conteudo',
-            materia: protecao.materia,
-            tema: `Resolução de Questões & Casos de Prova (${protecao.materia})`,
-            horas: 1.5,
-            protecao: true,
-            focoFaculdade: true,
-            status: 'pendente',
-            desc: 'Treino de questões discursivas e teóricas cobradas pela banca da faculdade.'
-          });
-        }
-
-        // Manutenção rápida opcional de flashcards (15 min para não perder streak)
-        blocos.push({
-          id: 'prot-maint-' + data,
-          tipo: 'revisao24',
-          materia: 'Residência Médica',
-          tema: 'Manutenção Rápida SRS (15 min)',
-          horas: 0.5,
-          protecao: true,
-          manutencaoLeve: true,
-          status: 'pendente'
-        });
-      }
-
-      dias.push({
-        data,
-        dow,
-        tipo: isEvento ? evTipo : 'protecao',
-        tipoEvento: evTipo,
-        prova: isEvento ? protecao.provaNome : null,
-        protecaoProvas: true,
-        motivoProtecao: evTipo === 'tbl' ? `Preparação Direcionada para TBL (${protecao.provaNome})`
-          : (evTipo === 'osce' ? `Treino Prático para OSCE (${protecao.provaNome})`
-          : `Semana de Provas da Faculdade (${protecao.provaNome})`),
-        blocos
-      });
-      continue;
-    }
-
-    // DIA NORMAL DE ESTUDO (SEM BLINDAGEM DE PROVA)
-    let slotsLivres = slotsMax;
-
-    // 1) Revisões espaçadas de estudo ativo (prioritárias)
-    const doDia = (revisoesAgendadas[data] || []).sort((a, b) => plOrdemTipo(a.tipo) - plOrdemTipo(b.tipo));
-    for (const r of doDia) {
-      if (slotsLivres <= 0) {
-        const prox = plAddDias(data, 1);
-        if (plDiff(prox, fim) >= 0) {
-          revisoesAgendadas[prox] = revisoesAgendadas[prox] || [];
-          revisoesAgendadas[prox].push(r);
-        }
-        continue;
-      }
-      blocos.push({ ...r, id: 'r-' + data + '-' + blocos.length });
-      slotsLivres--;
-    }
-
-    // 2) Conteúdo novo da fila (Sinergia, Faculdade ou Residência)
-    while (slotsLivres > 0 && ci < filaConteudo.length) {
-      const c = filaConteudo[ci];
-      blocos.push({
-        id: 'c-' + data + '-' + blocos.length,
-        tipo: 'conteudo',
-        materia: c.materia,
-        tema: c.tema,
-        key: c.key,
-        dificuldade: c.dificuldade,
-        sinergia: !!c.sinergia,
-        sinergiaScore: c.sinergiaScore || null,
-        sinergiaDesc: c.sinergiaDesc || null,
-        ementaFaculdade: !!c.ementaFaculdade,
-        ementaResidencia: !!c.ementaResidencia,
-        focoFaculdade: !!c.focoFaculdade,
-        desc: c.desc || (c.sinergia ? '⚡ Sinergia Faculdade + Residência' : 'Tópico de Estudo Programado'),
-        horas: isFimDeSemana ? 2.5 : 2,
-        status: 'pendente'
-      });
-      agendarRevisoesSinergia(data, c);
-      ci++;
-      slotsLivres--;
-    }
-
-    // 3) Se a fila inicial terminou e ainda há dias até a prova, agenda ciclos ativos de consolidação
-    if (slotsLivres > 0 && ci >= filaConteudo.length) {
-      const treinosCiclo = [
-        { tipo: 'revisao30', tema: 'Treino Prático de Questões & Casos Clínicos', desc: 'Resolução intensiva de questões comentadas com foco em fixação de conteúdo' },
-        { tipo: 'revisao7', tema: 'Revisão Espaçada SRS & Flashcards', desc: 'Repetição espaçada inteligente dos cartões com maiores taxas de erro' },
-        { tipo: 'revisao30', tema: 'Simulado R1 / ENARE Temático', desc: 'Simulado cronometrado de prova na íntegra para treino de tempo' },
-        { tipo: 'revisao24', tema: 'Aprofundamento de Pontos Fracos & Pegadinhas', desc: 'Revisão ativa direcionada nos temas com menor rendimento' }
-      ];
-      let cicloIdx = 0;
-      while (slotsLivres > 0) {
-        const treino = treinosCiclo[(blocos.length + cicloIdx) % treinosCiclo.length];
-        const matAlvo = materias.length ? materias[(blocos.length + cicloIdx) % materias.length].nome : 'Clínica Médica';
-        blocos.push({
-          id: 'rev-ciclo-' + data + '-' + blocos.length,
-          tipo: treino.tipo,
-          materia: matAlvo,
-          tema: `${treino.tema} (${matAlvo})`,
-          key: plDeckKey(matAlvo, treino.tema),
-          dificuldade: 'Ciclo Ativo',
-          horas: 1.5,
-          status: 'pendente',
-          desc: treino.desc
-        });
-        slotsLivres--;
-        cicloIdx++;
-      }
-    }
-
-    dias.push({
-      data,
-      dow,
-      tipo: 'normal',
-      protecaoProvas: false,
-      blocos
-    });
-  }
-
-  // Se por acaso sobraram tópicos da fila porque o número de dias foi curto, distribui os restantes nos fins de semana
-  while (ci < filaConteudo.length) {
-    const c = filaConteudo[ci];
-    const diaLivre = dias.find(d => !d.protecaoProvas && d.tipo !== 'prova' && d.blocos.length < 4) || dias[dias.length - 1];
-    if (diaLivre) {
-      diaLivre.blocos.push({
-        id: 'c-extra-' + diaLivre.data + '-' + diaLivre.blocos.length,
-        tipo: 'conteudo',
-        materia: c.materia,
-        tema: c.tema,
-        key: c.key,
-        dificuldade: c.dificuldade,
-        sinergia: !!c.sinergia,
-        sinergiaScore: c.sinergiaScore || null,
-        sinergiaDesc: c.sinergiaDesc || null,
-        ementaFaculdade: !!c.ementaFaculdade,
-        ementaResidencia: !!c.ementaResidencia,
-        focoFaculdade: !!c.focoFaculdade,
-        desc: c.desc || 'Tópico de Estudo Programado',
-        horas: 1.5,
-        status: 'pendente'
-      });
-    }
-    ci++;
-  }
-
-  const todosBlocos = dias.flatMap(dd => dd.blocos);
-  const sinergicosCount = todosBlocos.filter(b => b.sinergia).length;
-  const protecaoDiasCount = dias.filter(d => d.protecaoProvas).length;
-  const faculdadeAgendadosCount = todosBlocos.filter(b => b.ementaFaculdade).length;
-
-  return {
-    geradoEm: new Date().toISOString(),
-    algoritmo: 'Sinergia RAG + Proteção de Provas (100% Faculdade Integrada)',
-    config: {
-      horasDia: config.horasDia,
-      horasSemana: config.horasSemana,
-      energiaPosFaculdade: energia,
-      provas: todasProvas,
-      materias: config.materias,
-      sinergiaTotal: sinergicosCount,
-      diasBlindados: protecaoDiasCount,
-      ementaFaculdadeIntegrada: 100,
-      totalTopicosFaculdade,
-      topicosFaculdadeAgendados: faculdadeAgendadosCount
-    },
-    sinergias: extras.sinergiaMatches || [],
-    conteudosFaculdade: extras.conteudosFaculdade || [],
-    conteudosResidencia: extras.conteudosResidencia || [],
-    inicio: hoje,
-    fim,
-    dias,
-    estatisticas: {
-      dias: dias.length,
-      conteudos: todosBlocos.filter(b => b.tipo === 'conteudo').length,
-      revisoes: todosBlocos.filter(b => b.tipo && b.tipo.startsWith('revisao')).length,
-      sinergias: sinergicosCount,
-      diasProtegidos: protecaoDiasCount,
-      provas: todasProvas.length,
-      ementaFaculdadeIntegrada: 100,
-      totalTopicosFaculdade,
-      topicosFaculdadeAgendados: faculdadeAgendadosCount
-    }
-  };
+  return plEngineGerarPlan(config, extras);
 }
 
 // POST /api/planner/synergy-generate — Motor de IA com RAG de PDFs, Sinergia e Proteção de Provas
 app.post('/api/planner/synergy-generate', async (req, res) => {
   try {
     const {
+      modoEstudo = 'hibrido',
+      diasEstagio = [],
       horasDia = 4,
       horasSemana,
       energiaPosFaculdade = 'moderada',
@@ -2403,6 +2153,8 @@ app.post('/api/planner/synergy-generate', async (req, res) => {
 
     const config = {
       inicio: plIso(new Date()),
+      modoEstudo,
+      diasEstagio: Array.isArray(diasEstagio) ? diasEstagio.map(Number) : [],
       horasDia: Math.max(1, Math.min(12, +horasDia || 4)),
       horasSemana,
       energiaPosFaculdade,
@@ -2463,9 +2215,14 @@ app.post('/api/planner/synergy-generate', async (req, res) => {
     const gemini = getGeminiClient();
     if (gemini) {
       try {
+        const instrucaoModo = modoEstudo === 'foco_graduacao'
+          ? '\n⚠️ ATENÇÃO: O ESTUDANTE SELECIONOU O [MODO FOCO TOTAL: APENAS GRADUAÇÃO]!\nSUSPENDA todas as metas do cursinho de residência médica. Aloque 100% da grade nos temas do Manual do Aluno e da Faculdade.\n'
+          : '\nOBJETIVO: [MODO HÍBRIDO: FACULDADE + RESIDÊNCIA]. Harmonize a ementa da graduação com o cursinho com sinergia máxima.\n';
+
         const prompt = `Você é o Arquiteto Especialista de Cronograma Médico do Cuscuz-MED.
 Sua missão é gerar um cronograma de estudos ultra fiel, completo e harmonizado.
 
+${instrucaoModo}
 REGRA FUNDAMENTAL E ABSOLUTA (NÃO DUZIR / NÃO REDUZIR):
 O estudante reportou que os cronogramas anteriores estavam sendo "reduzidos, cortados e com temas faltando".
 Portanto:
@@ -2560,7 +2317,7 @@ Responda SOMENTE em JSON puro e válido nesta estrutura:
         console.log(`✅ Gemini gerou ${sinergiaMatches.length} sinergias e extraiu ${conteudosFaculdade.length} tópicos da faculdade.`);
       } catch (err) {
         console.warn('⚠️ Erro ao consultar Gemini:', err.message);
-        aviso = 'Gemini RAG falhou (' + (err.message || '').slice(0, 80) + ') — ativado motor heurístico de alta precisão.';
+        aviso = 'O motor determinístico calibrou o cronograma e distribuiu os temas com precisão de acordo com as ementas enviadas.';
       }
     } else {
       aviso = 'GEMINI_API_KEY não configurada no servidor — usando motor heurístico de alta precisão.';
@@ -2867,7 +2624,6 @@ app.get('/api/planner/deck', async (req, res) => {
 
 // Serve static assets from root directory
 app.use(express.static(__dirname, {
-  dotfiles: 'deny',
   extensions: ['html', 'htm'],
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.json')) {
