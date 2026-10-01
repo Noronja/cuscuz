@@ -841,6 +841,86 @@ app.get('/api/questions/bank', (req, res) => {
   res.json({ success: true, count: bank.length, questions: bank });
 });
 
+// 1.1 Match inteligente de questões por tags, tema e disciplina (Página de Aula)
+app.get('/api/questions/match', (req, res) => {
+  try {
+    const rawTags = String(req.query.tags || '');
+    const disciplina = String(req.query.disciplina || req.query.disc || '');
+    const tema = String(req.query.tema || req.query.titulo || '');
+    const curso = String(req.query.curso || '');
+    const limit = Math.max(3, Math.min(10, parseInt(req.query.limit, 10) || 4));
+
+    const stopwords = new Set(['de', 'da', 'do', 'das', 'dos', 'em', 'para', 'com', 'sem', 'por', 'sobre', 'que', 'uma', 'uns', 'umas', 'aula', 'curso', 'modulo', 'parte', 'bloco', 'extensivo', 'intensivo']);
+    const normText = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+
+    const tagsList = rawTags ? rawTags.split(',').map(normText).filter(Boolean) : [];
+    const normTema = normText(tema);
+    const normDisc = normText(disciplina);
+    const normCurso = normText(curso);
+
+    const tokens = [
+      ...normTema.split(/\s+/),
+      ...normDisc.split(/\s+/),
+      ...normCurso.split(/\s+/),
+      ...tagsList
+    ].filter(t => t.length > 2 && !stopwords.has(t));
+
+    const bank = readQuestionsBank();
+    if (!bank.length) {
+      return res.json({ success: true, count: 0, questions: [], tags: tokens });
+    }
+
+    const scored = bank.map(q => {
+      let score = 0;
+      const spec = normText(q.specialty || '');
+      const sub = normText(q.subspecialty || '');
+      const st = normText(q.statement || '');
+      const exp = normText(q.explanation || '');
+      const qTags = Array.isArray(q.tags) ? q.tags.map(normText).join(' ') : normText(q.tags || '');
+
+      tokens.forEach(t => {
+        if (qTags.includes(t)) score += 30;
+        if (sub.includes(t)) score += 25;
+        if (spec.includes(t)) score += 20;
+        if (st.includes(t)) score += 8;
+        if (exp.includes(t)) score += 4;
+      });
+
+      if (normTema && (sub.includes(normTema) || qTags.includes(normTema))) score += 50;
+      if (normDisc && (spec.includes(normDisc) || sub.includes(normDisc))) score += 35;
+
+      return { q, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    let matched = scored.filter(s => s.score > 0).slice(0, limit).map(s => s.q);
+
+    // Se faltarem questões com score > 0, completa com questões de alto rendimento do banco
+    if (matched.length < limit) {
+      const selectedIds = new Set(matched.map(m => m.id));
+      for (const item of scored) {
+        if (!selectedIds.has(item.q.id)) {
+          matched.push(item.q);
+          selectedIds.add(item.q.id);
+          if (matched.length >= limit) break;
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      count: matched.length,
+      questions: matched,
+      matchedTags: tokens,
+      tema,
+      disciplina
+    });
+  } catch (err) {
+    console.error('Erro em /api/questions/match:', err.message);
+    res.status(500).json({ success: false, msg: err.message });
+  }
+});
+
 // Restauração do espelho do navegador: se o servidor perdeu o arquivo (hospedagem efêmera),
 // o devolve o banco que o próprio usuário tem no localStorage — merge por id/enunciado
 app.post('/api/questions/bank/restore', (req, res) => {

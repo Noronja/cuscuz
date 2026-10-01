@@ -3777,14 +3777,14 @@ function openTaskModal(type,title,desc){
  $('task-modal-desc').textContent=desc||'';
  $('task-modal').classList.add('show');
 }
-function closeTaskModal(){$('task-modal').classList.remove('show')}
-$('close-task-modal').onclick=closeTaskModal;
-$('task-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeTaskModal()});
-$('btn-buscar-aula').onclick=e=>{
+function closeTaskModal(){const tm=$('task-modal');if(tm)tm.classList.remove('show')}
+const ctmBtn=$('close-task-modal');if(ctmBtn)ctmBtn.onclick=closeTaskModal;
+const tmEl=$('task-modal');if(tmEl)tmEl.addEventListener('click',e=>{if(e.target===e.currentTarget)closeTaskModal()});
+const bbaBtn=$('btn-buscar-aula');if(bbaBtn)bbaBtn.onclick=e=>{
  e.stopPropagation(); // sem isso o listener global de clique dispara srHide() e apaga a busca
- const q=$('task-modal-title').textContent||'';
+ const q=$('task-modal-title')?.textContent||'';
  closeTaskModal();go('view-inicio');
- const s=$('global-search');s.value=q;doSearch(q);
+ const s=$('global-search');if(s){s.value=q;doSearch(q);}
 };
 
 function moduleCard(m){const its=itemsOf(m),dn=its.filter(i=>DONE.has(itemKey(i))).length;
@@ -7879,24 +7879,35 @@ class AC2MSEPlayer {
       }
 
       const buf = await res.arrayBuffer();
-      if (!this.sourceBuffer || !this.mediaSource || this.mediaSource.readyState !== 'open') return;
+      const sb = this.sourceBuffer;
+      if (!sb || !this.mediaSource || this.mediaSource.readyState !== 'open') return;
 
       const appendPromise = new Promise((resolve, reject) => {
+        let cleaned = false;
+        const cleanup = () => {
+          if (cleaned) return;
+          cleaned = true;
+          try {
+            if (sb && typeof sb.removeEventListener === 'function') {
+              sb.removeEventListener('updateend', onUpdate);
+              sb.removeEventListener('error', onError);
+            }
+          } catch (e) {}
+        };
         const onUpdate = () => {
-          this.sourceBuffer.removeEventListener('updateend', onUpdate);
-          this.sourceBuffer.removeEventListener('error', onError);
+          cleanup();
           resolve();
         };
         const onError = (e) => {
-          this.sourceBuffer.removeEventListener('updateend', onUpdate);
-          this.sourceBuffer.removeEventListener('error', onError);
+          cleanup();
           reject(e);
         };
-        this.sourceBuffer.addEventListener('updateend', onUpdate);
-        this.sourceBuffer.addEventListener('error', onError);
         try {
-          this.sourceBuffer.appendBuffer(buf);
+          sb.addEventListener('updateend', onUpdate);
+          sb.addEventListener('error', onError);
+          sb.appendBuffer(buf);
         } catch (appendErr) {
+          cleanup();
           reject(appendErr);
         }
       });
@@ -8364,29 +8375,34 @@ function ac2Progresso() {
 }
 
 // Busca em tempo real na Sidebar
-$('ac2-busca').addEventListener('input', e => {
-  if (!AC2.pronto) return;
-  const q = normAcc(String(e.target.value || '')).trim();
-  const arvore = $('ac2-arvore');
-  const clr = $('ac2-busca-clear');
-  if (clr) clr.style.display = q ? 'flex' : 'none';
-  if (!q) {
-    arvore.dataset.pronto = '';
-    ac2RenderArvore();
-    return;
-  }
-  const hits = AC2.LISTA.filter(v => normAcc(v.titulo + ' ' + v.disc + ' ' + v.curso).includes(q)).slice(0, 100);
-  let html = '<div style="font-size:11.5px;color:var(--text-muted);padding:4px 8px 10px;font-weight:600">' + hits.length + ' resultado(s) encontrado(s)</div>' +
-    hits.map(v => {
-      const feita = DONE.has('drive:' + v.id);
-      return '<div class="ac2-aula' + (AC2.atualId === v.id ? ' ativa' : '') + '" data-id="' + v.id + '" onclick="ac2Abrir(\'' + v.id + '\')" title="' + esc(v.curso) + ' › ' + esc(v.disc) + ' — ' + esc(v.titulo) + '">' +
-        '<i class="ph ' + (feita ? 'ph-check-circle ok-i' : 'ph-play-circle') + '"></i>' +
-        '<span class="aula-title">' + esc(v.titulo) + '</span>' +
-        '<span style="font-size:10px;color:var(--text-muted);flex:none;border:1px solid var(--border-muted);border-radius:99px;padding:1px 7px">' + esc(v.disc) + '</span>' +
-      '</div>';
-    }).join('');
-  arvore.innerHTML = hits.length ? html : '<div style="padding:24px 16px;color:var(--text-muted);font-size:13px;text-align:center"><i class="ph ph-magnifying-glass" style="font-size:24px;display:block;margin:0 auto 8px;color:var(--text-muted)"></i>Nenhuma videoaula encontrada para "' + esc(q) + '".</div>';
-});
+const ac2BuscaEl = $('ac2-busca');
+if (ac2BuscaEl) {
+  ac2BuscaEl.addEventListener('input', e => {
+    if (!AC2.pronto) return;
+    const q = normAcc(String(e.target.value || '')).trim();
+    const arvore = $('ac2-arvore');
+    const clr = $('ac2-busca-clear');
+    if (clr) clr.style.display = q ? 'flex' : 'none';
+    if (!q) {
+      if (arvore) arvore.dataset.pronto = '';
+      ac2RenderArvore();
+      return;
+    }
+    const hits = AC2.LISTA.filter(v => normAcc(v.titulo + ' ' + v.disc + ' ' + v.curso).includes(q)).slice(0, 100);
+    let html = '<div style="font-size:11.5px;color:var(--text-muted);padding:4px 8px 10px;font-weight:600">' + hits.length + ' resultado(s) encontrado(s)</div>' +
+      hits.map(v => {
+        const feita = DONE.has('drive:' + v.id);
+        return '<div class="ac2-aula' + (AC2.atualId === v.id ? ' ativa' : '') + '" data-id="' + v.id + '" onclick="ac2Abrir(\'' + v.id + '\')" title="' + esc(v.curso) + ' › ' + esc(v.disc) + ' — ' + esc(v.titulo) + '">' +
+          '<i class="ph ' + (feita ? 'ph-check-circle ok-i' : 'ph-play-circle') + '"></i>' +
+          '<span class="aula-title">' + esc(v.titulo) + '</span>' +
+          '<span style="font-size:10px;color:var(--text-muted);flex:none;border:1px solid var(--border-muted);border-radius:99px;padding:1px 7px">' + esc(v.disc) + '</span>' +
+        '</div>';
+      }).join('');
+    if (arvore) {
+      arvore.innerHTML = hits.length ? html : '<div style="padding:24px 16px;color:var(--text-muted);font-size:13px;text-align:center"><i class="ph ph-magnifying-glass" style="font-size:24px;display:block;margin:0 auto 8px;color:var(--text-muted)"></i>Nenhuma videoaula encontrada para "' + esc(q) + '".</div>';
+    }
+  });
+}
 
 // Curso clicado na barra lateral (ou busca global) → abre na visão LMS
 function enterDriveCourse(id, name) {
