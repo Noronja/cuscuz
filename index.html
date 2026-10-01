@@ -2646,7 +2646,7 @@ function refreshAll(){renderHome();renderCalendar();renderSchedule();renderWeek(
 function refreshLight(){renderDash();renderCalendar();renderSchedule();renderWeek();renderHome();updateBadges();updateSidebarProgress()}
 
 /* ═══ LOGIN / FIREBASE / AUTO SYNC ═══ */
-const firebaseConfig={apiKey:"AIzaSyA6aoGd1Yxj0Yn9JjzAABwQGOTkj7xEAVQ",authDomain:"estudoflow-409d4.firebaseapp.com",databaseURL:"https://estudoflow-409d4-default-rtdb.firebaseio.com",projectId:"estudoflow-409d4",storageBucket:"estudoflow-409d4.firebasestorage.app",messagingSenderId:"693665289108",appId:"1:693665289108:web:bc9b93f6018690a405b581"};
+const firebaseConfig={apiKey:"AIzaSyAw2j7CXYxVWfqI9svGv8TvCbXkyGlgDPo",authDomain:"estudoflow-409d4.firebaseapp.com",databaseURL:"https://estudoflow-409d4-default-rtdb.firebaseio.com",projectId:"estudoflow-409d4",storageBucket:"estudoflow-409d4.firebasestorage.app",messagingSenderId:"693665289108",appId:"1:693665289108:web:bc9b93f6018690a405b581"};
 let FBDB=null,CLOUD_ON=false;
 const safeUser=s=>String(s||'').toLowerCase().replace(/[^a-z0-9_-]/g,'')||'user';
 const hsh=s=>{let x=5381;for(const c of s)x=(x*33+c.charCodeAt(0))>>>0;return x.toString(36)};
