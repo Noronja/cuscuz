@@ -142,7 +142,7 @@ getGeminiClient();
 async function generateWithGemini(params) {
   const client = getGeminiClient();
   if (!client) throw new Error('GEMINI_API_KEY não configurada no servidor.');
-  const models = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+  const models = ['gemini-3.8-flash'];
   let lastErr = null;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -155,9 +155,15 @@ async function generateWithGemini(params) {
         return res;
       } catch (err) {
         lastErr = err;
-        const is503 = err.status === 503 || (err.message && err.message.includes('503'));
-        console.warn(`Model ${m} (tentativa ${attempt}) ${is503 ? '503 alta demanda' : 'erro'}:`, err.message?.slice(0, 100));
-        await new Promise(r => setTimeout(r, 300 * attempt));
+        const msg = String(err.message || '');
+        if (msg.includes('API key not valid') || msg.includes('API_KEY_INVALID') || msg.includes('UNAUTHENTICATED')) {
+          throw new Error('A chave GEMINI_API_KEY configurada não é válida para este serviço.');
+        }
+        const is503 = err.status === 503 || msg.includes('503');
+        if (attempt === 1) {
+          console.warn(`[Gemini] Modelo ${m} temporariamente ocupado (503/alta demanda), tentando novamente...`);
+        }
+        await new Promise(r => setTimeout(r, 400 * attempt));
       }
     }
   }
@@ -370,6 +376,81 @@ async function checkDriveKey() {
 }
 const DRIVE_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
+// Snapshot offline local do Google Drive (fallback automático caso a chave expire ou falhe)
+let snapshotIndex = null;
+function initSnapshotIndex() {
+  try {
+    const snapPath = path.join(__dirname, 'drive-tree-snapshot.json');
+    const acervoPath = path.join(__dirname, 'acervo-manifest.json');
+    if (!fs.existsSync(snapPath)) return;
+    const snap = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
+    const acervo = fs.existsSync(acervoPath) ? JSON.parse(fs.readFileSync(acervoPath, 'utf8')) : { videos: [], materials: [] };
+
+    const folderMap = snap.folders || {};
+    const childFolders = new Map();
+    const pathToFolderId = new Map();
+
+    for (const f of Object.values(folderMap)) {
+      if (!f || !f.id) continue;
+      if (f.path) pathToFolderId.set(f.path.trim(), f.id);
+      const pid = f.parent || DRIVE_ROOT_FOLDER_ID;
+      if (!childFolders.has(pid)) childFolders.set(pid, []);
+      childFolders.get(pid).push({
+        id: f.id,
+        name: f.name.trim(),
+        rawName: f.name,
+        mimeType: 'application/vnd.google-apps.folder',
+        isFolder: true,
+        isVideo: false,
+        isPdf: false,
+        webViewLink: `https://drive.google.com/drive/folders/${f.id}`,
+        previewUrl: `https://drive.google.com/drive/folders/${f.id}`
+      });
+    }
+
+    const filesByFolderId = new Map();
+    const allItems = [...(acervo.videos || []), ...(acervo.materials || [])];
+    for (const it of allItems) {
+      if (!it || !it.path || !it.id) continue;
+      const parts = it.path.split('/');
+      parts.pop();
+      const folderPath = parts.map(p => p.trim()).join(' / ');
+      const folderId = pathToFolderId.get(folderPath);
+      if (folderId) {
+        if (!filesByFolderId.has(folderId)) filesByFolderId.set(folderId, []);
+        const isVid = /\.(mp4|webm|mkv|mov|avi)$/i.test(it.d || '') || (it.d && it.d.includes('.mp4'));
+        const isPdf = /\.(pdf|doc|docx)$/i.test(it.d || '') || (it.d && it.d.includes('.pdf'));
+        filesByFolderId.get(folderId).push({
+          id: it.id,
+          name: it.t || (it.d ? it.d.replace(/\.[^.]+$/, '') : 'Arquivo'),
+          rawName: it.d || it.t || 'Arquivo',
+          mimeType: isVid ? 'video/mp4' : (isPdf ? 'application/pdf' : 'application/octet-stream'),
+          isFolder: false,
+          isVideo: isVid,
+          isPdf: isPdf,
+          webViewLink: `https://drive.google.com/file/d/${it.id}/preview`,
+          previewUrl: `https://drive.google.com/file/d/${it.id}/preview`
+        });
+      }
+    }
+
+    snapshotIndex = { childFolders, filesByFolderId };
+    console.log(`✅ Snapshot offline indexado: ${childFolders.size} pastas, ${allItems.length} arquivos.`);
+  } catch (err) {
+    console.warn('⚠️ Falha ao inicializar snapshot local do Drive:', err.message);
+  }
+}
+initSnapshotIndex();
+
+function getFilesFromSnapshot(folderId) {
+  if (!snapshotIndex) return null;
+  const fid = cleanDriveId(folderId) || DRIVE_ROOT_FOLDER_ID;
+  const folders = snapshotIndex.childFolders.get(fid) || [];
+  const files = snapshotIndex.filesByFolderId.get(fid) || [];
+  if (!folders.length && !files.length) return null;
+  return [...folders, ...files];
+}
+
 app.get('/api/drive/clear-cache', (req, res) => {
   const size = driveCache.size;
   driveCache.clear();
@@ -388,62 +469,73 @@ app.get('/api/drive/list', async (req, res) => {
     }
   }
 
-  try {
-    let rawFiles = [];
-    let pageToken = '';
+  // Tenta buscar da Google Drive API se a chave estiver configurada
+  if (DRIVE_API_KEY) {
+    try {
+      let rawFiles = [];
+      let pageToken = '';
 
-    do {
-      const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
-      const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,webViewLink,size,createdTime,shortcutDetails)');
-      const pageParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
-      const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&orderBy=folder,name_natural&pageSize=1000&key=${DRIVE_API_KEY}${pageParam}`;
+      do {
+        const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+        const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,webViewLink,size,createdTime,shortcutDetails)');
+        const pageParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
+        const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&orderBy=folder,name_natural&pageSize=1000&key=${DRIVE_API_KEY}${pageParam}`;
+        
+        const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (!r.ok) {
+          const errText = await r.text();
+          noteDriveResult(false, r.status, errText);
+          throw new Error('Google Drive API retornou status ' + r.status);
+        }
+        noteDriveResult(true, 200, '');
+        const data = await r.json();
+        if (data.files && Array.isArray(data.files)) {
+          rawFiles.push(...data.files);
+        }
+        pageToken = data.nextPageToken || '';
+      } while (pageToken);
       
-      if (!DRIVE_API_KEY) {
-        noteDriveResult(false, 503, '');
-        return res.status(503).json({ error: 'GOOGLE_DRIVE_API_KEY ausente', reason: 'missing_key', hint: 'GOOGLE_DRIVE_API_KEY não está definida no Render.' });
-      }
-      const r = await fetch(url);
-      if (!r.ok) {
-        const errText = await r.text();
-        const info = noteDriveResult(false, r.status, errText);
-        return res.status(502).json({ error: 'Google Drive API error', status: r.status, reason: info.reason, hint: info.hint });
-      }
-      noteDriveResult(true, 200, '');
-      const data = await r.json();
-      if (data.files && Array.isArray(data.files)) {
-        rawFiles.push(...data.files);
-      }
-      pageToken = data.nextPageToken || '';
-    } while (pageToken);
-    
-    const processed = rawFiles.map(f => {
-      const isShortcut = f.mimeType === 'application/vnd.google-apps.shortcut';
-      const effectiveId = isShortcut && f.shortcutDetails?.targetId ? f.shortcutDetails.targetId : f.id;
-      const effectiveMime = isShortcut && f.shortcutDetails?.targetMimeType ? f.shortcutDetails.targetMimeType : f.mimeType;
-      
-      const isFolder = effectiveMime === 'application/vnd.google-apps.folder';
-      const isVideo = /video|mp4|webm|mkv|mov/i.test(effectiveMime) || /\.(mp4|webm|mkv|mov)(\.(mp4|webm|mkv|mov))?$/i.test(f.name);
-      const isPdf = /pdf|document|presentation/i.test(effectiveMime) || /\.(pdf|doc|docx)$/i.test(f.name);
-      const cleanName = isFolder ? f.name.trim() : f.name.replace(/(\.(mp4|webm|mkv|mov|pdf|doc|docx))+$/gi, "").trim();
-      return {
-        id: effectiveId,
-        name: cleanName,
-        rawName: f.name,
-        mimeType: effectiveMime,
-        isFolder,
-        isVideo,
-        isPdf,
-        webViewLink: f.webViewLink || `https://drive.google.com/file/d/${effectiveId}/preview`,
-        previewUrl: `https://drive.google.com/file/d/${effectiveId}/preview`
-      };
-    });
+      const processed = rawFiles.map(f => {
+        const isShortcut = f.mimeType === 'application/vnd.google-apps.shortcut';
+        const effectiveId = isShortcut && f.shortcutDetails?.targetId ? f.shortcutDetails.targetId : f.id;
+        const effectiveMime = isShortcut && f.shortcutDetails?.targetMimeType ? f.shortcutDetails.targetMimeType : f.mimeType;
+        
+        const isFolder = effectiveMime === 'application/vnd.google-apps.folder';
+        const isVideo = /video|mp4|webm|mkv|mov/i.test(effectiveMime) || /\.(mp4|webm|mkv|mov)(\.(mp4|webm|mkv|mov))?$/i.test(f.name);
+        const isPdf = /pdf|document|presentation/i.test(effectiveMime) || /\.(pdf|doc|docx)$/i.test(f.name);
+        const cleanName = isFolder ? f.name.trim() : f.name.replace(/(\.(mp4|webm|mkv|mov|pdf|doc|docx))+$/gi, "").trim();
+        return {
+          id: effectiveId,
+          name: cleanName,
+          rawName: f.name,
+          mimeType: effectiveMime,
+          isFolder,
+          isVideo,
+          isPdf,
+          webViewLink: f.webViewLink || `https://drive.google.com/file/d/${effectiveId}/preview`,
+          previewUrl: `https://drive.google.com/file/d/${effectiveId}/preview`
+        };
+      });
 
-    driveCache.set(folderId, { timestamp: now, files: processed });
-    res.json({ files: processed, cached: false, total: processed.length });
-  } catch (err) {
-    console.error('Error fetching Drive files:', err);
-    res.status(500).json({ error: err.message });
+      driveCache.set(folderId, { timestamp: now, files: processed });
+      return res.json({ files: processed, cached: false, total: processed.length });
+    } catch (err) {
+      console.warn(`[Drive] Falha ao consultar Google Drive API para pasta ${folderId} (${err.message}), recorrendo ao snapshot local...`);
+    }
   }
+
+  // Fallback transparente para o snapshot offline local
+  const snapshotFiles = getFilesFromSnapshot(folderId);
+  if (snapshotFiles && snapshotFiles.length > 0) {
+    driveCache.set(folderId, { timestamp: now, files: snapshotFiles });
+    return res.json({ files: snapshotFiles, cached: true, fromSnapshot: true, total: snapshotFiles.length });
+  }
+
+  // Se não foi encontrado no snapshot e a chave não estava ativa
+  if (!DRIVE_API_KEY) {
+    return res.status(503).json({ error: 'GOOGLE_DRIVE_API_KEY ausente', reason: 'missing_key', hint: 'GOOGLE_DRIVE_API_KEY não configurada no servidor.' });
+  }
+  return res.json({ files: [], cached: false, total: 0 });
 });
 
 // Metadados de vídeo do Drive (tamanho/duração/resolução) — base do buffer inteligente da página de aula
@@ -487,21 +579,43 @@ app.all('/api/drive/stream/:id', async (req, res) => {
   if (!fileId) return res.status(400).send('ID de arquivo inválido');
 
   const range = req.headers.range;
-  const driveUrl = `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`;
+  const fetchHeaders = {};
+  if (range) fetchHeaders['Range'] = range;
+
+  // Lista de URLs candidatas para contornar bloqueios/timeouts do Google
+  const candidates = [
+    `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`,
+    `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}&confirm=t`
+  ];
+  if (DRIVE_API_KEY) {
+    candidates.push(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&key=${DRIVE_API_KEY}`);
+  }
+
+  let driveRes = null;
+  let lastErr = null;
+
+  for (const driveUrl of candidates) {
+    try {
+      const resp = await fetch(driveUrl, {
+        method: req.method === 'HEAD' ? 'HEAD' : 'GET',
+        headers: fetchHeaders,
+        signal: AbortSignal.timeout(10000)
+      });
+      if (resp.ok || resp.status === 206) {
+        driveRes = resp;
+        break;
+      }
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  if (!driveRes) {
+    console.warn(`[Stream] Falha ao obter stream do vídeo ${fileId}:`, lastErr ? lastErr.message : 'Todos os endpoints falharam');
+    return res.status(502).json({ error: 'Não foi possível conectar ao Google Drive para reproduzir este vídeo.', details: lastErr ? lastErr.message : 'timeout' });
+  }
 
   try {
-    const fetchHeaders = {};
-    if (range) fetchHeaders['Range'] = range;
-
-    const driveRes = await fetch(driveUrl, {
-      method: req.method === 'HEAD' ? 'HEAD' : 'GET',
-      headers: fetchHeaders
-    });
-
-    if (!driveRes.ok && driveRes.status !== 206) {
-      return res.status(driveRes.status).send('Não foi possível obter o stream do vídeo');
-    }
-
     const contentType = driveRes.headers.get('content-type') || 'video/mp4';
     if (contentType.includes('text/html')) {
       return res.status(403).send('Este arquivo requer autenticação ou não está com link público no Google Drive.');
@@ -543,18 +657,33 @@ app.get('/api/drive/pdf/:id', async (req, res) => {
   const fileId = cleanDriveId(req.params.id);
   if (!fileId) return res.status(400).send('ID de arquivo inválido');
 
+  const candidates = [
+    `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`,
+    `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}&confirm=t`
+  ];
+  if (DRIVE_API_KEY) {
+    candidates.unshift(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&key=${DRIVE_API_KEY}`);
+  }
+
+  let r = null;
+  let lastErr = null;
+  for (const u of candidates) {
+    try {
+      const resp = await fetch(u, { signal: AbortSignal.timeout(10000) });
+      if (resp.ok) {
+        r = resp;
+        break;
+      }
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+
+  if (!r) {
+    return res.status(502).send('Não foi possível obter o PDF do Google Drive: ' + (lastErr ? lastErr.message : 'timeout'));
+  }
+
   try {
-    // 1. Tenta via Google Drive API v3 alt=media
-    let r = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&key=${DRIVE_API_KEY}`);
-    if (!r.ok) {
-      // 2. Fallback para usercontent download
-      r = await fetch(`https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`);
-    }
-
-    if (!r.ok) {
-      return res.status(r.status).send('Não foi possível obter o PDF do Google Drive');
-    }
-
     const ct = r.headers.get('content-type') || 'application/pdf';
     res.setHeader('Content-Type', ct.includes('text/html') ? 'application/pdf' : ct);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -686,10 +815,11 @@ async function scrapeAndSummarizeRadar() {
   // Resumo inteligente com a API do Gemini focado em Diretrizes e Prática Clínica
   const gemini = getGeminiClient();
   const processedArticles = [];
+  let geminiUnavailable = false;
 
   for (const art of rawArticles) {
     let resumo = null;
-    if (gemini) {
+    if (gemini && !geminiUnavailable) {
       const prompt = `Você é um preceptor médico especialista em residência médica e diretrizes clínicas.
 Analise a matéria/diretriz a seguir e elabore um resumo estratégico de alto rendimento estruturado estritamente nestes 3 eixos fundamentais:
 
@@ -702,41 +832,41 @@ Conteúdo da matéria: ${art.bodyText}
 
 Retorne estritamente o objeto JSON com os 3 campos solicitados. Seja conciso, claro e técnico para médicos e estudantes de medicina.`;
 
-      // Tenta gemini-3.1-flash-lite e faz fallback automático para gemini-3.8-flash se necessário
-      for (const modelName of ['gemini-3.1-flash-lite', 'gemini-3.8-flash']) {
-        try {
-          const aiRes = await gemini.models.generateContent({
-            model: modelName,
-            contents: prompt,
-            config: {
-              responseMimeType: 'application/json',
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  implementacoes: {
-                    type: Type.STRING,
-                    description: 'Quais são as implementações e novas diretrizes normatizadas'
-                  },
-                  praticaClinica: {
-                    type: Type.STRING,
-                    description: 'O que é relevante para a prática clínica e conduta médica'
-                  },
-                  oQueMudou: {
-                    type: Type.STRING,
-                    description: 'O que mudou de fato em relação aos protocolos ou condutas anteriores'
-                  }
+      try {
+        const aiRes = await gemini.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                implementacoes: {
+                  type: Type.STRING,
+                  description: 'Quais são as implementações e novas diretrizes normatizadas'
                 },
-                required: ['implementacoes', 'praticaClinica', 'oQueMudou']
-              }
+                praticaClinica: {
+                  type: Type.STRING,
+                  description: 'O que é relevante para a prática clínica e conduta médica'
+                },
+                oQueMudou: {
+                  type: Type.STRING,
+                  description: 'O que mudou de fato em relação aos protocolos ou condutas anteriores'
+                }
+              },
+              required: ['implementacoes', 'praticaClinica', 'oQueMudou']
             }
-          });
-
-          if (aiRes.text) {
-            resumo = JSON.parse(aiRes.text);
-            break;
           }
-        } catch (err) {
-          console.warn(`⚠️ Modelo ${modelName} falhou para "${art.title}":`, err.message);
+        });
+
+        if (aiRes.text) {
+          resumo = JSON.parse(aiRes.text);
+        }
+      } catch (err) {
+        const msg = String(err.message || '');
+        if (msg.includes('API key not valid') || msg.includes('API_KEY_INVALID') || msg.includes('UNAUTHENTICATED') || msg.includes('503')) {
+          geminiUnavailable = true;
+          console.log('[Radar Médico] Gemini indisponível no momento, aplicando resumos clínicos pré-estruturados.');
         }
       }
     }
@@ -998,16 +1128,16 @@ app.get('/api/questions/bank', (req, res) => {
   res.json({ success: true, count: bank.length, questions: bank });
 });
 
-// 1.1 Match inteligente de questões por tags, tema e disciplina (Página de Aula)
-app.get('/api/questions/match', (req, res) => {
+// 1.1 Match inteligente de questões por tags, tema e disciplina (Página de Aula) - À PROVA DE FALHAS
+app.get('/api/questions/match', async (req, res) => {
   try {
     const rawTags = String(req.query.tags || '');
     const disciplina = String(req.query.disciplina || req.query.disc || '');
     const tema = String(req.query.tema || req.query.titulo || '');
     const curso = String(req.query.curso || '');
-    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 20));
+    const limit = Math.max(1, Math.min(200, parseInt(req.query.limit, 10) || 80));
 
-    const stopwords = new Set(['de', 'da', 'do', 'das', 'dos', 'em', 'para', 'com', 'sem', 'por', 'sobre', 'que', 'uma', 'uns', 'umas', 'aula', 'curso', 'modulo', 'parte', 'bloco', 'extensivo', 'intensivo']);
+    const stopwords = new Set(['de', 'da', 'do', 'das', 'dos', 'em', 'para', 'com', 'sem', 'por', 'sobre', 'que', 'uma', 'uns', 'umas', 'aula', 'curso', 'modulo', 'parte', 'bloco', 'extensivo', 'intensivo', 'geral', 'medicina', 'video', 'videos']);
     const normText = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
 
     const tagsList = rawTags ? rawTags.split(',').map(normText).filter(Boolean) : [];
@@ -1015,16 +1145,56 @@ app.get('/api/questions/match', (req, res) => {
     const normDisc = normText(disciplina);
     const normCurso = normText(curso);
 
-    const tokens = [
+    // Dicionário de Sinônimos Clínicos e Radicais Médicos (Ontologia Médica para Provas)
+    const CLINICAL_SYNONYMS = {
+      'arritmi': ['fibrila', 'flutter', 'taquicard', 'bradicard', 'bav', 'sinusal', 'cha2ds2', 'has bled', 'cardiovers', 'amiodaron', 'diltiazem', 'verapamil', 'metoprolol', 'varfarin', 'doac', 'anticoagula', 'onda f', 'ritmo irregular', 'eletrocardiogram', 'ecg', 'holter'],
+      'fibrila': ['flutter', 'arritmi', 'taquiarritmi', 'cha2ds2', 'vasc', 'has bled', 'cardiovers', 'amiodaron', 'diltiazem', 'anticoagula', 'varfarin', 'doac', 'onda f', 'ritmo irregular', 'atrial'],
+      'flutter': ['fibrila', 'arritmi', 'taquiarritmi', 'cardiovers', 'onda f', 'serrilhad', 'istmo cavotricuspideo'],
+      'hipertens': ['pressao arterial', 'mapa', 'mrpa', 'ieca', 'bra', 'losartan', 'enalapril', 'anlodipin', 'hidroclorotiazid', 'espironolacton', 'anti-hipertensivo', 'emergencia hipertensiva'],
+      'has': ['hipertens', 'pressao arterial', 'mapa', 'mrpa', 'ieca', 'bra', 'losartan', 'enalapril'],
+      'insufici': ['insuficiencia cardiaca', 'icfer', 'icfen', 'fracao de ejecao', 'bnp', 'pro-bnp', 'b3', 'b4', 'ortopneia', 'edema agudo', 'arni', 'sacubitril', 'valsartan', 'espironolacton', 'isglt2'],
+      'coronar': ['infarto', 'iam', 'sca', 'angina', 'supradesnivelamento', 'troponina', 'angioplastia', 'dupla antiagregacao', 'cateterismo'],
+      'infart': ['iam', 'sca', 'angina', 'supradesnivelamento', 'troponina', 'angioplastia', 'cateterismo'],
+      'asma': ['dpoc', 'broncoespas', 'espirometr', 'vef1', 'cvf', 'formoterol', 'salbutamol', 'budesonid', 'saba', 'laba', 'gina', 'sibilo', 'corticoide inalatorio'],
+      'dpoc': ['asma', 'enfisema', 'bronquite', 'espirometr', 'vef1', 'tabagismo', 'gold', 'oxigenoterapia'],
+      'diabet': ['glicem', 'hba1c', 'insulin', 'metformin', 'isglt2', 'dapagliflozin', 'empagliflozin', 'glp-1', 'cetoacidos', 'cad', 'hiperosmolar'],
+      'tireoid': ['hipotireoid', 'hipertireoid', 'tsh', 't4 livre', 'graves', 'hashimoto', 'levotiroxin', 'tapazol', 'propiltiouracil', 'nodulo tireoidiano'],
+      'apendic': ['apendice', 'abdome agudo', 'blumberg', 'rovsing', 'mcburney', 'laparoscop', 'apendicectom'],
+      'colecist': ['colelitiase', 'murphy', 'vesicula biliar', 'coledocolitiase', 'colangite', 'charcot'],
+      'pancreatit': ['amilase', 'lipase', 'ranson', 'baltazar', 'balthazar', 'necrose pancreatica'],
+      'seps': ['choque septico', 'sofa', 'qsofa', 'lactato', 'hemocultura', 'noradrenalina'],
+      'traum': ['atls', 'politraumatiz', 'pneumotorax', 'hemotorax', 'tamponamento', 'glasgow', 'fast', 'e-fast'],
+      'gestan': ['gestacao', 'pre-natal', 'preeclamps', 'eclamps', 'parto', 'cesare', 'dheg', 'cardiotocograf'],
+      'parto': ['cesare', 'trabalho de parto', 'tocotraumatismo', 'bacia', 'dilatacao', 'puerperio'],
+      'pediatr': ['puericultur', 'aleitament', 'desenvolviment', 'vacina', 'calendario vacinal', 'curvas da oms', 'percentil', 'lactente', 'pre-escolar', 'bronquiolit'],
+      'vacina': ['calendario vacinal', 'imunizacao', 'pentavalente', 'pneumococica', 'triplice viral', 'hpv', 'bcg'],
+      'reflux': ['drge', 'esofago', 'barrett', 'pirose', 'eda', 'omeprazol', 'ibp', 'phmetria'],
+      'avc': ['ave', 'isquemico', 'hemorragico', 'trombectomi', 'rtpa', 'trombolise', 'afasia'],
+      'renais': ['ira', 'drc', 'creatinina', 'clearance', 'kdigo', 'hemodialise', 'glomerulonefrite'],
+      'pneumoni': ['pac', 'curb-65', 'amoxicilina', 'claritromicina', 'azitromicina', 'ceftriaxona', 'infiltrado']
+    };
+
+    const rawTokens = [
       ...normTema.split(/\s+/),
       ...normDisc.split(/\s+/),
       ...normCurso.split(/\s+/),
       ...tagsList
     ].filter(t => t.length > 2 && !stopwords.has(t));
 
+    const stems = new Set();
+    rawTokens.forEach(t => {
+      const s = t.length > 5 ? t.slice(0, t.length - 2) : t;
+      stems.add(s);
+      for (const [k, list] of Object.entries(CLINICAL_SYNONYMS)) {
+        if (t.includes(k) || k.includes(t)) {
+          list.forEach(item => stems.add(item));
+        }
+      }
+    });
+
     const bank = readQuestionsBank();
     if (!bank.length) {
-      return res.json({ success: true, count: 0, questions: [], tags: tokens });
+      return res.json({ success: true, count: 0, totalAvailable: 0, questions: [], tags: [...stems] });
     }
 
     const scored = bank.map(q => {
@@ -1032,43 +1202,118 @@ app.get('/api/questions/match', (req, res) => {
       const spec = normText(q.specialty || '');
       const sub = normText(q.subspecialty || '');
       const st = normText(q.statement || '');
+      const opts = normText((q.options || []).join(' '));
       const exp = normText(q.explanation || '');
       const qTags = Array.isArray(q.tags) ? q.tags.map(normText).join(' ') : normText(q.tags || '');
+      const full = st + ' ' + opts + ' ' + exp;
 
-      tokens.forEach(t => {
-        if (qTags.includes(t)) score += 30;
-        if (sub.includes(t)) score += 25;
-        if (spec.includes(t)) score += 20;
-        if (st.includes(t)) score += 8;
-        if (exp.includes(t)) score += 4;
+      // Correspondência exata da frase do tema
+      if (normTema && normTema.length > 3 && full.includes(normTema)) score += 90;
+
+      // Radicais e sinônimos médicos clínicos
+      stems.forEach(stem => {
+        if (st.includes(stem)) score += 25;
+        if (opts.includes(stem)) score += 15;
+        if (exp.includes(stem)) score += 10;
+        if (sub.includes(stem)) score += 30;
+        if (qTags.includes(stem)) score += 25;
+        if (spec.includes(stem)) score += 15;
       });
 
-      if (normTema && (sub.includes(normTema) || qTags.includes(normTema))) score += 50;
-      if (normDisc && (spec.includes(normDisc) || sub.includes(normDisc))) score += 35;
+      // Bônus se pertencer à grande área clínica da aula
+      if (normDisc && (spec.includes(normDisc) || sub.includes(normDisc))) score += 20;
 
       return { q, score };
     });
 
+    // CRÍTICO: Filtra apenas questões que TÊM relação clínica real com o tema (score >= 25)
+    // NUNCA preenche com questões aleatórias de matérias não relacionadas
     scored.sort((a, b) => b.score - a.score);
-    let matched = scored.filter(s => s.score > 0).slice(0, limit).map(s => s.q);
+    const relevant = scored.filter(s => s.score >= 25);
+    let matched = relevant.slice(0, limit).map(s => s.q);
 
-    // Se faltarem questões com score > 0, completa com questões de alto rendimento do banco
-    if (matched.length < limit) {
-      const selectedIds = new Set(matched.map(m => m.id));
-      for (const item of scored) {
-        if (!selectedIds.has(item.q.id)) {
-          matched.push(item.q);
-          selectedIds.add(item.q.id);
-          if (matched.length >= limit) break;
+    // Se houver poucas questões (< 12) e a API do Gemini estiver ativa, sintetiza questões oficiais do tema
+    const gemini = getGeminiClient();
+    if (matched.length < 12 && gemini && (normTema.length > 3 || normDisc.length > 3)) {
+      try {
+        const assunto = tema || disciplina || 'Medicina';
+        const aiPrompt = `Você é um preceptor médico especialista em residência médica (ENARE, USP, UNIFESP, AMRIGS, Revalida).
+Gere exatamente 12 questões clínicas inéditas de alto rendimento estritamente sobre o tema: "${assunto}" (Disciplina: "${disciplina || 'Clínica Médica'}").
+Cada questão deve possuir:
+- Enunciado com caso clínico detalhado e conduta/diagnóstico esperado
+- 4 alternativas realistas no array options: ["A) ...", "B) ...", "C) ...", "D) ..."]
+- correctIndex (número 0 a 3 indicando a resposta correta)
+- correctLetter ('A', 'B', 'C' ou 'D')
+- explanation técnica aprofundada com justificativa de preceptor
+- institution: 'Simulado Oficial Residência'
+- year: 2026
+- specialty: '${disciplina || 'Clínica Médica'}'
+- subspecialty: '${assunto}'
+
+Retorne estritamente um array JSON com o formato solicitado.`;
+
+        const aiRes = await gemini.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: aiPrompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  statement: { type: Type.STRING },
+                  options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  correctIndex: { type: Type.INTEGER },
+                  correctLetter: { type: Type.STRING },
+                  explanation: { type: Type.STRING },
+                  institution: { type: Type.STRING },
+                  year: { type: Type.INTEGER },
+                  specialty: { type: Type.STRING },
+                  subspecialty: { type: Type.STRING }
+                },
+                required: ['statement', 'options', 'correctIndex', 'explanation']
+              }
+            }
+          }
+        });
+
+        if (aiRes.text) {
+          const novas = JSON.parse(aiRes.text);
+          if (Array.isArray(novas) && novas.length) {
+            const novasFormatadas = novas.map((nq, nIdx) => ({
+              id: 'q-ai-' + Date.now() + '-' + nIdx,
+              statement: nq.statement,
+              options: nq.options,
+              correctIndex: nq.correctIndex || 0,
+              correctLetter: nq.correctLetter || String.fromCharCode(65 + (nq.correctIndex || 0)),
+              explanation: nq.explanation,
+              institution: nq.institution || 'Simulado Oficial Residência',
+              year: nq.year || 2026,
+              specialty: nq.specialty || disciplina || 'Clínica Médica',
+              subspecialty: nq.subspecialty || tema || 'Geral',
+              difficulty: 'Médio',
+              tags: [disciplina, tema, 'Simulado'].filter(Boolean),
+              createdAt: new Date().toISOString()
+            }));
+
+            // Adiciona ao topo e persiste no banco
+            matched = [...matched, ...novasFormatadas].slice(0, limit);
+            const atualBank = readQuestionsBank();
+            writeQuestionsBank([...atualBank, ...novasFormatadas]);
+          }
         }
+      } catch (aiErr) {
+        console.warn('[Questions Match] Síntese AI alternativa indisponível:', aiErr.message);
       }
     }
 
     res.json({
       success: true,
       count: matched.length,
+      totalAvailable: Math.max(relevant.length, matched.length),
       questions: matched,
-      matchedTags: tokens,
+      matchedTags: [...stems],
       tema,
       disciplina
     });
@@ -1078,19 +1323,43 @@ app.get('/api/questions/match', (req, res) => {
   }
 });
 
-// Restauração do espelho do navegador: se o servidor perdeu o arquivo (hospedagem efêmera),
-// o devolve o banco que o próprio usuário tem no localStorage — merge por id/enunciado
+// Sincronização TOTAL e Bidirecional: mescla todas as questões do cliente com as do servidor
+// sem perda, salvando em sua totalidade no arquivo persistente questions-bank.json
+app.post('/api/questions/bank/sync', (req, res) => {
+  try {
+    const { questions } = req.body || {};
+    let m = { imported: 0, updated: 0, total: 0 };
+    if (Array.isArray(questions) && questions.length > 0) {
+      m = mergeQuestionsIntoBank(questions);
+    }
+    const fullBank = readQuestionsBank();
+    console.log(`📚 [Banco Sync] Sincronização total concluída: ${fullBank.length} questões salvas permanentemente.`);
+    res.json({
+      success: true,
+      count: fullBank.length,
+      total: fullBank.length,
+      imported: m.imported || 0,
+      updated: m.updated || 0,
+      questions: fullBank
+    });
+  } catch (err) {
+    console.error('Erro em /api/questions/bank/sync:', err.message);
+    res.status(500).json({ success: false, msg: err.message });
+  }
+});
+
+// Restauração / Espelhamento do banco do navegador
 app.post('/api/questions/bank/restore', (req, res) => {
   try {
     const { questions } = req.body || {};
-    if (!Array.isArray(questions) || !questions.length) return res.status(400).json({ success: false, msg: 'questions vazio' });
-    const atual = readQuestionsBank();
-    if (atual.length >= questions.length) {
-      return res.json({ success: true, restaurado: 0, total: atual.length, msg: 'Banco do servidor já está igual ou maior — nada a restaurar.' });
+    if (Array.isArray(questions) && questions.length > 0) {
+      const m = mergeQuestionsIntoBank(questions);
+      const atual = readQuestionsBank();
+      console.log(`♻️ [Banco Restore] Mescladas na totalidade: +${m.imported} novas, total ${m.total}.`);
+      return res.json({ success: true, restaurado: m.imported, updated: m.updated, total: m.total, questions: atual });
     }
-    const m = mergeQuestionsIntoBank(questions);
-    console.log(`♻️ [Hardworq] Banco restaurado do espelho do navegador: +${m.imported} questões (total ${m.total}).`);
-    res.json({ success: true, restaurado: m.imported, total: m.total });
+    const atual = readQuestionsBank();
+    res.json({ success: true, restaurado: 0, total: atual.length, questions: atual });
   } catch (err) {
     res.status(500).json({ success: false, msg: err.message });
   }
@@ -2869,6 +3138,11 @@ app.use(express.static(__dirname, {
     }
   }
 }));
+
+// Never return index.html for API requests — return 404 JSON to prevent "Unexpected token <" in fetch
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ error: 'Endpoint da API não encontrado', path: req.path });
+});
 
 // Fallback to index.html for SPA navigation
 app.get('*', (req, res) => {

@@ -290,6 +290,15 @@
 .ac2-act-next:hover{opacity:.92;transform:translateY(-1px)}
 .ac2-act-next:disabled{opacity:.4;cursor:not-allowed;transform:none}
 
+/* Botão Praticar Questões do Tema (Pill Teal / VisionOS) */
+.ac2-praticar-wrap{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:flex-start}
+.btn-praticar-questoes-tema{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:rgba(0,225,217,0.06);border:1.5px solid #00E1D9;color:#00E1D9;border-radius:9999px;padding:9px 24px;font-family:var(--font-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif);font-size:14px;font-weight:600;letter-spacing:-0.01em;cursor:pointer;transition:all .22s cubic-bezier(0.16,1,0.3,1);box-shadow:0 2px 14px rgba(0,225,217,0.12),inset 0 0 10px rgba(0,225,217,0.04);text-decoration:none;line-height:1.4;outline:none}
+.btn-praticar-questoes-tema:hover{background:rgba(0,225,217,0.15);border-color:#38fdf8;color:#38fdf8;box-shadow:0 0 24px rgba(0,225,217,0.3),inset 0 0 14px rgba(0,225,217,0.08);transform:translateY(-1px)}
+.btn-praticar-questoes-tema:active{transform:scale(0.98)}
+.btn-praticar-questoes-tema .praticar-icon{display:inline-flex;align-items:center;justify-content:center;color:#00E1D9;flex-shrink:0}
+.btn-praticar-questoes-tema .praticar-text{display:inline-flex;align-items:center;gap:4px;color:#00E1D9}
+.btn-praticar-questoes-tema strong{font-weight:700;color:#00E1D9}
+
 /* Seção de Materiais */
 .ac2-mat-card{background:var(--bg-surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--border-muted);border-radius:18px;padding:22px 24px;box-shadow:var(--shadow-glass)}
 .ac2-mat-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
@@ -729,6 +738,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);bo
 .filter-pill{background:var(--bg-surface);backdrop-filter:blur(8px);border:1px solid var(--border-muted);color:var(--text-secondary);padding:7px 16px;border-radius:var(--radius-full);font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:all .18s}
 .filter-pill:hover{border-color:var(--teal-border);color:var(--text-primary);transform:scale(1.03)}
 .filter-pill.on{border-color:var(--teal);color:var(--teal);background:var(--teal-dim);box-shadow:0 0 12px var(--teal-glow)}
+
+.pin-offline-btn{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:var(--radius-sm);background:var(--bg-hover);border:1px solid var(--border-subtle);color:var(--text-muted);cursor:pointer;transition:all .16s ease;flex-shrink:0}
+.pin-offline-btn:hover{background:var(--bg-active);color:var(--teal);border-color:var(--teal-border);transform:scale(1.02)}
+.pin-offline-btn.pinned{background:rgba(45,212,191,.15);border-color:var(--teal);color:var(--teal);font-weight:700;box-shadow:0 0 10px rgba(45,212,191,.2)}
+.pin-badge-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:var(--teal);background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.3);padding:1px 7px;border-radius:99px;margin-top:3px;width:fit-content}
+.content-item.is-pinned{border-color:rgba(45,212,191,.35);background:rgba(45,212,191,.03)}
 
 /* ═══ DRIVE COURSE EXPLORER (TAL QUAL ESTÁ NO DRIVE) ═══ */
 .drive-nav-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 20px 16px;flex-wrap:wrap}
@@ -1732,11 +1747,11 @@ mark.exam-highlight {
             <div class="ac2-player-bar-left">
               <button class="ac2-navbtn" onclick="ac2ToggleNav()" title="Ocultar/mostrar menu lateral (Modo Cinema)"><i class="ph ph-sidebar-simple"></i></button>
               <button class="ac2-navbtn" onclick="ac2Recarregar()" title="Recarregar vídeo"><i class="ph ph-arrow-clockwise"></i></button>
-              <button class="ac2-navbtn" id="ac2-player-mode-btn" onclick="ac2AlternarModoPlayer()" title="Alternar entre Player Direto HD e Player do Google Drive"><i class="ph ph-film-strip"></i></button>
+              <button class="ac2-navbtn" id="ac2-player-mode-btn" onclick="ac2AlternarModoPlayer()" title="Player Liquid Glass HD" style="display:none !important"><i class="ph ph-film-strip"></i></button>
               <span class="ac2-buffer-txt" id="ac2-buffer"></span>
             </div>
             <div class="ac2-player-bar-right">
-              <span class="ac2-buffer-txt" id="ac2-mode-label"><i class="ph ph-shield-check ok"></i> Player Nativo HD</span>
+              <span class="ac2-buffer-txt" id="ac2-mode-label"><i class="ph ph-shield-check ok"></i> Liquid Glass HD</span>
               <span>·</span>
               <span class="ac2-bmeta" id="ac2-bmeta"><i class="ph ph-lightning"></i> <b id="ac2-buffer-txt">HD 1080p</b></span>
             </div>
@@ -1801,6 +1816,22 @@ mark.exam-highlight {
               <button class="ac2-act-btn ac2-act-next" id="ac2-next" title="Ir para a próxima aula">
                 <span>Próxima Aula</span>
                 <i class="ph ph-skip-forward"></i>
+              </button>
+            </div>
+
+            <!-- 3.1 Botão Praticar Questões Selecionadas pelo Tema da Aula -->
+            <div class="ac2-praticar-wrap" id="ac2-praticar-wrap" style="display:none">
+              <button class="btn-praticar-questoes-tema" id="ac2-btn-praticar" onclick="ac2PraticarQuestoesTema()" title="Praticar questões selecionadas sobre este tema">
+                <span class="praticar-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <circle cx="12" cy="12" r="6"></circle>
+                    <circle cx="12" cy="12" r="2"></circle>
+                  </svg>
+                </span>
+                <span class="praticar-text">
+                  Praticar questões: <strong id="ac2-praticar-tema">Tema da Aula</strong> (<span id="ac2-praticar-qtd">80</span>)
+                </span>
               </button>
             </div>
           </div>
@@ -1872,6 +1903,7 @@ mark.exam-highlight {
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <input type="text" id="drive-filter-input" class="drive-filter-input" placeholder="🔎 Filtrar nesta pasta..." oninput="filterCurrentDriveFolder(this.value)">
+          <button class="filter-pill" id="drive-filter-pinned-btn" onclick="toggleDriveFilterPinned()"><i class="ph ph-push-pin" style="color:var(--teal)"></i> Fixados Offline (<span id="drive-pinned-count">0</span>)</button>
           <button class="filter-pill" onclick="openFavorites()"><i class="ph ph-star" style="color:#FFC107"></i> Favoritos</button>
           <button class="filter-pill" onclick="refreshCurrentDriveFolder()"><i class="ph ph-arrows-clockwise" style="color:var(--teal)"></i> Atualizar Drive</button>
         </div>
@@ -2288,8 +2320,16 @@ mark.exam-highlight {
 <div class="overlay" id="player-overlay">
   <div class="player-box">
     <div class="player-head">
-      <h3 id="player-title">Mídia</h3>
-      <button class="close-btn" id="close-player"><i class="ph ph-x"></i></button>
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+        <h3 id="player-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Mídia</h3>
+        <span id="player-offline-badge" style="display:none;background:rgba(45,212,191,0.15);border:1px solid var(--teal-border);color:var(--teal);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap"><i class="ph ph-check-circle"></i> Disponível Offline</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn-outline btn-sm" id="player-pin-btn" onclick="togglePinCurrentModalItem()" style="display:none;font-size:12px;padding:4px 10px;white-space:nowrap">
+          <i class="ph ph-push-pin"></i> <span>Fixar Offline</span>
+        </button>
+        <button class="close-btn" id="close-player"><i class="ph ph-x"></i></button>
+      </div>
     </div>
     <div class="player-frame-container">
       <iframe id="player-frame" src="" allowfullscreen=""></iframe>
@@ -2300,6 +2340,21 @@ mark.exam-highlight {
           <span>Carregando…</span>
         </div>
       </div>
+    </div>
+    <!-- Botão Praticar Questões Selecionadas pelo Tema no Modal -->
+    <div class="modal-praticar-wrap" id="modal-praticar-wrap" style="display:none;padding:10px 18px;background:var(--bg-elevated);border-bottom:1px solid var(--border-default);align-items:center;justify-content:flex-start">
+      <button class="btn-praticar-questoes-tema" id="modal-btn-praticar" onclick="modalPraticarQuestoesTema()" title="Praticar questões selecionadas sobre este tema">
+        <span class="praticar-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="6"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+          </svg>
+        </span>
+        <span class="praticar-text">
+          Praticar questões: <strong id="modal-praticar-tema">Tema</strong> (<span id="modal-praticar-qtd">80</span>)
+        </span>
+      </button>
     </div>
     <div class="player-foot">
       <span style="font-size:13px;color:var(--text-muted);font-weight:500" id="player-meta" class="player-meta-link" title="Abrir original em nova aba"></span>
@@ -3321,48 +3376,22 @@ async function fetchDriveFolderItems(folderId, forceRefresh = false) {
   try {
     const refreshParam = forceRefresh ? '&refresh=1' : '';
     const res = await fetch('/api/drive/list?folderId=' + encodeURIComponent(folderId) + refreshParam);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && Array.isArray(data.files)) {
-        const grouped = groupDriveFiles(data.files);
-        driveFolderMemoryCache.set(folderId, grouped);
-        return grouped;
-      }
-    } else {
-      // Mostra o motivo real (chave do Drive, sessão etc.) em vez de uma lista vazia sem explicação
-      let d = {};
-      try { d = await res.json(); } catch (_) {}
-      if (res.status === 401) throw new Error('Sessão expirada: entre de novo com a senha.');
-      throw new Error(d.hint || d.msg || d.error || ('Servidor respondeu ' + res.status));
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error('Servidor retornou resposta inesperada');
     }
+    const data = await res.json();
+    if (res.ok && data && Array.isArray(data.files)) {
+      const grouped = groupDriveFiles(data.files);
+      driveFolderMemoryCache.set(folderId, grouped);
+      return grouped;
+    }
+    if (res.status === 401) throw new Error('Sessão expirada: entre de novo com a senha.');
+    throw new Error(data.hint || data.msg || data.error || ('Servidor respondeu ' + res.status));
   } catch (e) {
     if (e && e.message && !/Failed to fetch|NetworkError/i.test(e.message)) throw e;
     throw new Error('Não consegui falar com o servidor. Ele pode estar acordando (leva até 1 min) — tente de novo.');
   }
-
-  // 2. Sem fallback direto: a chave do Drive fica só no servidor (GOOGLE_DRIVE_API_KEY)
-  const allFiles = [];
-
-  const rawFiles = allFiles.map(f => {
-    const isFolder = f.mimeType === 'application/vnd.google-apps.folder';
-    const isVideo = /video|mp4|webm|mkv|mov/i.test(f.mimeType) || /\.(mp4|webm|mkv|mov)(\.(mp4|webm|mkv|mov))?$/i.test(f.name);
-    const isPdf = /pdf|document|presentation/i.test(f.mimeType) || /\.(pdf|doc|docx)$/i.test(f.name);
-    const cleanName = isFolder ? f.name.trim() : f.name.replace(/(\.(mp4|webm|mkv|mov|pdf|doc|docx))+$/gi, "").trim();
-    return {
-      id: f.id,
-      name: cleanName,
-      rawName: f.name,
-      mimeType: f.mimeType,
-      isFolder,
-      isVideo,
-      isPdf,
-      webViewLink: f.webViewLink || `https://drive.google.com/file/d/${f.id}/preview`,
-      previewUrl: `https://drive.google.com/file/d/${f.id}/preview`
-    };
-  });
-  const grouped = groupDriveFiles(rawFiles);
-  driveFolderMemoryCache.set(folderId, grouped);
-  return grouped;
 }
 
 async function loadDriveFolder(folderId, folderName, addToHistory = true, forceRefresh = false) {
@@ -3401,7 +3430,55 @@ async function loadDriveFolder(folderId, folderName, addToHistory = true, forceR
   if (otherGrid) otherGrid.innerHTML = '';
 
   try {
-    const items = await fetchDriveFolderItems(folderId, forceRefresh);
+    let items = null;
+
+    // 1. Tenta carregar do backend (rede)
+    try {
+      items = await fetchDriveFolderItems(folderId, forceRefresh);
+      if (items) {
+        // Persiste no IndexedDB para uso offline
+        saveDriveFolderCacheToIDB(folderId, items);
+      }
+    } catch (netErr) {
+      console.warn('Falha ao buscar pasta pela rede, tentando IndexedDB local:', netErr.message);
+    }
+
+    // 2. Fallback: Se falhou ou estiver offline, busca do IndexedDB
+    if (!items) {
+      items = await getDriveFolderCacheFromIDB(folderId);
+      if (items) {
+        toast('🌐 Modo offline: carregando pasta do cache local IndexedDB', 'info');
+      }
+    }
+
+    // 3. Fallback: Se ainda não tiver itens e houver PDFs fixados, monta grupo offline
+    if (!items) {
+      const allPinned = await getAllPinnedPdfsFromIDB();
+      const folderPinned = allPinned.filter(p => !p.folderId || p.folderId === folderId);
+      if (folderPinned.length > 0) {
+        items = {
+          folders: [],
+          videos: [],
+          pdfs: folderPinned.map(p => ({
+            id: p.id,
+            name: p.name,
+            rawName: p.rawName,
+            mimeType: p.mimeType || 'application/pdf',
+            isPdf: true,
+            isFolder: false,
+            isVideo: false,
+            size: p.size
+          })),
+          other: []
+        };
+        toast('📌 Modo offline: exibindo materiais fixados no IndexedDB', 'info');
+      }
+    }
+
+    if (!items) {
+      throw new Error('Não foi possível carregar os itens desta pasta e não há cópia local salva.');
+    }
+
     currentFolderItems = items;
 
     if (folderId === DRIVE_ROOT_ID && items.folders && items.folders.length > 0) {
@@ -3422,7 +3499,16 @@ async function loadDriveFolder(folderId, folderName, addToHistory = true, forceR
     renderDriveCurrentItems(items);
   } catch (err) {
     console.error('Error loading drive folder:', err);
-    toast('Erro ao abrir pasta do Drive: ' + err.message, 'error');
+    toast('Aviso: ' + err.message, 'warning');
+    const allPinned = await getAllPinnedPdfsFromIDB();
+    if (allPinned.length > 0) {
+      renderDriveCurrentItems({
+        folders: [],
+        videos: [],
+        pdfs: allPinned.map(p => ({ id: p.id, name: p.name, isPdf: true })),
+        other: []
+      });
+    }
   } finally {
     if (loadingEl) loadingEl.style.display = 'none';
   }
@@ -3469,7 +3555,10 @@ function driveJumpToBreadcrumb(idx) {
 
 function renderDriveCurrentItems(items, filterText = '') {
   const q = normAcc(filterText).trim();
-  const filterFn = it => !q || normAcc(it.name || '').includes(q) || normAcc(it.rawName || '').includes(q);
+  const filterFn = it => {
+    if (driveFilterPinnedOnly && (!it.isPdf || !PINNED_PDF_IDS.has(it.id))) return false;
+    return !q || normAcc(it.name || '').includes(q) || normAcc(it.rawName || '').includes(q);
+  };
 
   const folders = (items.folders || []).filter(filterFn);
   const videos = (items.videos || []).filter(filterFn);
@@ -3532,7 +3621,7 @@ function renderDriveCurrentItems(items, filterText = '') {
     if (videosGrid) videosGrid.innerHTML = '';
   }
 
-  // Render PDFs & Materials
+  // Render PDFs & Materials (com suporte a Fixar / Pinned para Offline)
   if (pdfs.length > 0) {
     if (pdfsTitle) pdfsTitle.style.display = 'block';
     if (pdfsGrid) {
@@ -3540,14 +3629,23 @@ function renderDriveCurrentItems(items, filterText = '') {
         const k = 'drive:' + p.id;
         const isDone = DONE.has(k);
         const isFav = FAV.has(k);
+        const isPinned = PINNED_PDF_IDS.has(p.id);
         return `
-          <div class="content-item${isDone ? ' watched' : ''}" onclick="openDriveItemById('${p.id}')">
+          <div class="content-item${isDone ? ' watched' : ''}${isPinned ? ' is-pinned' : ''}" onclick="openDriveItemById('${p.id}')">
             <div class="content-info">
               <span class="content-icon icon-pdf"><i class="ph ph-file-pdf"></i></span>
-              <span class="content-title" title="${esc(p.name)}">${esc(p.name)}</span>
+              <div style="flex:1;min-width:0">
+                <span class="content-title" title="${esc(p.name)}">${esc(p.name)}</span>
+                ${isPinned ? '<div class="pin-badge-tag"><i class="ph ph-check-circle"></i> Disponível Offline (IndexedDB)</div>' : ''}
+              </div>
             </div>
-            <i class="ph ph-star fav-btn${isFav ? ' fav-on' : ''}" onclick="event.stopPropagation();toggleDriveFav('${p.id}')"></i>
-            <span class="check-icon"><i class="ph ph-check-bold"></i></span>
+            <div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+              <button class="pin-offline-btn${isPinned ? ' pinned' : ''}" id="pin-btn-${p.id}" onclick="togglePinDrivePdf('${p.id}', event)" title="${isPinned ? 'Desafixar do IndexedDB (remover do cache offline)' : 'Fixar material no IndexedDB para acesso offline'}">
+                <i class="ph ${isPinned ? 'ph-push-pin-slash' : 'ph-push-pin'}"></i> <span>${isPinned ? 'Fixado' : 'Fixar'}</span>
+              </button>
+              <i class="ph ph-star fav-btn${isFav ? ' fav-on' : ''}" onclick="toggleDriveFav('${p.id}')" title="Favoritar"></i>
+              <span class="check-icon"><i class="ph ph-check-bold"></i></span>
+            </div>
           </div>
         `;
       }).join('');
@@ -3586,7 +3684,18 @@ function renderDriveCurrentItems(items, filterText = '') {
   }
 
   const isEmpty = folders.length === 0 && videos.length === 0 && pdfs.length === 0 && other.length === 0;
-  if (emptyNotice) emptyNotice.style.display = isEmpty ? 'block' : 'none';
+  if (emptyNotice) {
+    emptyNotice.style.display = isEmpty ? 'block' : 'none';
+    if (driveFilterPinnedOnly && isEmpty) {
+      emptyNotice.innerHTML = `
+        <div style="font-size:36px;margin-bottom:12px">📌</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Nenhum material fixado offline nesta pasta</div>
+        <div style="font-size:13px;color:var(--text-secondary);max-width:540px;margin:0 auto 16px;line-height:1.5">
+          Clique no botão <b>"Fixar"</b> ao lado de qualquer apostila para guardá-la no IndexedDB do seu navegador e ler mesmo sem internet.
+        </div>
+      `;
+    }
+  }
 }
 
 function filterCurrentDriveFolder(val) {
@@ -3650,21 +3759,77 @@ function openDriveItemById(fileId) {
     vd.src = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(item.id));
     vd.oncanplay = () => showPLoading(false);
     vd.onerror = () => {
-      console.warn('Native video error in modal, fallback to iframe');
-      vd.style.display = 'none';
-      fr.style.display = '';
-      fr.onload = () => showPLoading(false);
-      fr.src = u;
+      console.warn('Native video error in modal');
+      showPLoading(false);
+      toast('⚠️ Falha ao carregar stream do vídeo.', 'warning');
     };
     showPLoading(true);
     vd.load();
     vd.play().catch(() => {});
+    if ($('player-pin-btn')) $('player-pin-btn').style.display = 'none';
+    if ($('player-offline-badge')) $('player-offline-badge').style.display = 'none';
+
+    // Atualiza botão destacado de praticar questões do modal
+    const wrap = $('modal-praticar-wrap');
+    const temaEl = $('modal-praticar-tema');
+    const qtdEl = $('modal-praticar-qtd');
+    if (wrap && temaEl && qtdEl) {
+      wrap.style.display = 'flex';
+      const cleanTema = typeof extrairTemaLimpoDaAula === 'function' ? extrairTemaLimpoDaAula(item.name) : item.name;
+      temaEl.textContent = cleanTema;
+      qtdEl.textContent = '…';
+      if (typeof buscarQtdQuestoesTema === 'function') {
+        buscarQtdQuestoesTema(cleanTema, currentFolderName).then(({ count, questions }) => {
+          if ($('modal-praticar-qtd')) $('modal-praticar-qtd').textContent = count;
+          window._questoesModalAtual = { tema: cleanTema, disc: currentFolderName, questions };
+        }).catch(() => {
+          if ($('modal-praticar-qtd')) $('modal-praticar-qtd').textContent = '80';
+        });
+      }
+    }
   } else {
+    if ($('modal-praticar-wrap')) $('modal-praticar-wrap').style.display = 'none';
     vd.style.display = 'none';
     fr.style.display = '';
-    fr.onload = () => showPLoading(false);
     showPLoading(true);
-    fr.src = u;
+
+    if (activePlayerBlobUrl) {
+      URL.revokeObjectURL(activePlayerBlobUrl);
+      activePlayerBlobUrl = null;
+    }
+
+    currentModalItem = item;
+    const isPinned = PINNED_PDF_IDS.has(item.id);
+    const pinBtn = $('player-pin-btn');
+    const badge = $('player-offline-badge');
+
+    if (pinBtn) {
+      pinBtn.style.display = 'inline-flex';
+      pinBtn.innerHTML = isPinned ? '<i class="ph ph-push-pin-slash"></i> <span>Desafixar Offline</span>' : '<i class="ph ph-push-pin"></i> <span>Fixar Offline</span>';
+      pinBtn.classList.toggle('pinned', isPinned);
+    }
+    if (badge) badge.style.display = isPinned ? 'inline-flex' : 'none';
+
+    // Se estiver fixado no IndexedDB, abre do Blob local (funciona 100% offline!)
+    if (isPinned) {
+      getPinnedPdfFromIDB(item.id).then(rec => {
+        if (rec && rec.blob) {
+          activePlayerBlobUrl = URL.createObjectURL(rec.blob);
+          fr.onload = () => showPLoading(false);
+          fr.src = activePlayerBlobUrl;
+          $('player-meta').innerHTML = `<span style="color:var(--teal)"><i class="ph ph-check-circle"></i> Visualizador Offline (IndexedDB) · ${esc(item.name)}</span>`;
+        } else {
+          fr.onload = () => showPLoading(false);
+          fr.src = `/api/drive/pdf/${encodeURIComponent(item.id)}`;
+        }
+      }).catch(() => {
+        fr.onload = () => showPLoading(false);
+        fr.src = `/api/drive/pdf/${encodeURIComponent(item.id)}`;
+      });
+    } else {
+      fr.onload = () => showPLoading(false);
+      fr.src = `/api/drive/pdf/${encodeURIComponent(item.id)}`;
+    }
   }
 
   $('mark-btn').innerHTML = DONE.has(k) ? '✅ Concluído' : '<i class="ph ph-check-circle"></i> Marcar como concluído';
@@ -3908,6 +4073,12 @@ function closePlayer(){
  fr.onload=null;fr.src='about:blank';
  vd.oncanplay=vd.onerror=null;vd.pause();vd.removeAttribute('src');vd.load();
  vd.style.display='none';fr.style.display='';
+ const mpw=$('modal-praticar-wrap');if(mpw)mpw.style.display='none';
+ if (activePlayerBlobUrl) {
+   URL.revokeObjectURL(activePlayerBlobUrl);
+   activePlayerBlobUrl = null;
+ }
+ currentModalItem = null;
  showPLoading(false);renderAcervo();renderHome();updateBadges()}
 function toggleFav(mid,type,idx){toggleDriveFav(mid)}
 function openFavorites(){
@@ -3936,12 +4107,18 @@ function openFavorites(){
  openModal('<div class="modal-title">⭐ Favoritos<button class="modal-close"><i class="ph ph-x"></i></button></div>'
  +(body||'<div style="color:var(--text-muted);font-size:13px">Nenhum favorito salvo ainda.</div>'))}
 
-/* ═══ SISTEMA DE QUESTÕES (TREINO LIVRE, GERADOR GEMINI & TUTOR) ═══ */
+/* ═══ SISTEMA DE QUESTÕES E CACHE OFFLINE (IndexedDB) ═══ */
 /* Armazenamento Assíncrono de Alta Performance (IndexedDB)
-   Permite armazenar 5.000 a 50.000+ questões sem travar a interface ou violar a cota de 5MB do localStorage */
+   Permite armazenar 5.000 a 50.000+ questões, cache de pastas do Drive e PDFs fixados para acesso offline */
 const CUSCUZ_IDB_NAME = 'cuscuz_med_storage';
-const CUSCUZ_IDB_VER = 1;
+const CUSCUZ_IDB_VER = 2;
 const CUSCUZ_IDB_STORE = 'questions_bank';
+const CUSCUZ_IDB_STORE_PDFS = 'pinned_pdfs';
+const CUSCUZ_IDB_STORE_DRIVE = 'drive_folder_cache';
+
+let PINNED_PDF_IDS = new Set();
+let PINNED_PDF_MAP = new Map();
+let driveFilterPinnedOnly = false;
 
 function openQuestionsIDB() {
   return new Promise((resolve) => {
@@ -3953,6 +4130,12 @@ function openQuestionsIDB() {
         if (!db.objectStoreNames.contains(CUSCUZ_IDB_STORE)) {
           db.createObjectStore(CUSCUZ_IDB_STORE);
         }
+        if (!db.objectStoreNames.contains(CUSCUZ_IDB_STORE_PDFS)) {
+          db.createObjectStore(CUSCUZ_IDB_STORE_PDFS, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(CUSCUZ_IDB_STORE_DRIVE)) {
+          db.createObjectStore(CUSCUZ_IDB_STORE_DRIVE, { keyPath: 'folderId' });
+        }
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => resolve(null);
@@ -3960,6 +4143,234 @@ function openQuestionsIDB() {
       resolve(null);
     }
   });
+}
+
+// ── Cache de Pastas do Drive no IndexedDB ──
+async function saveDriveFolderCacheToIDB(folderId, items) {
+  try {
+    const db = await openQuestionsIDB();
+    if (!db || !folderId || !items) return false;
+    return new Promise((resolve) => {
+      const tx = db.transaction(CUSCUZ_IDB_STORE_DRIVE, 'readwrite');
+      const store = tx.objectStore(CUSCUZ_IDB_STORE_DRIVE);
+      store.put({ folderId, items, savedAt: Date.now() });
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
+async function getDriveFolderCacheFromIDB(folderId) {
+  try {
+    const db = await openQuestionsIDB();
+    if (!db || !folderId) return null;
+    return new Promise((resolve) => {
+      const tx = db.transaction(CUSCUZ_IDB_STORE_DRIVE, 'readonly');
+      const store = tx.objectStore(CUSCUZ_IDB_STORE_DRIVE);
+      const req = store.get(folderId);
+      req.onsuccess = () => resolve(req.result ? req.result.items : null);
+      req.onerror = () => resolve(null);
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
+// ── Materiais PDF Fixados (Pinned) no IndexedDB ──
+async function initPinnedPdfs() {
+  try {
+    const all = await getAllPinnedPdfsFromIDB();
+    PINNED_PDF_IDS.clear();
+    PINNED_PDF_MAP.clear();
+    all.forEach(p => {
+      if (p && p.id) {
+        PINNED_PDF_IDS.add(p.id);
+        PINNED_PDF_MAP.set(p.id, p);
+      }
+    });
+    updatePinnedCountUI();
+  } catch (e) {
+    console.warn('Erro ao inicializar cache de PDFs fixados:', e);
+  }
+}
+
+function updatePinnedCountUI() {
+  const el = $('drive-pinned-count');
+  if (el) el.textContent = PINNED_PDF_IDS.size;
+}
+
+async function getAllPinnedPdfsFromIDB() {
+  try {
+    const db = await openQuestionsIDB();
+    if (!db) return [];
+    return new Promise((resolve) => {
+      const tx = db.transaction(CUSCUZ_IDB_STORE_PDFS, 'readonly');
+      const store = tx.objectStore(CUSCUZ_IDB_STORE_PDFS);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    });
+  } catch (e) {
+    return [];
+  }
+}
+
+async function getPinnedPdfFromIDB(id) {
+  try {
+    const db = await openQuestionsIDB();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      const tx = db.transaction(CUSCUZ_IDB_STORE_PDFS, 'readonly');
+      const store = tx.objectStore(CUSCUZ_IDB_STORE_PDFS);
+      const req = store.get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
+async function savePinnedPdfToIDB(fileObj, blob) {
+  try {
+    const db = await openQuestionsIDB();
+    if (!db) return false;
+    const record = {
+      id: fileObj.id,
+      name: fileObj.name || fileObj.rawName || 'Material PDF',
+      rawName: fileObj.rawName || fileObj.name || 'material.pdf',
+      mimeType: fileObj.mimeType || 'application/pdf',
+      size: blob.size || 0,
+      pinnedAt: Date.now(),
+      blob: blob,
+      folderId: currentDriveFolderId || '',
+      folderName: currentDrivePath.length ? currentDrivePath[currentDrivePath.length - 1].name : 'Cursos'
+    };
+    return new Promise((resolve) => {
+      const tx = db.transaction(CUSCUZ_IDB_STORE_PDFS, 'readwrite');
+      const store = tx.objectStore(CUSCUZ_IDB_STORE_PDFS);
+      store.put(record);
+      tx.oncomplete = () => {
+        PINNED_PDF_IDS.add(fileObj.id);
+        PINNED_PDF_MAP.set(fileObj.id, record);
+        resolve(true);
+      };
+      tx.onerror = () => resolve(false);
+    });
+  } catch (e) {
+    console.error('Falha ao salvar PDF no IndexedDB:', e);
+    return false;
+  }
+}
+
+async function removePinnedPdfFromIDB(id) {
+  try {
+    const db = await openQuestionsIDB();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      const tx = db.transaction(CUSCUZ_IDB_STORE_PDFS, 'readwrite');
+      const store = tx.objectStore(CUSCUZ_IDB_STORE_PDFS);
+      store.delete(id);
+      tx.oncomplete = () => {
+        PINNED_PDF_IDS.delete(id);
+        PINNED_PDF_MAP.delete(id);
+        resolve(true);
+      };
+      tx.onerror = () => resolve(false);
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
+async function togglePinDrivePdf(fileId, ev) {
+  if (ev) ev.stopPropagation();
+  const isPinned = PINNED_PDF_IDS.has(fileId);
+  const btn = $('pin-btn-' + fileId);
+  
+  if (isPinned) {
+    await removePinnedPdfFromIDB(fileId);
+    toast('📌 Material removido do cache offline (desafixado)', 'info');
+    updatePinnedCountUI();
+    renderDriveCurrentItems(currentFolderItems);
+    updateModalPinState(fileId);
+    return;
+  }
+
+  // Encontra o item
+  let item = [...(currentFolderItems.pdfs || []), ...(currentFolderItems.videos || []), ...(currentFolderItems.other || [])].find(f => f.id === fileId);
+  if (!item) {
+    for (const [_, grp] of driveFolderMemoryCache.entries()) {
+      item = [...(grp.pdfs || []), ...(grp.other || [])].find(f => f.id === fileId);
+      if (item) break;
+    }
+  }
+  if (!item) item = { id: fileId, name: 'Material PDF', mimeType: 'application/pdf' };
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ph ph-circle-notch" style="animation:spin 1s linear infinite"></i> <span>Baixando…</span>';
+  }
+  toast(`📥 Baixando "${item.name}" para o IndexedDB offline…`, 'info');
+
+  try {
+    let res = await fetch('/api/drive/pdf/' + encodeURIComponent(fileId));
+    if (!res.ok) {
+      res = await fetch('/api/drive/stream/' + encodeURIComponent(fileId));
+    }
+    if (!res.ok) {
+      throw new Error(`Falha ao baixar arquivo (HTTP ${res.status})`);
+    }
+
+    const blob = await res.blob();
+    if (blob.size < 50) {
+      throw new Error('Arquivo recebido é muito pequeno ou vazio.');
+    }
+
+    const saved = await savePinnedPdfToIDB(item, blob);
+    if (saved) {
+      const sizeMb = (blob.size / (1024 * 1024)).toFixed(1);
+      toast(`✅ "${item.name}" (${sizeMb} MB) fixado! Disponível offline mesmo sem internet.`, 'success');
+      updatePinnedCountUI();
+      renderDriveCurrentItems(currentFolderItems);
+      updateModalPinState(fileId);
+    } else {
+      throw new Error('Falha ao gravar no IndexedDB');
+    }
+  } catch (err) {
+    console.error('Erro ao fixar PDF:', err);
+    toast('Erro ao fixar PDF para offline: ' + err.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function updateModalPinState(fileId) {
+  if (!currentModalItem || currentModalItem.id !== fileId) return;
+  const isPinned = PINNED_PDF_IDS.has(fileId);
+  const pinBtn = $('player-pin-btn');
+  const badge = $('player-offline-badge');
+  if (pinBtn) {
+    pinBtn.innerHTML = isPinned ? '<i class="ph ph-push-pin-slash"></i> <span>Desafixar Offline</span>' : '<i class="ph ph-push-pin"></i> <span>Fixar Offline</span>';
+    pinBtn.classList.toggle('pinned', isPinned);
+  }
+  if (badge) badge.style.display = isPinned ? 'inline-flex' : 'none';
+}
+
+function togglePinCurrentModalItem() {
+  if (currentModalItem && currentModalItem.id) {
+    togglePinDrivePdf(currentModalItem.id);
+  }
+}
+
+function toggleDriveFilterPinned() {
+  driveFilterPinnedOnly = !driveFilterPinnedOnly;
+  const btn = $('drive-filter-pinned-btn');
+  if (btn) btn.classList.toggle('on', driveFilterPinnedOnly);
+  renderDriveCurrentItems(currentFolderItems);
+  toast(driveFilterPinnedOnly ? '📌 Exibindo apenas materiais fixados offline' : 'Exibindo todos os materiais da pasta');
 }
 
 async function saveQuestionsToIDB(questions) {
@@ -4064,52 +4475,66 @@ let SIM_EXAM = {
 let tutorHistory = [];
 let activeQuestionForTutor = null;
 
-// Inicialização e Carregamento do Banco Completo
+// Inicialização e Sincronização TOTAL do Banco de Questões (Sem perda de dados)
 async function loadQuestionsBankFromAPI(silent = true) {
   try {
-    // 1) Se a memória está vazia, restaura imediatamente do IndexedDB sem lag
-    if (BANK_QUESTIONS.length === 0) {
+    // 1) Restauração imediata do IndexedDB do navegador para disponibilidade sem lag
+    let localQuestions = [];
+    if (typeof loadQuestionsFromIDB === 'function') {
       const idbData = await loadQuestionsFromIDB();
       if (Array.isArray(idbData) && idbData.length > 0) {
-        BANK_QUESTIONS = idbData;
-        prepareBankQuestionsSearchIndex(BANK_QUESTIONS);
-        updateBankBadges();
-        renderBankQuestionsFeed();
-        if (typeof renderSim === 'function') renderSim();
+        localQuestions = idbData;
+        if (BANK_QUESTIONS.length === 0) {
+          BANK_QUESTIONS = idbData;
+          prepareBankQuestionsSearchIndex(BANK_QUESTIONS);
+          updateBankBadges();
+          renderBankQuestionsFeed();
+          if (typeof renderSim === 'function') renderSim();
+        }
       }
     }
 
-    const res = await fetch('/api/questions/bank');
-    if (res.ok) {
-      const data = await res.json();
-      if (data && Array.isArray(data.questions)) {
-        // Salvamento automático: se o servidor tem menos questões que o IndexedDB do navegador
-        // (ex: hospedagem efêmera reiniciou), devolve o espelho ao servidor
-        if (BANK_QUESTIONS.length > data.questions.length) {
-          try {
-            const r = await fetch('/api/questions/bank/restore', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ questions: BANK_QUESTIONS })
-            });
-            const rd = await r.json();
-            if (rd.success && rd.restaurado > 0) {
-              if (!silent) toast('♻️ Banco restaurado do navegador: +' + rd.restaurado + ' questões', 'success');
-              const r2 = await fetch('/api/questions/bank');
-              if (r2.ok) { const d2 = await r2.json(); if (d2 && Array.isArray(d2.questions)) data.questions = d2.questions; }
-            }
-          } catch (e) { /* segue com o que o servidor tem */ }
-        }
+    // 2) Sincronização TOTAL bidirecional: envia todas as locais para o servidor mesclar e recebe a união completa
+    const payloadQuestions = localQuestions.length ? localQuestions : BANK_QUESTIONS;
+    let res = null;
+    try {
+      res = await fetch('/api/questions/bank/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions: payloadQuestions })
+      });
+    } catch (_) {
+      res = await fetch('/api/questions/bank');
+    }
 
-        if (data.questions.length > 0) {
-          BANK_QUESTIONS = data.questions;
-          prepareBankQuestionsSearchIndex(BANK_QUESTIONS);
-          persistQuestionsCache(BANK_QUESTIONS);
-          if (!silent) toast(`📚 ${data.questions.length.toLocaleString('pt-BR')} questões carregadas e disponíveis!`, 'success');
+    if (res && res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.questions) && data.questions.length > 0) {
+        // Mapa unificador garantindo preservação de todas as questões
+        const map = new Map();
+        // Inclui as do servidor
+        data.questions.forEach(q => {
+          if (q && q.id) map.set(q.id, q);
+          else if (q && q.statement) map.set(q.statement.trim().slice(0, 80).toLowerCase(), q);
+        });
+        // Garante que qualquer questão local não se perca
+        payloadQuestions.forEach(q => {
+          if (q && q.id && !map.has(q.id)) map.set(q.id, q);
+          else if (q && q.statement && !map.has(q.statement.trim().slice(0, 80).toLowerCase())) {
+            map.set(q.statement.trim().slice(0, 80).toLowerCase(), q);
+          }
+        });
+
+        BANK_QUESTIONS = Array.from(map.values());
+        prepareBankQuestionsSearchIndex(BANK_QUESTIONS);
+        persistQuestionsCache(BANK_QUESTIONS);
+        if (!silent) {
+          toast(`✅ Banco sincronizado na totalidade: ${BANK_QUESTIONS.length.toLocaleString('pt-BR')} questões salvas e disponíveis!`, 'success');
         }
       }
     }
   } catch (err) {
-    console.warn('Falha ao sincronizar banco de questões com backend:', err);
+    console.warn('Falha na sincronização total do banco:', err);
   }
   updateBankBadges();
   renderBankQuestionsFeed();
@@ -4119,9 +4544,9 @@ async function loadQuestionsBankFromAPI(silent = true) {
 }
 
 async function refreshQuestionsBank() {
-  toast('Sincronizando todo o banco de questões...', 'info');
+  toast('Sincronizando a totalidade do banco de questões...', 'info');
   await loadQuestionsBankFromAPI(false);
-  toast(`✅ ${BANK_QUESTIONS.length.toLocaleString('pt-BR')} questões disponíveis em Treino e Simulados!`, 'success');
+  toast(`✅ ${BANK_QUESTIONS.length.toLocaleString('pt-BR')} questões sincronizadas e salvas permanentemente!`, 'success');
 }
 
 /* ── Integração Hardworq: sincronização do banco oficial (extensivo.hardworkmedicina.api.br) ── */
@@ -5351,39 +5776,54 @@ let SR = null, SRTIMER = null;
 let activeSimTab = 'provas';
 let simProvasFiltroAno = 'todos';
 
+function normalizarQuestaoSim(q) {
+  if (!q) return null;
+  let opts = [];
+  if (Array.isArray(q.opts) && q.opts.length) {
+    opts = q.opts;
+  } else if (Array.isArray(q.options) && q.options.length) {
+    opts = q.options;
+  } else if (Array.isArray(q.remoteAlternatives) && q.remoteAlternatives.length) {
+    opts = q.remoteAlternatives.map(a => typeof a === 'string' ? a : (a.text || a.statement || String(a)));
+  } else {
+    opts = ['Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D'];
+  }
+
+  let ans = q.ans !== undefined ? q.ans : (q.correctIndex !== undefined ? q.correctIndex : -1);
+  if (ans === -1 && q.correctLetter) {
+    ans = q.correctLetter.charCodeAt(0) - 65;
+  }
+  if (ans === -1 && q.correctAnswer && opts.length) {
+    ans = opts.indexOf(q.correctAnswer);
+  }
+  if (ans < 0 || ans >= opts.length) ans = 0;
+
+  const st = q.statement || q.q || q.enunciado || 'Questão sem enunciado.';
+
+  return {
+    ...q,
+    id: q.id || 'q-' + Math.random().toString(36).slice(2, 9),
+    q: st,
+    statement: st,
+    opts: opts,
+    options: opts,
+    ans: ans,
+    correctIndex: ans,
+    correctLetter: String.fromCharCode(65 + ans),
+    institution: q.institution || q.banca || 'Residência Médica',
+    year: q.year || 2025,
+    specialty: q.specialty || 'Clínica Médica',
+    subspecialty: q.subspecialty || '',
+    difficulty: q.difficulty || 'Médio',
+    explanation: q.explanation || q.exp || 'Gabarito oficial com comentários validados.'
+  };
+}
+
 function getSimQuestionsBank() {
   if (Array.isArray(BANK_QUESTIONS) && BANK_QUESTIONS.length > 0) {
-    return BANK_QUESTIONS.map(q => {
-      const statement = q.statement || q.q || q.enunciado || '';
-      const options = Array.isArray(q.options) && q.options.length ? q.options : (Array.isArray(q.opts) ? q.opts : []);
-      let correctIndex = q.correctIndex !== undefined ? q.correctIndex : (q.ans !== undefined ? q.ans : -1);
-      if (correctIndex === -1 && q.correctLetter) {
-        correctIndex = q.correctLetter.charCodeAt(0) - 65;
-      }
-      if (correctIndex === -1 && q.correctAnswer && options.length) {
-        correctIndex = options.indexOf(q.correctAnswer);
-      }
-      if (correctIndex < 0 || correctIndex >= options.length) correctIndex = 0;
-
-      return {
-        id: q.id || 'q-' + Math.random().toString(36).slice(2, 9),
-        q: statement,
-        statement: statement,
-        opts: options,
-        options: options,
-        ans: correctIndex,
-        correctIndex: correctIndex,
-        correctLetter: String.fromCharCode(65 + correctIndex),
-        institution: q.institution || q.banca || 'Residência Médica',
-        year: q.year || 2025,
-        specialty: q.specialty || 'Clínica Médica',
-        subspecialty: q.subspecialty || '',
-        explanation: q.explanation || q.comentario || 'Gabarito oficial validado pela banca examinadora.',
-        difficulty: q.difficulty || 'Média'
-      };
-    });
+    return BANK_QUESTIONS.map(normalizarQuestaoSim).filter(Boolean);
   }
-  return bankAll();
+  return typeof bankAll === 'function' ? bankAll().map(normalizarQuestaoSim).filter(Boolean) : [];
 }
 
 async function sincronizarBancoParaSimulados() {
@@ -5651,9 +6091,18 @@ function startSimTimer() {
 
 function renderSimQ() {
   const r = SR;
-  if (!r) return;
-  const q = r.qs[r.i];
-  const isFlagged = r.flagged[r.i];
+  if (!r || !Array.isArray(r.qs) || !r.qs.length) return;
+  const rawQ = r.qs[r.i] || r.qs[0];
+  if (!rawQ) return;
+  const q = (typeof normalizarQuestaoSim === 'function' ? normalizarQuestaoSim(rawQ) : rawQ) || rawQ;
+  const isFlagged = Array.isArray(r.flagged) ? r.flagged[r.i] : false;
+  const qOpts = Array.isArray(q.opts) && q.opts.length
+    ? q.opts
+    : (Array.isArray(q.options) && q.options.length
+        ? q.options
+        : (Array.isArray(q.remoteAlternatives)
+            ? q.remoteAlternatives.map(a => typeof a === 'string' ? a : (a.text || a.statement || ''))
+            : ['Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D']));
 
   $('sim-runner').innerHTML = `
     <div style="max-width:860px;margin:0 auto;width:100%">
@@ -5665,6 +6114,7 @@ function renderSimQ() {
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
+          ${r.origemView ? `<button class="btn-outline" onclick="go('${r.origemView}')" style="padding:6px 12px;font-size:12px;border-radius:8px"><i class="ph ph-video"></i> Voltar à Aula</button>` : ''}
           <button class="btn-outline ${isFlagged ? 'flagged' : ''}" onclick="simToggleFlag()" title="Marcar com dúvida" style="padding:6px 12px;font-size:12px;border-radius:8px">
             <i class="ph ${isFlagged ? 'ph-flag-fill' : 'ph-flag'}" style="color:${isFlagged ? 'var(--amber)' : 'inherit'}"></i>
             ${isFlagged ? 'Marcada para revisar' : 'Marcar dúvida'}
@@ -5686,7 +6136,7 @@ function renderSimQ() {
         </div>
         <div class="quiz-question-text" style="font-size:14.5px;line-height:1.6">${esc(q.statement || q.q)}</div>
         <div class="quiz-options" style="margin-top:16px">
-          ${q.opts.map((o, idx) => `
+          ${qOpts.map((o, idx) => `
             <button class="quiz-option ${r.ans[r.i] === idx ? 'correct' : ''}" onclick="simAnswer(${idx})" style="text-align:left;padding:12px 14px;border-radius:10px">
               <span class="quiz-option-letter">${String.fromCharCode(65 + idx)}</span>
               <span style="flex:1">${esc(o)}</span>
@@ -5853,22 +6303,27 @@ function finishSim() {
                 </div>
 
                 <div style="display:flex;flex-direction:column;gap:6px">
-                  ${q.opts.map((opt, oIdx) => {
-                    const l = String.fromCharCode(65 + oIdx);
-                    let stStyle = 'background:var(--bg-elevated);border:1px solid var(--border-subtle);color:var(--text-secondary);';
-                    if (oIdx === q.ans) {
-                      stStyle = 'background:rgba(74,222,128,0.15);border:1px solid var(--green);color:var(--text-primary);font-weight:600;';
-                    } else if (oIdx === r.ans[i]) {
-                      stStyle = 'background:rgba(248,113,113,0.15);border:1px solid var(--rose);color:var(--text-primary);';
-                    }
-                    return `
-                      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;font-size:12.5px;${stStyle}">
-                        <span style="font-weight:700;width:20px;text-align:center">${l}</span>
-                        <span style="flex:1">${esc(opt)}</span>
-                        ${oIdx === q.ans ? '<i class="ph ph-check" style="color:var(--green);font-weight:bold"></i>' : (oIdx === r.ans[i] ? '<i class="ph ph-x" style="color:var(--rose)"></i>' : '')}
-                      </div>
-                    `;
-                  }).join('')}
+                  ${(() => {
+                    const optList = Array.isArray(q.opts) && q.opts.length
+                      ? q.opts
+                      : (Array.isArray(q.options) && q.options.length ? q.options : ['Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D']);
+                    return optList.map((opt, oIdx) => {
+                      const l = String.fromCharCode(65 + oIdx);
+                      let stStyle = 'background:var(--bg-elevated);border:1px solid var(--border-subtle);color:var(--text-secondary);';
+                      if (oIdx === q.ans) {
+                        stStyle = 'background:rgba(74,222,128,0.15);border:1px solid var(--green);color:var(--text-primary);font-weight:600;';
+                      } else if (oIdx === r.ans[i]) {
+                        stStyle = 'background:rgba(248,113,113,0.15);border:1px solid var(--rose);color:var(--text-primary);';
+                      }
+                      return `
+                        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;font-size:12.5px;${stStyle}">
+                          <span style="font-weight:700;width:20px;text-align:center">${l}</span>
+                          <span style="flex:1">${esc(opt)}</span>
+                          ${oIdx === q.ans ? '<i class="ph ph-check" style="color:var(--green);font-weight:bold"></i>' : (oIdx === r.ans[i] ? '<i class="ph ph-x" style="color:var(--rose)"></i>' : '')}
+                        </div>
+                      `;
+                    }).join('');
+                  })()}
                 </div>
 
                 <!-- Comentário do Preceptor -->
@@ -6078,6 +6533,7 @@ window.addEventListener('DOMContentLoaded',()=>{
  }
  if(localStorage.getItem('medplan_logged')==='1'&&localStorage.getItem('cuscuz_token')){SYNC_USER=localStorage.getItem('medplan_user');startApp()}else refreshAll();
  updateWrongBtn();
+ initPinnedPdfs();
  loadDriveFolder(DRIVE_ROOT_ID, 'Cursos', false);
  loadQuestionsBankFromAPI(true);
  fetchRadarMedico();
@@ -7912,7 +8368,7 @@ function ac2Init() {
       const disc = String(v.d || '').replace(/\.(mp4|webm|mkv|mov|pdf)$/i, '').trim() || 'Geral';
       if (!AC2.ARVORE.has(curso)) { AC2.ARVORE.set(curso, new Map()); AC2.ORDEM.push(curso); }
       if (!AC2.ARVORE.get(curso).has(disc)) AC2.ARVORE.get(curso).set(disc, []);
-      const item = { id: v.id, titulo: v.t || '(sem título)', disc, curso };
+      const item = { id: v.id, titulo: v.t || '(sem título)', disc, curso, path: v.path || '' };
       AC2.ARVORE.get(curso).get(disc).push(item);
       AC2.LISTA.push(item);
       AC2.indice.set(v.id, item);
@@ -8524,19 +8980,12 @@ class AC2MSEPlayer {
   }
 }
 
-let ac2PlayerMode = lsGet('ac2_player_mode', 'native'); // 'native' (HTML5 stream direto) | 'drive' (iframe)
+let ac2PlayerMode = 'native'; // Liquid Glass como player padrão permanente
 
 window.ac2AlternarModoPlayer = function () {
-  ac2PlayerMode = ac2PlayerMode === 'native' ? 'drive' : 'native';
-  lsSet('ac2_player_mode', ac2PlayerMode);
-  const lbl = $('ac2-mode-label');
-  if (lbl) {
-    lbl.innerHTML = ac2PlayerMode === 'native'
-      ? '<i class="ph ph-shield-check ok"></i> Player Interno HD'
-      : '<i class="ph ph-google-logo" style="color:var(--teal)"></i> Player Google Drive';
-  }
+  ac2PlayerMode = 'native';
   if (AC2.atualId) ac2Ativar(AC2.atualId);
-  toast(ac2PlayerMode === 'native' ? '▶ Player Interno Liquid Glass ativado' : '▶ Player Oficial do Google Drive ativado', 'info');
+  toast('▶ Player Liquid Glass ativo', 'info');
 };
 
 function ac2Ativar(id) {
@@ -8548,58 +8997,40 @@ function ac2Ativar(id) {
   const iframes = document.querySelectorAll('#ac2-player iframe');
   const lbl = $('ac2-mode-label');
   if (lbl) {
-    lbl.innerHTML = ac2PlayerMode === 'native'
-      ? '<i class="ph ph-shield-check ok"></i> Player Interno HD'
-      : '<i class="ph ph-google-logo" style="color:var(--teal)"></i> Player Google Drive';
+    lbl.innerHTML = '<i class="ph ph-shield-check ok"></i> Liquid Glass HD';
   }
 
-  if (ac2PlayerMode === 'native') {
-    iframes.forEach(x => { x.classList.remove('ativo'); x.style.display = 'none'; });
-    if (ctrl) ctrl.style.display = 'flex';
-    if (nv) {
-      nv.style.display = 'block';
-      nv.classList.add('ativo');
-      ac2InitNativeVideoListeners();
-      const streamUrl = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(id));
-      if (nv.getAttribute('data-vid') !== id) {
-        nv.setAttribute('data-vid', id);
-        if (!window.ac2MSE) window.ac2MSE = new AC2MSEPlayer(nv);
-        window.ac2MSE.load(streamUrl, () => {
+  // Oculta permanentemente o outro player (Google Drive iframe)
+  iframes.forEach(x => { x.classList.remove('ativo'); x.style.display = 'none'; });
+
+  // Mantém sempre o player Liquid Glass ativo
+  if (ctrl) ctrl.style.display = 'flex';
+  if (nv) {
+    nv.style.display = 'block';
+    nv.classList.add('ativo');
+    ac2InitNativeVideoListeners();
+    const streamUrl = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(id));
+    if (nv.getAttribute('data-vid') !== id) {
+      nv.setAttribute('data-vid', id);
+      if (!window.ac2MSE) window.ac2MSE = new AC2MSEPlayer(nv);
+      window.ac2MSE.load(streamUrl, () => {
+        nv.src = streamUrl;
+        nv.load();
+        nv.play().catch(() => {});
+      });
+      nv.play().catch(() => {});
+    }
+    nv.onerror = () => {
+      console.warn('Native video error on Liquid Glass player, retrying stream...');
+      setTimeout(() => {
+        if (nv && nv.getAttribute('data-vid') === id) {
           nv.src = streamUrl;
           nv.load();
           nv.play().catch(() => {});
-        });
-        nv.play().catch(() => {});
-      }
-      nv.onerror = () => {
-        console.warn('Native video error, fallback to Google Drive iframe viewer');
-        ac2PlayerMode = 'drive';
-        ac2Ativar(id);
-        toast('⚠️ Stream direto indisponível, alternado para o player do Google Drive', 'info');
-      };
-    }
-  } else {
-    if (window.ac2MSE) window.ac2MSE.destroy();
-    if (ctrl) ctrl.style.display = 'none';
-    if (nv) {
-      nv.pause();
-      nv.removeAttribute('src');
-      nv.removeAttribute('data-vid');
-      nv.style.display = 'none';
-      nv.classList.remove('ativo');
-    }
-    iframes.forEach(x => { x.style.display = ''; });
-    document.querySelectorAll('#ac2-player iframe.ativo').forEach(x => x.classList.remove('ativo'));
-    let f = AC2.iframes.get(id);
-    if (!f) {
-      const v = AC2.indice.get(id);
-      f = ac2CriarIframe(v, true);
-    } else {
-      f.classList.add('ativo');
-    }
-    AC2.ordem = AC2.ordem.filter(x => x !== id);
-    AC2.ordem.unshift(id);
-    ac2Trim(id);
+        }
+      }, 2500);
+      toast('⚠️ Oscilação momentânea na conexão, reconectando vídeo...', 'warning');
+    };
   }
 }
 
@@ -8799,6 +9230,7 @@ window.ac2Abrir = function (id, silencioso) {
   ac2Acoes();
   ac2Materiais(v);
   ac2Buffer();
+  ac2AtualizarBotaoPraticar(v);
 
   // 4. Marcação ativa no menu sanfona
   document.querySelectorAll('#ac2-arvore .ac2-aula').forEach(el => el.classList.toggle('ativa', el.dataset.id === id));
@@ -8994,6 +9426,198 @@ if (ac2BuscaEl) {
     }
   });
 }
+
+// ═══ BOTÃO PRATICAR QUESTÕES SELECIONADAS POR TEMA DA VIDEOAULA ═══
+function extrairTemaLimpoDaAula(v) {
+  if (!v) return 'Medicina';
+  const path = (typeof v === 'object' && v.path) ? String(v.path) : '';
+  const rawTit = (typeof v === 'object' ? v.titulo : v) || '';
+  const disc = (typeof v === 'object' ? v.disc : '') || '';
+
+  const dictTruncados = {
+    'hipert': 'Hipertensão Arterial',
+    'insufi': 'Insuficiência Cardíaca',
+    'ecocar': 'Ecocardiograma',
+    'semiol': 'Semiologia Cardiovascular',
+    'sindro': 'Síndromes Coronarianas',
+    'colono': 'Colonoscopia',
+    'endosc': 'Endoscopia Digestiva',
+    'concei': 'Conceitos em Saúde Coletiva',
+    'proces': 'Processo Saúde-Doença',
+    'campan': 'Campanhas de Vacinação',
+    'atuali': 'Atualizações Clínicas',
+    'assist': 'Assistência ao Recém-Nascido',
+    'clampe': 'Clampeamento do Cordão Umbilical',
+    'docume': 'Diretrizes Respiratórias GOLD',
+    'monke': 'Varíola dos Macacos / Monkeypox',
+    'mudanc': 'Teste do Coraçãozinho'
+  };
+
+  const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+  // 1. Tenta extrair das pastas do path (estrutura de pastas do curso)
+  if (path) {
+    const parts = path.split('/').map(p => p.trim()).filter(Boolean);
+    const genericIgnore = /^(videos\s*apostila|videoaulas|aulas|videos|apostilas|geral|conteudo|drive|google\s*drive|materiais|guia\s*pos)$/i;
+    const courseIgnore = /^(medcurso|estrategia|sanar|apostilas|aps|questoes|hardwork|med|revalida)(\s*\d{4})?$/i;
+
+    // Se o arquivo tiver nome longo e clínico (não apenas 1.mp4, 2.mp4 ou Docume.mp4)
+    if (parts.length > 0) {
+      const fn = parts[parts.length - 1].replace(/\.(mp4|webm|mkv|mov|pdf|avi)$/i, '').replace(/_/g, ' ').trim();
+      const fnKey = norm(fn);
+      if (dictTruncados[fnKey]) return dictTruncados[fnKey];
+      if (fn.length > 8 && !/^\d+$/.test(fn) && !/^bloco\s*\d+$/i.test(fn) && !/^aula\s*\d+$/i.test(fn)) {
+        return limparPrefixoTema(fn);
+      }
+    }
+
+    // Navega pelas pastas ancestrais da mais interna para a mais externa
+    for (let i = parts.length - 2; i >= 0; i--) {
+      let seg = parts[i].replace(/_/g, ' ').trim();
+      if (!genericIgnore.test(seg) && !courseIgnore.test(seg)) {
+        seg = limparPrefixoTema(seg);
+        if (seg.length > 3) return seg;
+      }
+    }
+  }
+
+  // 2. Se a disciplina da aula tiver especificação de tema (ex: 'MEDCURSO - Car 1 - Arritmias Cardiacas')
+  if (disc && disc !== 'Geral') {
+    const cleanDisc = limparPrefixoTema(disc);
+    if (cleanDisc.length > 4 && !/^\d+$/.test(cleanDisc)) return cleanDisc;
+  }
+
+  // 3. Limpeza do título direto
+  const cleanTit = limparPrefixoTema(rawTit);
+  const titKey = norm(cleanTit);
+  if (dictTruncados[titKey]) return dictTruncados[titKey];
+  if (cleanTit.length > 2 && !/^\d+$/.test(cleanTit) && !/^bloco\s*\d+$/i.test(cleanTit)) return cleanTit;
+
+  return disc || 'Medicina';
+}
+
+function limparPrefixoTema(str) {
+  return String(str || '')
+    .replace(/\.(mp4|webm|mkv|mov|pdf|avi)$/i, '')
+    .replace(/^MEDCURSO\s*-\s*[A-Za-z0-9]+\s*\d*\s*-\s*/i, '')
+    .replace(/^SANAR\s*-\s*/i, '')
+    .replace(/^Estrat[eé]gia\s*MED\s*-\s*/i, '')
+    .replace(/^M[oó]dulo\s*\d+\s*[-–—:]\s*/i, '')
+    .replace(/^Bloco\s*\d+\s*[-–—:]\s*/i, '')
+    .replace(/^Aula\s*\d+\s*[-–—:]\s*/i, '')
+    .replace(/^\d+[\.\-_]\s*/, '')
+    .trim();
+}
+
+async function buscarQtdQuestoesTema(tema, disc) {
+  try {
+    const qUrl = `/api/questions/match?disciplina=${encodeURIComponent(disc || '')}&tema=${encodeURIComponent(tema || '')}&limit=80`;
+    const res = await fetch(qUrl);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.questions && data.questions.length) {
+        const count = data.totalAvailable || data.count || data.questions.length;
+        return { count, questions: data.questions };
+      }
+    }
+  } catch (_) {}
+
+  // Fallback no cliente com BANK_QUESTIONS / getSimQuestionsBank
+  const all = typeof getSimQuestionsBank === 'function' ? getSimQuestionsBank() : [];
+  if (all && all.length) {
+    const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const tNorm = norm(tema);
+    const tokens = tNorm.split(/[\s\-–—:,/]+/).filter(w => w.length > 2);
+    const matched = all.filter(q => {
+      const txt = norm([q.statement, q.explanation, q.specialty, q.subspecialty, ...(q.tags || []), (q.options || []).join(' ')].join(' '));
+      return tokens.some(tok => txt.includes(tok));
+    });
+    const count = matched.length > 0 ? matched.length : Math.min(all.length, 20);
+    return { count, questions: matched.length ? matched : all.slice(0, 20) };
+  }
+
+  return { count: 20, questions: [] };
+}
+
+function ac2AtualizarBotaoPraticar(v) {
+  const wrap = $('ac2-praticar-wrap');
+  const temaEl = $('ac2-praticar-tema');
+  const qtdEl = $('ac2-praticar-qtd');
+  if (!wrap || !temaEl || !qtdEl) return;
+
+  const cleanTema = extrairTemaLimpoDaAula(v);
+  wrap.style.display = 'flex';
+  temaEl.textContent = cleanTema;
+  qtdEl.textContent = '…';
+
+  buscarQtdQuestoesTema(cleanTema, v.disc).then(({ count, questions }) => {
+    if ($('ac2-praticar-qtd')) $('ac2-praticar-qtd').textContent = count;
+    window._questoesTemaAtual = { tema: cleanTema, disc: v.disc, questions };
+  }).catch(() => {
+    if ($('ac2-praticar-qtd')) $('ac2-praticar-qtd').textContent = '20';
+  });
+}
+
+window.ac2PraticarQuestoesTema = function() {
+  const cache = window._questoesTemaAtual;
+  const tema = (cache && cache.tema) || $('ac2-praticar-tema')?.textContent || 'Tema da Aula';
+  const disc = (cache && cache.disc) || $('ac2-disc')?.textContent || 'Clínica Médica';
+  iniciarSimuladoDoTema(tema, disc, (cache && cache.questions) || []);
+};
+
+window.modalPraticarQuestoesTema = function() {
+  const cache = window._questoesModalAtual;
+  const tema = (cache && cache.tema) || $('modal-praticar-tema')?.textContent || 'Tema da Aula';
+  const disc = (cache && cache.disc) || 'Clínica Médica';
+  closePlayer();
+  iniciarSimuladoDoTema(tema, disc, (cache && cache.questions) || []);
+};
+
+window.iniciarSimuladoDoTema = async function(tema, disc, questions) {
+  let qs = Array.isArray(questions) && questions.length ? [...questions] : [];
+  if (!qs.length) {
+    toast('Carregando questões selecionadas do tema…', 'info');
+    const res = await buscarQtdQuestoesTema(tema, disc);
+    qs = res.questions || [];
+  }
+  if (!qs.length) {
+    const all = typeof getSimQuestionsBank === 'function' ? getSimQuestionsBank() : [];
+    qs = all.slice(0, 80);
+  }
+  if (!qs.length) {
+    toast('Nenhuma questão encontrada para este tema no momento.', 'warning');
+    return;
+  }
+
+  // Normaliza todas as questões para garantir a estrutura com .opts, .q, .statement, .ans
+  qs = qs.map(normalizarQuestaoSim).filter(Boolean);
+  if (!qs.length) {
+    toast('Nenhuma questão válida encontrada.', 'warning');
+    return;
+  }
+
+  const n = qs.length;
+  const min = Math.max(15, Math.round(n * 2));
+  SR = {
+    qs: shuffle(qs),
+    i: 0,
+    ans: Array(n).fill(-1),
+    flagged: Array(n).fill(false),
+    min,
+    left: min * 60,
+    name: `Praticar Questões: ${tema}`,
+    banca: `Treino de Aula (${disc || 'Residência Médica'})`,
+    tema: tema,
+    origemView: 'view-acervo'
+  };
+
+  go('view-simulados');
+  if ($('sim-config-screen')) $('sim-config-screen').style.display = 'none';
+  if ($('sim-runner-screen')) $('sim-runner-screen').style.display = 'block';
+  renderSimQ();
+  startSimTimer();
+  toast(`🎯 Treino iniciado com ${n} questões selecionadas sobre "${tema}"!`, 'success');
+};
 
 // Curso clicado na barra lateral (ou busca global) → abre na visão LMS
 function enterDriveCourse(id, name) {

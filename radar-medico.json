@@ -1,0 +1,95 @@
+{
+  "cachedAt": 1775161464000,
+  "articles": [
+    {
+      "id": "radar-pics-paliativos",
+      "title": "Nova diretriz detalha PICS para cuidados paliativos no SUS",
+      "link": "https://med.estrategia.com/portal/conteudo-gratuito/noticias/pics-cuidados-paliativos-sus/",
+      "img": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&auto=format&fit=crop&q=80",
+      "date": "2026",
+      "category": "Diretrizes SUS",
+      "resumoEstrategico": {
+        "implementacoes": "Publicação da diretriz ministerial que formaliza a integração das Práticas Integrativas e Complementares (PICS) às equipes de Cuidados Paliativos em todos os níveis de atenção do SUS, com fluxos de referência e contrarreferência.",
+        "praticaClinica": "Foco no manejo multimodal da dor crônica refratária, dispneia em fase final e ansiedade existencial com acupuntura, meditação guiada e fitoterapia padronizada pela Rename, associadas à analgesia escalonada da OMS sem substituição do tratamento alopático.",
+        "oQueMudou": "Quebra de paradigma: as PICS deixam de ser opcionais/isoladas e passam a constar como condutas complementares recomendadas em plano terapêutico singular (PTS) multiprofissional, caindo com frequência em questões de Medicina de Família e Preventiva."
+      },
+      "bullets": [
+        "Implementações: Diretriz ministerial formaliza integração das PICS aos Cuidados Paliativos nos 3 níveis do SUS.",
+        "Prática Clínica: Alívio de dor refratária, dispneia e estresse com acupuntura e fitoterapia Rename aliadas à escada OMS.",
+        "O Que Mudou: Integração mandatória em Plano Terapêutico Singular (PTS); tema de alta cobrança em Preventiva/MFC."
+      ]
+    },
+    {
+      "id": "radar-gina-asma-2026",
+      "title": "GINA: o que é e as atualizações para o tratamento da Asma",
+      "link": "https://med.estrategia.com/portal/conteudo-gratuito/noticias/gina-tratamento-da-asma/",
+      "img": "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=600&auto=format&fit=crop&q=80",
+      "date": "2026",
+      "category": "Pneumologia",
+      "resumoEstrategico": {
+        "implementacoes": "Revisão e consolidação do Guideline GINA (Global Initiative for Asthma), reforçando o Track 1 como escolha preferencial para todas as faixas etárias a partir de 12 anos e ampliação das indicações de imunobiológicos na asma grave.",
+        "praticaClinica": "Uso da combinação CI + Formoterol como alívio E manutenção (SMART / MART) desde a etapa 1. Proibição categórica da monoterapia com SABA (Salbutamol isolado) devido ao risco comprovado de remodelamento brônquico e exacerbações fatais.",
+        "oQueMudou": "SABA isolado tornou-se erro médico em provas de residência; o Track 1 (CI-Formoterol sob demanda na etapa 1 e 2, fixo + resgate nas etapas 3 a 5) é a resposta-padrão de bancas como ENARE, USP e Unifesp."
+      },
+      "bullets": [
+        "Implementações: Consolidação definitiva do Track 1 (CI + Formoterol) para manejo de asma em adolescentes e adultos.",
+        "Prática Clínica: Prescrição de CI + Formoterol como resgate e manutenção; SABA isolado estritamente contraindicado.",
+        "O Que Mudou: Monoterapia com broncodilatador de curta (Salbutamol) é considerada conduta incorreta em concursos médicos."
+      ]
+    },
+    {
+      "id": "radar-atualizacoes-2026",
+      "title": "Atualizações Médicas 2026: confira as mudanças nos principais protocolos e diretrizes",
+      "link": "https://med.estrategia.com/portal/conteudo-gratuito/noticias/atualizacoes-medicas-principais-protocolos-diretrizes/",
+      "img": "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=600&auto=format&fit=crop&q=80",
+      "date": "2026",
+      "category": "Clínica Médica",
+      "resumoEstrategico": {
+        "implementacoes": "Compêndio das novas diretrizes da SBC (Insuficiência Cardíaca e Hipertensão), ADA (Diabetes Mellitus com alvos mais rígidos de HbA1c < 7% e iSGLT2/GLP-1 precoce) e Surviving Sepsis Campaign.",
+        "praticaClinica": "Quadriterapia mandatória da ICFEr precoce (ARNI/IECA + Betabloqueador + Antagonista de Mineralocorticoide + iSGLT2) independentemente da presença de diabetes, com titulação a cada 2 a 4 semanas.",
+        "oQueMudou": "Os inibidores de SGLT2 (Dapagliflozina e Empagliflozina) agora são Classe I tanto para ICFEr quanto para ICFEn/ICFEm e Doença Renal Crônica, cobrados de forma transversal em todas as provas de residência."
+      },
+      "bullets": [
+        "Implementações: Compilado das diretrizes SBC 2026, ADA 2026 e Surviving Sepsis Campaign.",
+        "Prática Clínica: Instituição precoce da quadriterapia padrão-ouro na ICFEr (ARNI + BB + ARM + iSGLT2).",
+        "O Que Mudou: iSGLT2 consolidado em Classe I para todo o espectro de FE e nefropatia diabética/não-diabética."
+      ]
+    },
+    {
+      "id": "radar-tep-aha-acc-p2",
+      "title": "R+ Clínica Médica: Atualização no Manejo de Embolia Pulmonar – Guideline AHA/ACC 2026 – Parte 2",
+      "link": "https://med.estrategia.com/portal/conteudo-gratuito/noticias/embolia-pulmonar-guideline-aha-acc-parte-2/",
+      "img": "https://images.unsplash.com/photo-1530026405186-ed1f139313f8?w=600&auto=format&fit=crop&q=80",
+      "date": "2026",
+      "category": "Cardiologia & Terapia Intensiva",
+      "resumoEstrategico": {
+        "implementacoes": "Revisão detalhada da estratificação de risco no TEP intermediário-alto (PESI simplificado ≥ 1 + disfunção de VD por ECO/angio-TC + troponina positiva) e algoritmos de intervenção percutânea guiada por cateter.",
+        "praticaClinica": "Monitorização rigorosa na UTI/Semi-intensiva nas primeiras 72h; início de trombólise sistêmica apenas se houver descompensação hemodinâmica (PAS < 90 mmHg ou queda > 40 mmHg), dando preferência à trombectomia mecânica quando disponível.",
+        "oQueMudou": "Trombólise plena de rotina no risco intermediário-alto foi abandonada pelo risco excessivo de AVC hemorrágico; a conduta de escolha agora é anticoagulação plena imediata e resgate caso haja choque."
+      },
+      "bullets": [
+        "Implementações: Algoritmo atualizado AHA/ACC 2026 para TEP de risco intermediário-alto e equipes PERT.",
+        "Prática Clínica: Anticoagulação imediata (HBPM/HNF/DOAC) + vigilância intensiva; trombólise reservada para choque.",
+        "O Que Mudou: Abandono de trombólise sistêmica profilática sem instabilidade hemodinâmica comprovada."
+      ]
+    },
+    {
+      "id": "radar-tep-aha-acc-p1",
+      "title": "R+ Clínica Médica: Atualização no Manejo de Embolia Pulmoar – Guideline AHA/ACC 2026",
+      "link": "https://med.estrategia.com/portal/conteudo-gratuito/noticias/embolia-pulmonar-guideline-aha-acc/",
+      "img": "https://images.unsplash.com/photo-1559757175-5700dde675bc?w=600&auto=format&fit=crop&q=80",
+      "date": "2026",
+      "category": "Emergência & UTI",
+      "resumoEstrategico": {
+        "implementacoes": "Algoritmo de diagnóstico rápido e suspeição de TEP na sala de emergência com escores de Wells/Geneva simplificados combinados com D-dímero ajustado pela idade (idade x 10 acima dos 50 anos).",
+        "praticaClinica": "Paciente com alta probabilidade clínica de TEP deve receber a primeira dose de anticoagulante parenteral ANTES de descer para a Angio-TC de tórax, caso não haja contraindicações graves a sangramento.",
+        "oQueMudou": "D-dímero ajustado pela idade reduz em até 30% a solicitação desnecessária de Angio-TC em idosos sem prejuízo na sensibilidade diagnóstica; DOACs são preferenciais sobre varfarina na alta hospitalar."
+      },
+      "bullets": [
+        "Implementações: Diagnóstico com Wells simplificado + D-dímero ajustado pela idade (idade x 10 se > 50 anos).",
+        "Prática Clínica: Anticoagulação imediata empírica na alta probabilidade antes do exame confirmatório.",
+        "O Que Mudou: DOACs são primeira linha absoluta; D-dímero ajustado reduz custos e radiação na emergência."
+      ]
+    }
+  ]
+}

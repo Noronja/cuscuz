@@ -238,6 +238,15 @@
   .btn.votado { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .btn.salvo { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .btn.vista { background: rgba(74, 222, 128, .12); border-color: var(--ok); color: var(--ok); }
+
+  /* Botão Praticar Questões do Tema (Pill Teal / VisionOS) */
+  .aula-praticar-wrap { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: flex-start; }
+  .btn-praticar-questoes-tema { display: inline-flex; align-items: center; justify-content: center; gap: 10px; background: rgba(0,225,217,0.06); border: 1.5px solid #00E1D9; color: #00E1D9; border-radius: 9999px; padding: 9px 24px; font-family: var(--font, sans-serif); font-size: 14px; font-weight: 600; letter-spacing: -0.01em; cursor: pointer; transition: all .22s cubic-bezier(0.16,1,0.3,1); box-shadow: 0 2px 14px rgba(0,225,217,0.12), inset 0 0 10px rgba(0,225,217,0.04); text-decoration: none; line-height: 1.4; outline: none; }
+  .btn-praticar-questoes-tema:hover { background: rgba(0,225,217,0.15); border-color: #38fdf8; color: #38fdf8; box-shadow: 0 0 24px rgba(0,225,217,0.3), inset 0 0 14px rgba(0,225,217,0.08); transform: translateY(-1px); }
+  .btn-praticar-questoes-tema:active { transform: scale(0.98); }
+  .btn-praticar-questoes-tema .praticar-icon { display: inline-flex; align-items: center; justify-content: center; color: #00E1D9; flex-shrink: 0; }
+  .btn-praticar-questoes-tema .praticar-text { display: inline-flex; align-items: center; gap: 4px; color: #00E1D9; }
+  .btn-praticar-questoes-tema strong { font-weight: 700; color: #00E1D9; }
   .btn.espaco { margin-left: auto; }
 
   /* ═══ Componente de Abas do Aluno (Treino Livre + PDF Interativo + Materiais) ═══ */
@@ -769,6 +778,22 @@
         <a class="btn" id="btn-drive" href="#" target="_blank" rel="noopener" title="Abrir no Drive"><i class="ph ph-arrow-square-out"></i> Drive</a>
         <button class="btn primario espaco" id="btn-proxima"><i class="ph ph-skip-forward"></i> Próxima aula</button>
       </div>
+
+      <!-- Botão Praticar Questões Selecionadas pelo Tema -->
+      <div class="aula-praticar-wrap" id="aula-praticar-wrap" style="display:none">
+        <button class="btn-praticar-questoes-tema" id="aula-btn-praticar" onclick="aulaPraticarQuestoesTema()" title="Praticar questões selecionadas sobre este tema">
+          <span class="praticar-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="6"></circle>
+              <circle cx="12" cy="12" r="2"></circle>
+            </svg>
+          </span>
+          <span class="praticar-text">
+            Praticar questões: <strong id="aula-praticar-tema">Tema da Aula</strong> (<span id="aula-praticar-qtd">80</span>)
+          </span>
+        </button>
+      </div>
     </div>
 
     <!-- ═══ HUB INTERATIVO DA AULA: SIMULADO DE 20 QUESTÕES + PDF INTERATIVO + MATERIAIS ═══ -->
@@ -1099,14 +1124,58 @@ window.aulaRecarregar = function() {
 function extrairTagsDaAula(v) {
   if (!v) return { disciplina: 'Clínica Médica', tema: 'Medicina', curso: 'Geral', tags: [] };
 
+  const path = v.path || '';
   const disciplina = v.disc || 'Geral';
-  // Isola e limpa o Tema clínico da aula removendo prefixos de aula e extensões
-  let tema = String(v.titulo || '')
-    .replace(/\.(mp4|webm|mkv|mov|pdf)$/i, '')
-    .replace(/^aula\s*\d+\s*[-–—:]\s*/i, '')
-    .replace(/^bloco\s*[a-z0-9]+\s*[-–—:]\s*/i, '')
-    .replace(/^modulo\s*\d+\s*[-–—:]\s*/i, '')
-    .trim();
+  let tema = '';
+
+  const dictTruncados = {
+    'hipert': 'Hipertensão Arterial',
+    'insufi': 'Insuficiência Cardíaca',
+    'ecocar': 'Ecocardiograma',
+    'semiol': 'Semiologia Cardiovascular',
+    'sindro': 'Síndromes Coronarianas',
+    'colono': 'Colonoscopia',
+    'endosc': 'Endoscopia Digestiva',
+    'concei': 'Conceitos em Saúde Coletiva',
+    'proces': 'Processo Saúde-Doença',
+    'campan': 'Campanhas de Vacinação',
+    'atuali': 'Atualizações Clínicas',
+    'assist': 'Assistência ao Recém-Nascido',
+    'clampe': 'Clampeamento do Cordão Umbilical',
+    'docume': 'Diretrizes Respiratórias GOLD',
+    'monke': 'Varíola dos Macacos / Monkeypox',
+    'mudanc': 'Teste do Coraçãozinho'
+  };
+
+  const normClean = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+  if (path) {
+    const parts = path.split('/').map(p => p.trim()).filter(Boolean);
+    const genericIgnore = /^(videos\s*apostila|videoaulas|aulas|videos|apostilas|geral|conteudo|drive|google\s*drive|materiais|guia\s*pos)$/i;
+    const courseIgnore = /^(medcurso|estrategia|sanar|apostilas|aps|questoes|hardwork|med|revalida)(\s*\d{4})?$/i;
+
+    for (let i = parts.length - 2; i >= 0; i--) {
+      let seg = parts[i].replace(/_/g, ' ').trim();
+      if (!genericIgnore.test(seg) && !courseIgnore.test(seg)) {
+        seg = seg.replace(/^MEDCURSO\s*-\s*[A-Za-z0-9]+\s*\d*\s*-\s*/i, '').replace(/^SANAR\s*-\s*/i, '').trim();
+        if (seg.length > 3) {
+          tema = seg;
+          break;
+        }
+      }
+    }
+  }
+
+  if (!tema) {
+    let t = String(v.titulo || '')
+      .replace(/\.(mp4|webm|mkv|mov|pdf)$/i, '')
+      .replace(/^aula\s*\d+\s*[-–—:]\s*/i, '')
+      .replace(/^bloco\s*[a-z0-9]+\s*[-–—:]\s*/i, '')
+      .replace(/^modulo\s*\d+\s*[-–—:]\s*/i, '')
+      .trim();
+    const tKey = normClean(t);
+    tema = dictTruncados[tKey] || t || disciplina || 'Medicina';
+  }
 
   const stopwords = new Set(['aula', 'bloco', 'curso', 'geral', 'parte', 'introducao', 'revisao', 'aspectos', 'gerais', 'conceitos', 'principais']);
   const palavras = norm(tema).split(/[\s\-–—:,/]+/).filter(w => w.length > 3 && !stopwords.has(w));
@@ -1142,12 +1211,22 @@ async function extrairTagsECarregarSimuladoTreino(v) {
   if (gridNav) gridNav.style.display = 'none';
 
   try {
-    const qUrl = `/api/questions/match?disciplina=${encodeURIComponent(meta.disciplina)}&tema=${encodeURIComponent(meta.tema)}&curso=${encodeURIComponent(meta.curso)}&tags=${encodeURIComponent(meta.tags.join(','))}&limit=20`;
+    const qUrl = `/api/questions/match?disciplina=${encodeURIComponent(meta.disciplina)}&tema=${encodeURIComponent(meta.tema)}&curso=${encodeURIComponent(meta.curso)}&tags=${encodeURIComponent(meta.tags.join(','))}&limit=80`;
     const res = await fetch(qUrl);
     const data = await res.json();
     currentQuestions = (data && data.questions && data.questions.length) ? data.questions : [];
+    
+    // Atualiza botão destacado de praticar questões do tema
+    const wrap = $('aula-praticar-wrap');
+    const temaEl = $('aula-praticar-tema');
+    const qtdEl = $('aula-praticar-qtd');
+    if (wrap && temaEl && qtdEl) {
+      wrap.style.display = 'flex';
+      temaEl.textContent = meta.tema;
+      qtdEl.textContent = (data && (data.totalAvailable || data.count)) || currentQuestions.length || 80;
+    }
   } catch (e) {
-    console.warn('Erro ao buscar 20 questões do simulado:', e.message);
+    console.warn('Erro ao buscar questões do simulado:', e.message);
     currentQuestions = [];
   }
 
@@ -1156,6 +1235,12 @@ async function extrairTagsECarregarSimuladoTreino(v) {
   questionAnswers = {};
   renderSimuladoTreino();
 }
+
+window.aulaPraticarQuestoesTema = function() {
+  trocarHubTab('questoes');
+  const el = $('painel-questoes') || $('hub-card');
+  if (el) el.scrollIntoView({ behavior: 'smooth' });
+};
 
 // Compatibilidade de chamada
 window.carregarQuestoesDaAula = extrairTagsECarregarSimuladoTreino;
@@ -1181,7 +1266,8 @@ function renderSimuladoTreino() {
       <div class="sim-nav-grid-label"><i class="ph ph-list-numbers"></i> Questões (1-${currentQuestions.length}):</div>
       ${currentQuestions.map((q, idx) => {
         const resp = questionAnswers[q.id];
-        const corretaIdx = q.correctIndex !== undefined ? q.correctIndex : (q.correctAnswer ? q.options.indexOf(q.correctAnswer) : 0);
+        const opts = Array.isArray(q.options) && q.options.length ? q.options : (Array.isArray(q.opts) ? q.opts : []);
+        const corretaIdx = q.correctIndex !== undefined ? q.correctIndex : (q.correctAnswer && opts.length ? opts.indexOf(q.correctAnswer) : 0);
         let cls = 'sim-nav-cell-btn';
         if (resp !== undefined) {
           cls += (resp === corretaIdx) ? ' correta' : ' errada';
@@ -1195,9 +1281,10 @@ function renderSimuladoTreino() {
   ctn.innerHTML = currentQuestions.map((q, qIndex) => {
     const resp = questionAnswers[q.id];
     const respondida = resp !== undefined;
-    const corretaIdx = q.correctIndex !== undefined ? q.correctIndex : (q.correctAnswer ? q.options.indexOf(q.correctAnswer) : 0);
+    const opts = Array.isArray(q.options) && q.options.length ? q.options : (Array.isArray(q.opts) ? q.opts : []);
+    const corretaIdx = q.correctIndex !== undefined ? q.correctIndex : (q.correctAnswer && opts.length ? opts.indexOf(q.correctAnswer) : 0);
 
-    const opcoesHtml = (q.options || []).map((opt, optIndex) => {
+    const opcoesHtml = opts.map((opt, optIndex) => {
       const letra = String.fromCharCode(65 + optIndex);
       let classes = 'alternativa-btn';
       if (respondida) {
@@ -1279,7 +1366,8 @@ function atualizarScoreTreino() {
 
   currentQuestions.forEach(q => {
     const resp = questionAnswers[q.id];
-    const corretaIdx = q.correctIndex !== undefined ? q.correctIndex : (q.correctAnswer ? q.options.indexOf(q.correctAnswer) : 0);
+    const opts = Array.isArray(q.options) && q.options.length ? q.options : (Array.isArray(q.opts) ? q.opts : []);
+    const corretaIdx = q.correctIndex !== undefined ? q.correctIndex : (q.correctAnswer && opts.length ? opts.indexOf(q.correctAnswer) : 0);
     if (resp === corretaIdx) acertos++;
   });
 
@@ -1333,7 +1421,39 @@ window.carregarPdfNoViewer = function(materialId, btnEl) {
   if (ph) ph.style.display = 'none';
   if (frame) {
     frame.style.display = 'block';
-    frame.src = `https://drive.google.com/file/d/${materialId}/preview`;
+
+    // Se estiver fixado offline no IndexedDB, abre localmente sem precisar de internet
+    try {
+      if (window.indexedDB) {
+        const req = indexedDB.open('cuscuz_med_storage', 2);
+        req.onsuccess = () => {
+          const db = req.result;
+          if (db.objectStoreNames.contains('pinned_pdfs')) {
+            const tx = db.transaction('pinned_pdfs', 'readonly');
+            const getReq = tx.objectStore('pinned_pdfs').get(materialId);
+            getReq.onsuccess = () => {
+              if (getReq.result && getReq.result.blob) {
+                frame.src = URL.createObjectURL(getReq.result.blob);
+                return;
+              }
+              frame.src = typeof cuscuzMediaUrl === 'function' ? cuscuzMediaUrl(`/api/drive/pdf/${encodeURIComponent(materialId)}`) : `/api/drive/pdf/${encodeURIComponent(materialId)}`;
+            };
+            getReq.onerror = () => {
+              frame.src = typeof cuscuzMediaUrl === 'function' ? cuscuzMediaUrl(`/api/drive/pdf/${encodeURIComponent(materialId)}`) : `/api/drive/pdf/${encodeURIComponent(materialId)}`;
+            };
+            return;
+          }
+          frame.src = typeof cuscuzMediaUrl === 'function' ? cuscuzMediaUrl(`/api/drive/pdf/${encodeURIComponent(materialId)}`) : `/api/drive/pdf/${encodeURIComponent(materialId)}`;
+        };
+        req.onerror = () => {
+          frame.src = typeof cuscuzMediaUrl === 'function' ? cuscuzMediaUrl(`/api/drive/pdf/${encodeURIComponent(materialId)}`) : `/api/drive/pdf/${encodeURIComponent(materialId)}`;
+        };
+      } else {
+        frame.src = typeof cuscuzMediaUrl === 'function' ? cuscuzMediaUrl(`/api/drive/pdf/${encodeURIComponent(materialId)}`) : `/api/drive/pdf/${encodeURIComponent(materialId)}`;
+      }
+    } catch (_) {
+      frame.src = typeof cuscuzMediaUrl === 'function' ? cuscuzMediaUrl(`/api/drive/pdf/${encodeURIComponent(materialId)}`) : `/api/drive/pdf/${encodeURIComponent(materialId)}`;
+    }
   }
   if (extBtn) {
     extBtn.href = `https://drive.google.com/file/d/${materialId}/view`;
