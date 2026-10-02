@@ -3084,9 +3084,16 @@ async function fetchDriveFolderItems(folderId, forceRefresh = false) {
         driveFolderMemoryCache.set(folderId, grouped);
         return grouped;
       }
+    } else {
+      // Mostra o motivo real (chave do Drive, sessão etc.) em vez de uma lista vazia sem explicação
+      let d = {};
+      try { d = await res.json(); } catch (_) {}
+      if (res.status === 401) throw new Error('Sessão expirada: entre de novo com a senha.');
+      throw new Error(d.hint || d.msg || d.error || ('Servidor respondeu ' + res.status));
     }
   } catch (e) {
-    console.warn('Backend proxy fetch failed, falling back to direct Drive API', e);
+    if (e && e.message && !/Failed to fetch|NetworkError/i.test(e.message)) throw e;
+    throw new Error('Não consegui falar com o servidor. Ele pode estar acordando (leva até 1 min) — tente de novo.');
   }
 
   // 2. Sem fallback direto: a chave do Drive fica só no servidor (GOOGLE_DRIVE_API_KEY)

@@ -44,7 +44,9 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
    Todas as rotas /api/* (menos /api/health e /api/auth/login) exigem token.
    O token é assinado (HMAC) com a APP_PASSWORD, vale 30 dias e sobrevive a reinícios. */
 app.set('trust proxy', 1);
-const APP_PASSWORD = process.env.APP_PASSWORD || '';
+// Tolerante a erro de colagem no painel do Render: tira espaços/quebras de linha e aspas das pontas
+const APP_PASSWORD = String(process.env.APP_PASSWORD || '').trim().replace(/^(['"])([\s\S]*)\1$/, '$2').trim();
+if (APP_PASSWORD) console.log('🔐 APP_PASSWORD recebida (' + APP_PASSWORD.length + ' caracteres).');
 const AUTH_SECRET = crypto.createHash('sha256').update('cuscuz-auth|' + APP_PASSWORD).digest();
 const AUTH_TTL_MS = 30 * 24 * 3600 * 1000;
 const IS_HOSTED = !!(process.env.RENDER || process.env.NODE_ENV === 'production');
@@ -70,14 +72,14 @@ const loginAttempts = new Map(); // ip -> { n, reset }
 app.post('/api/auth/login', (req, res) => {
   if (!APP_PASSWORD) {
     return IS_HOSTED
-      ? res.status(503).json({ ok: false, msg: 'APP_PASSWORD não configurada no servidor.' })
+      ? res.status(503).json({ ok: false, msg: 'APP_PASSWORD não chegou ao servidor. No Render: Environment → Add Environment Variable → APP_PASSWORD → Save and deploy.' })
       : res.json({ ok: true, token: signToken() });
   }
   const now = Date.now();
   const rec = loginAttempts.get(req.ip) || { n: 0, reset: now + 15 * 60 * 1000 };
   if (now > rec.reset) { rec.n = 0; rec.reset = now + 15 * 60 * 1000; }
   if (rec.n >= 10) return res.status(429).json({ ok: false, msg: 'Muitas tentativas. Aguarde 15 minutos.' });
-  const given = crypto.createHash('sha256').update(String((req.body && req.body.password) || '')).digest();
+  const given = crypto.createHash('sha256').update(String((req.body && req.body.password) || '').trim()).digest();
   const real = crypto.createHash('sha256').update(APP_PASSWORD).digest();
   if (!crypto.timingSafeEqual(given, real)) {
     rec.n++; loginAttempts.set(req.ip, rec);
@@ -309,6 +311,47 @@ const DRIVE_API_KEY = process.env.GOOGLE_DRIVE_API_KEY || '';
 if (!DRIVE_API_KEY) console.warn('⚠️ GOOGLE_DRIVE_API_KEY não definida: o acervo do Drive não vai carregar.');
 const DRIVE_ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7';
 const driveCache = new Map();
+
+/* Diagnóstico da chave do Drive: traduz o erro do Google em uma dica clara (sem expor segredos) */
+const driveStatus = { configured: !!DRIVE_API_KEY, ok: null, status: null, reason: null, hint: null, checkedAt: null };
+function driveErrorInfo(status, bodyText) {
+  let reason = '', msg = '';
+  try {
+    const j = JSON.parse(bodyText);
+    const e = j.error || {};
+    reason = (e.errors && e.errors[0] && e.errors[0].reason) || (e.details && e.details[0] && e.details[0].reason) || e.status || '';
+    msg = e.message || '';
+  } catch (_) { msg = String(bodyText || '').slice(0, 160); }
+  const blob = (reason + ' ' + msg).toLowerCase();
+  let hint;
+  if (/referrer|ip_address_blocked|ip address/.test(blob)) hint = 'A chave do Drive tem restrição de site/IP. No Google Cloud, em "Restrições de aplicativo", escolha "Nenhuma" e deixe só a restrição de API (Google Drive API).';
+  else if (/api_key_invalid|api key not valid|keyinvalid/.test(blob)) hint = 'Chave inválida. Confira GOOGLE_DRIVE_API_KEY no Render (sem espaços, sem aspas).';
+  else if (/service_disabled|accessnotconfigured|has not been used|is disabled|api_key_service_blocked|blocked/.test(blob)) hint = 'A Google Drive API não está ativada ou a chave não a permite. Ative em APIs e serviços > Biblioteca e marque "Google Drive API" nas restrições da chave.';
+  else if (/ratelimit|quota|userratelimit/.test(blob)) hint = 'Cota do Google atingida. Tente de novo em alguns minutos.';
+  else if (status === 404 || /notfound/.test(blob)) hint = 'Pasta não encontrada. Confira GOOGLE_DRIVE_FOLDER_ID e se a pasta está como "Qualquer pessoa com o link".';
+  else if (status === 403) hint = 'Acesso negado pelo Google. Confira se a pasta está como "Qualquer pessoa com o link" e as permissões da chave.';
+  else hint = 'Erro do Google Drive (' + status + '). Veja os logs do Render.';
+  return { reason: reason || ('http_' + status), hint };
+}
+function noteDriveResult(ok, status, bodyText) {
+  driveStatus.configured = !!DRIVE_API_KEY;
+  driveStatus.ok = ok; driveStatus.status = status; driveStatus.checkedAt = new Date().toISOString();
+  if (ok) { driveStatus.reason = null; driveStatus.hint = null; return null; }
+  const info = driveErrorInfo(status, bodyText);
+  driveStatus.reason = info.reason; driveStatus.hint = info.hint;
+  console.warn('⚠️ [Drive] ' + status + ' ' + info.reason + ' — ' + info.hint);
+  return info;
+}
+async function checkDriveKey() {
+  if (!DRIVE_API_KEY) { driveStatus.ok = false; driveStatus.reason = 'missing_key'; driveStatus.hint = 'GOOGLE_DRIVE_API_KEY não está definida no Render.'; driveStatus.checkedAt = new Date().toISOString(); console.warn('⚠️ [Drive] ' + driveStatus.hint); return; }
+  try {
+    const q = encodeURIComponent(`'${DRIVE_ROOT_FOLDER_ID}' in parents and trashed=false`);
+    const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1&fields=files(id)&key=${DRIVE_API_KEY}`);
+    const t = await r.text();
+    noteDriveResult(r.ok, r.status, t);
+    if (r.ok) console.log('✅ [Drive] Chave do Drive funcionando.');
+  } catch (e) { driveStatus.ok = false; driveStatus.reason = 'network'; driveStatus.hint = 'Sem conexão com o Google: ' + e.message; }
+}
 const DRIVE_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 app.get('/api/drive/clear-cache', (req, res) => {
@@ -339,11 +382,17 @@ app.get('/api/drive/list', async (req, res) => {
       const pageParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
       const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&orderBy=folder,name_natural&pageSize=1000&key=${DRIVE_API_KEY}${pageParam}`;
       
+      if (!DRIVE_API_KEY) {
+        noteDriveResult(false, 503, '');
+        return res.status(503).json({ error: 'GOOGLE_DRIVE_API_KEY ausente', reason: 'missing_key', hint: 'GOOGLE_DRIVE_API_KEY não está definida no Render.' });
+      }
       const r = await fetch(url);
       if (!r.ok) {
         const errText = await r.text();
-        return res.status(r.status).json({ error: 'Google Drive API error', details: errText });
+        const info = noteDriveResult(false, r.status, errText);
+        return res.status(502).json({ error: 'Google Drive API error', status: r.status, reason: info.reason, hint: info.hint });
       }
+      noteDriveResult(true, 200, '');
       const data = await r.json();
       if (data.files && Array.isArray(data.files)) {
         rawFiles.push(...data.files);
@@ -415,7 +464,10 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     openaiConfigured: !!openai,
-    supabaseConfigured: !!supabase
+    supabaseConfigured: !!supabase,
+    geminiConfigured: !!process.env.GEMINI_API_KEY,
+    authConfigured: !!APP_PASSWORD,
+    drive: driveStatus
   });
 });
 
@@ -2883,6 +2935,7 @@ app.get('*', (req, res) => {
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`Cuscuz-MED running at http://${HOST}:${PORT}`);
+  checkDriveKey();
 });
 
 process.on('SIGTERM', () => {
