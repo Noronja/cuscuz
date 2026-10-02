@@ -13,6 +13,7 @@
 <script>
 /* Auth da API: anexa o token em /api/* e volta ao login se o servidor responder 401 */
 (function(){
+  window.cuscuzMediaUrl = function (u) { try { var t = localStorage.getItem('cuscuz_token'); return t ? u + (u.indexOf('?') >= 0 ? '&' : '?') + 't=' + encodeURIComponent(t) : u; } catch (e) { return u; } };
   var _f = window.fetch.bind(window);
   window.fetch = function(u, o){
     var s = typeof u === 'string' ? u : (u && u.url) || '';
@@ -3327,9 +3328,16 @@ async function fetchDriveFolderItems(folderId, forceRefresh = false) {
         driveFolderMemoryCache.set(folderId, grouped);
         return grouped;
       }
+    } else {
+      // Mostra o motivo real (chave do Drive, sessão etc.) em vez de uma lista vazia sem explicação
+      let d = {};
+      try { d = await res.json(); } catch (_) {}
+      if (res.status === 401) throw new Error('Sessão expirada: entre de novo com a senha.');
+      throw new Error(d.hint || d.msg || d.error || ('Servidor respondeu ' + res.status));
     }
   } catch (e) {
-    console.warn('Backend proxy fetch failed, falling back to direct Drive API', e);
+    if (e && e.message && !/Failed to fetch|NetworkError/i.test(e.message)) throw e;
+    throw new Error('Não consegui falar com o servidor. Ele pode estar acordando (leva até 1 min) — tente de novo.');
   }
 
   // 2. Sem fallback direto: a chave do Drive fica só no servidor (GOOGLE_DRIVE_API_KEY)
@@ -3639,7 +3647,7 @@ function openDriveItemById(fileId) {
   if (isVideo) {
     fr.style.display = 'none';
     vd.style.display = '';
-    vd.src = '/api/drive/stream/' + encodeURIComponent(item.id);
+    vd.src = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(item.id));
     vd.oncanplay = () => showPLoading(false);
     vd.onerror = () => {
       console.warn('Native video error in modal, fallback to iframe');
@@ -8552,7 +8560,7 @@ function ac2Ativar(id) {
       nv.style.display = 'block';
       nv.classList.add('ativo');
       ac2InitNativeVideoListeners();
-      const streamUrl = '/api/drive/stream/' + encodeURIComponent(id);
+      const streamUrl = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(id));
       if (nv.getAttribute('data-vid') !== id) {
         nv.setAttribute('data-vid', id);
         if (!window.ac2MSE) window.ac2MSE = new AC2MSEPlayer(nv);
@@ -8745,7 +8753,7 @@ window.ac2Recarregar = function () {
     const nv = $('ac2-native-video');
     if (nv && AC2.atualId) {
       const cur = nv.currentTime;
-      nv.src = '/api/drive/stream/' + encodeURIComponent(AC2.atualId);
+      nv.src = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(AC2.atualId));
       nv.load();
       if (cur > 0) nv.currentTime = cur;
       nv.play().catch(() => {});

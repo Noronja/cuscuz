@@ -9,6 +9,7 @@
 <script>
 /* Auth da API: anexa o token em /api/* e volta ao login se o servidor responder 401 */
 (function(){
+  window.cuscuzMediaUrl = function (u) { try { var t = localStorage.getItem('cuscuz_token'); return t ? u + (u.indexOf('?') >= 0 ? '&' : '?') + 't=' + encodeURIComponent(t) : u; } catch (e) { return u; } };
   var _f = window.fetch.bind(window);
   window.fetch = function(u, o){
     var s = typeof u === 'string' ? u : (u && u.url) || '';
@@ -969,7 +970,7 @@ function inicializarVideoPlayer(v) {
   $('engine-tag').classList.add('hls-mode');
 
   // URL do stream com Range support
-  const streamUrl = `/api/drive/stream/${v.id}`;
+  const streamUrl = cuscuzMediaUrl(`/api/drive/stream/${v.id}`);
 
   // Se o navegador suporta Hls.js e se a fonte for HLS, inicializa com suporte a adaptive bitrate
   if (Hls.isSupported() && streamUrl.endsWith('.m3u8')) {
