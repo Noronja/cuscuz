@@ -94,13 +94,13 @@
     r.innerHTML = `<div class="plv2"><div class="plv2-bar"><div><h2>Planejador inteligente</h2><div class="plv2-sub">Converse comigo: o cronograma nasce das suas respostas e usa suas aulas e PDFs reais.</div></div>
       <div class="plv2-btns">${plano ? '<button class="b" onclick="plv2.voltar()"><i class="ph ph-calendar"></i> Ver cronograma</button>' : ''}<button class="b" onclick="plv2.reiniciar()"><i class="ph ph-arrow-counter-clockwise"></i> Recomeçar</button></div></div>
       <div class="plv2-chat"><div class="plv2-msgs" id="plv2-msgs">${st.msgs.map(m => `<div class="plv2-m ${m.role === 'user' ? 'me' : 'bot'}">${E(m.content)}</div>`).join('')}</div>
-      ${st.pronto && st.resumo.length ? `<div class="plv2-sum"><b>O que entendi de você:</b><ul style="margin:6px 0 0 16px;padding:0">${st.resumo.map(x => `<li>${E(x)}</li>`).join('')}</ul></div>` : ''}
+      ${st.resumo.length > 1 ? `<div class="plv2-sum"><b>O que entendi de você:</b><ul style="margin:6px 0 0 16px;padding:0">${st.resumo.map(x => `<li>${E(x)}</li>`).join('')}</ul></div>` : ''}
       <div class="plv2-q" id="plv2-q">${(st.pronto ? ['Quero ajustar algo'] : []).concat(st.quick.filter(q => !st.pronto || !/gerar/i.test(q))).map(q => `<button onclick="plv2.enviar(${E(JSON.stringify(JSON.stringify(q)))})">${E(q)}</button>`).join('')}${st.pronto ? '<button class="b pri" style="border-radius:99px;background:var(--teal);color:var(--text-inverse);font-weight:700" onclick="plv2.gerar()"><i class="ph ph-magic-wand"></i> Gerar meu cronograma</button>' : ''}</div>
-      <div class="plv2-in"><textarea id="plv2-txt" rows="1" placeholder="Escreva sua resposta…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();plv2.enviar()}"></textarea><button class="b pri" id="plv2-send" onclick="plv2.enviar()"><i class="ph ph-paper-plane-tilt"></i></button></div></div></div>`;
+      <div class="plv2-in"><input type="file" id="plv2-file" accept=".pdf,.txt,.md,application/pdf,text/plain" style="display:none" onchange="plv2.anexar(this)"><button class="b" title="Anexar manual do aluno / ementa (PDF)" onclick="document.getElementById('plv2-file').click()"><i class="ph ph-paperclip"></i> 📎</button><textarea id="plv2-txt" rows="1" placeholder="Escreva sua resposta…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();plv2.enviar()}"></textarea><button class="b pri" id="plv2-send" onclick="plv2.enviar()"><i class="ph ph-paper-plane-tilt"></i></button></div></div></div>`;
     const box = document.getElementById('plv2-msgs'); if (box) box.scrollTop = box.scrollHeight;
   }
 
-  async function turno(texto) {
+  async function turno(texto, extra) {
     if (busy) return; busy = true;
     const st = chatState();
     if (texto) st.msgs.push({ role: 'user', content: texto });
@@ -108,7 +108,7 @@
     const box = document.getElementById('plv2-msgs');
     if (box) { const d = document.createElement('div'); d.className = 'plv2-m bot'; d.id = 'plv2-typing'; d.textContent = 'Pensando…'; box.appendChild(d); box.scrollTop = box.scrollHeight; }
     try {
-      const j = await api('/api/planner/chat', { messages: st.msgs, perfil: st.perfil, asking: st.asking, jaExtras: st.jaExtras, hoje: hoje() });
+      const j = await api('/api/planner/chat', Object.assign({ messages: st.msgs, perfil: st.perfil, asking: st.asking, jaExtras: st.jaExtras, hoje: hoje() }, extra || {}));
       st.perfil = j.perfil; st.asking = j.asking || ''; st.jaExtras = !!j.jaExtras; st.quick = j.quickReplies || []; st.pronto = !!j.pronto; st.resumo = j.resumo || [];
       st.msgs.push({ role: 'model', content: j.reply });
     } catch (e) {
@@ -214,6 +214,21 @@
       st.perfil = (p && p.perfil) || st.perfil; st.pronto = false; st.asking = ''; st.jaExtras = true;
       st.msgs.push({ role: 'model', content: 'Claro! O que mudou ou o que você quer ajustar? (horário, prova nova, matéria que está pesando, cansaço…) Vou adaptar o cronograma daqui para frente e manter o que você já fez.' });
       st.quick = ['Mudou meu tempo disponível', 'Tenho uma prova nova', 'Quero mais questões', 'Quero focar numa matéria']; set(K_CHAT, st); renderChat();
+    },
+    async anexar(inp) {
+      const f = inp.files && inp.files[0]; inp.value = ''; if (!f || busy) return;
+      if (f.size > 18 * 1024 * 1024) { if (window.toast) toast('Arquivo muito grande (máx. 18 MB). Envie só as páginas de ementa/avaliações.', 'error'); return; }
+      const st = chatState(); st.msgs.push({ role: 'user', content: '📎 ' + f.name + ' (manual do aluno)' }); st.quick = []; set(K_CHAT, st); renderChat();
+      busy = true;
+      const box = document.getElementById('plv2-msgs'); if (box) { const d = document.createElement('div'); d.className = 'plv2-m bot'; d.textContent = 'Lendo o manual… (pode levar até 1 minuto)'; box.appendChild(d); box.scrollTop = box.scrollHeight; }
+      try {
+        const b64 = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = no; r.readAsDataURL(f); });
+        const j = await api('/api/planner/manual', { nome: f.name, mime: f.type, base64: b64, perfil: st.perfil, hoje: hoje() });
+        st.perfil = j.perfil; st.resumo = j.resumo || []; set(K_CHAT, st); busy = false;
+        await turno(null, { anexo: true, nota: j.reply });
+      } catch (e) {
+        busy = false; const s2 = chatState(); s2.msgs.push({ role: 'model', content: 'Não consegui ler o arquivo (' + e.message + '). Você pode digitar o conteúdo de cada prova aqui no chat.' }); set(K_CHAT, s2); renderChat();
+      }
     },
     voltar() { renderPlano(); },
     reiniciar() { if (!confirm('Recomeçar a conversa? (seu cronograma atual é mantido até você gerar outro)')) return; localStorage.removeItem(K_CHAT); init(true); },

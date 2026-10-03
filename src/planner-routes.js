@@ -1,5 +1,9 @@
 import { Type } from '@google/genai';
 import * as PE from './planner-engine.js';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { execFile } from 'child_process';
 
 const hojeBR = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Fortaleza' }).format(new Date());
 const okHoje = h => (/^\d{4}-\d{2}-\d{2}$/.test(h || '') ? h : hojeBR());
@@ -15,6 +19,7 @@ const PERFIL_SCHEMA = {
     dificuldades: { type: Type.ARRAY, items: { type: Type.STRING } }, fortes: { type: Type.ARRAY, items: { type: Type.STRING } }, semDificuldades: { type: Type.BOOLEAN },
     metodo: { type: Type.STRING, description: 'aulas | resumos | questoes | equilibrado' },
     cursos: { type: Type.ARRAY, items: { type: Type.STRING } },
+    semConteudo: { type: Type.BOOLEAN },
     anseios: { type: Type.STRING, description: 'restrições, rotina, preferências ou desejos livres ditos agora' }
   }
 };
@@ -42,9 +47,11 @@ Regras:
 - Faça UMA pergunta por vez. Reconheça brevemente o que o aluno disse e adapte a próxima pergunta às respostas e anseios dele (cansaço, plantão, estágio, medo de uma matéria, etc.).
 - Extraia tudo que ele disse para o campo "perfil" (apenas o que mudou). Datas em YYYY-MM-DD (ano atual ${hoje.slice(0, 4)} salvo indicação). horas = 7 inteiros em minutos [domingo, segunda, ..., sábado]. Se disser "não sei a data" use semData=true; "sem provas" semProvas=true; "sem dificuldade" semDificuldades=true.
 - Matérias válidas do acervo: ${PE.DISCS.filter(d => d.peso > 0).map(d => d.nome).join(', ')}. Cursos: MEDCURSO, Estratégia, APOSTILAS.
-- Campos essenciais ainda faltando: ${falta.length ? falta.join(', ') : 'nenhum'} (prova=prova de residência e data; faculdade=provas da graduação com datas; horas; dificuldades; metodo=aulas/resumos/questoes/equilibrado).
+- Quando o aluno informar provas da faculdade, o conteúdo de cada prova (assuntos) é ESSENCIAL: registre em provasFaculdade[].assuntos exatamente como ele escreveu, na ordem. Se faltar, peça e diga que ele pode anexar o PDF do manual do aluno com o botão de clipe. Se disser que não tem, semConteudo=true.
+- Campos essenciais ainda faltando: ${falta.length ? falta.join(', ') : 'nenhum'} (prova=prova de residência e data; faculdade=provas da graduação com datas; conteudo=assuntos de cada prova da faculdade; horas; dificuldades; metodo=aulas/resumos/questoes/equilibrado).
 - Se faltar algo essencial, pergunte o primeiro que falta (a menos que o aluno tenha levantado algo urgente). Se nada falta, faça um resumo de 2 linhas do que entendeu e pergunte se quer ajustar algo antes de gerar; quickReplies = ["Gerar meu cronograma", "Quero ajustar algo"].
 - Nunca invente aulas, links ou datas. Não prometa resultados. quickReplies: no máximo 4 respostas curtas e úteis para a sua pergunta.
+${req.body.nota ? 'Acabou de acontecer: ' + String(req.body.nota).slice(0, 600) + ' (comente isso brevemente e siga para o que falta).' : ''}
 Perfil atual (JSON): ${JSON.stringify(perfil)}`;
           const r = await generateWithGemini({
             contents: msgs.map(m => ({ role: m.role, parts: [{ text: m.content }] })),
@@ -63,8 +70,9 @@ Perfil atual (JSON): ${JSON.stringify(perfil)}`;
         } catch (e) { console.warn('[Planner chat] IA indisponível, usando roteiro:', e.message); }
       }
       if (!usouIA) {
-        if (ultima && asking) {
-          const patch = PE.interpretarResposta(asking, ultima.content, hoje);
+        const nota = String(req.body.nota || '').slice(0, 600);
+        if (ultima && asking && !req.body.anexo) {
+          const patch = PE.interpretarResposta(asking, ultima.content, hoje, perfil.provasFaculdade);
           if (asking === 'extras') extrasPerguntado = true;
           perfil = PE.sanePerfil(perfil, patch);
           if (!Object.keys(patch).length && asking !== 'extras') {
@@ -73,13 +81,65 @@ Perfil atual (JSON): ${JSON.stringify(perfil)}`;
           }
         }
         const q = PE.proximaPergunta(perfil, extrasPerguntado);
-        if (q) { reply = q.reply; quick = q.quick; extrasPerguntado = extrasPerguntado || q.campo === 'extras'; return res.json({ success: true, ia: false, perfil, asking: q.campo, jaExtras: extrasPerguntado, reply: (ultima ? 'Anotado. ' : '') + reply, quickReplies: quick, pronto: false, resumo: PE.resumoPerfil(perfil) }); }
+        if (q) { reply = q.reply; quick = q.quick; extrasPerguntado = extrasPerguntado || q.campo === 'extras'; return res.json({ success: true, ia: false, perfil, asking: q.campo, jaExtras: extrasPerguntado, reply: (nota ? nota + ' ' : ultima ? 'Anotado. ' : '') + reply, quickReplies: quick, pronto: false, resumo: PE.resumoPerfil(perfil) }); }
         reply = 'Perfeito, já tenho o que preciso. Confira o resumo abaixo e, se estiver certo, gere o cronograma.';
         quick = ['Gerar meu cronograma', 'Quero ajustar algo'];
       }
       const pronto = PE.faltando(perfil).length === 0 && (usouIA ? /gerar|ajust|resum|confer|certo/.test(reply.toLowerCase()) || msgs.length >= 8 : true);
       res.json({ success: true, ia: usouIA, perfil, asking: '', jaExtras: true, reply, quickReplies: quick, pronto: PE.faltando(perfil).length === 0 && pronto, resumo: PE.resumoPerfil(perfil) });
     } catch (err) {
+      res.status(500).json({ success: false, msg: err.message });
+    }
+  });
+
+  // POST /api/planner/manual — lê o manual do aluno/ementa (PDF ou texto) e extrai provas, conteúdo e aulas com data
+  app.post('/api/planner/manual', async (req, res) => {
+    const hoje = okHoje(req.body && req.body.hoje);
+    try {
+      const { nome = 'manual', mime = '', base64 = '', texto = '' } = req.body || {};
+      let perfil = PE.sanePerfil(req.body.perfil || null, {});
+      const ehPdf = /pdf/i.test(mime) || /\.pdf$/i.test(nome);
+      let bytes = null, txt = String(texto || '');
+      if (base64) { bytes = Buffer.from(base64, 'base64'); if (bytes.length > 18 * 1024 * 1024) return res.status(413).json({ success: false, msg: 'PDF muito grande (máx. 18 MB). Envie só as páginas de ementa/avaliações.' }); }
+      if (bytes && !ehPdf) txt = bytes.toString('utf8');
+      const prompt = `Este é o manual do aluno / plano de ensino de um curso de Medicina. Extraia SOMENTE o que está escrito no documento, sem inventar. Hoje é ${hoje}; datas sem ano são do ano letivo corrente (${hoje.slice(0, 4)}), formato YYYY-MM-DD.
+Para cada disciplina/módulo informe: provas/avaliações (data, tipo como P1/P2/TBL/prática/recuperação, e a lista de ASSUNTOS/conteúdo programático cobrados naquela avaliação, na ordem em que aparecem, com nomes quase literais do documento) e, se o documento tiver cronograma por data, as aulas/TBLs/atividades (data + tema). Ignore regras administrativas.${req.body.conteudoProva ? '\nInformação extra do aluno (prioridade): ' + String(req.body.conteudoProva).slice(0, 3000) : ''}`;
+      let ext = null, usouIA = false;
+      if (getGeminiClient() && (bytes || txt)) {
+        try {
+          const partes = (bytes && ehPdf) ? [{ inlineData: { mimeType: 'application/pdf', data: base64 } }, { text: prompt }] : [{ text: prompt + '\n\nDOCUMENTO:\n' + txt.slice(0, 180000) }];
+          const r = await generateWithGemini({ contents: [{ role: 'user', parts: partes }], config: { temperature: 0.1, responseMimeType: 'application/json', responseSchema: { type: Type.OBJECT, properties: { disciplinas: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { nome: { type: Type.STRING }, provas: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { data: { type: Type.STRING }, tipo: { type: Type.STRING }, assuntos: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ['data'] } }, aulas: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { data: { type: Type.STRING }, tema: { type: Type.STRING } }, required: ['data', 'tema'] } } }, required: ['nome'] } } }, required: ['disciplinas'] } } });
+          ext = JSON.parse(r.text.trim()); usouIA = true;
+        } catch (e) { console.warn('[Planner manual] IA falhou:', e.message); }
+      }
+      if (!ext) {
+        if (bytes && ehPdf && !txt) {
+          const tmp = path.join(os.tmpdir(), 'man-' + Date.now() + '.pdf');
+          fs.writeFileSync(tmp, bytes);
+          txt = await new Promise(ok => execFile('pdftotext', ['-layout', tmp, '-'], { maxBuffer: 30 * 1024 * 1024 }, (err, out) => { try { fs.unlinkSync(tmp); } catch (_) {} ok(err ? '' : out); }));
+        }
+        const achadas = [];
+        for (const l of txt.split(/\n/)) if (/prova|avalia|p1|p2|p3|tbl/i.test(l)) achadas.push(...PE.parseFaculdade(l, hoje));
+        ext = { disciplinas: achadas.map(pr => ({ nome: pr.disciplina, provas: [{ data: pr.data, assuntos: pr.assuntos }] })) };
+      }
+      const provas = (perfil.provasFaculdade || []).map(x => ({ ...x }));
+      const aulas = [];
+      for (const d of ext.disciplinas || []) {
+        for (const pr of d.provas || []) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(pr.data || '')) continue;
+          const ass = (pr.assuntos || []).map(a => String(a).trim()).filter(Boolean);
+          const ex = provas.find(x => PE.norm(x.disciplina) === PE.norm(d.nome) && x.data === pr.data);
+          if (ex) ex.assuntos = [...new Set([...ass, ...(ex.assuntos || [])])];
+          else provas.push({ disciplina: d.nome, data: pr.data, tipo: pr.tipo || '', assuntos: ass });
+        }
+        for (const a of d.aulas || []) if (/^\d{4}-\d{2}-\d{2}$/.test(a.data || '')) aulas.push({ disciplina: d.nome, data: a.data, tema: a.tema });
+      }
+      perfil = PE.sanePerfil(perfil, { provasFaculdade: provas, aulasFaculdade: aulas.length ? aulas : undefined, manualNome: nome, semProvas: false });
+      const nAss = provas.reduce((a, x) => a + (x.assuntos || []).length, 0);
+      const reply = (usouIA ? `Li o "${nome}". Encontrei ${provas.length} avaliação(ões), ${nAss} assuntos de prova e ${aulas.length} aula(s)/TBL(s) com data.` : `Recebi o "${nome}". Sem a chave do Gemini no servidor a leitura é simples: achei ${provas.length} prova(s) com data e ${nAss} assunto(s).${provas.some(x => !(x.assuntos || []).length) ? ' Diga aqui no chat o conteúdo das provas que ficaram sem assuntos.' : ''}`) + (provas.length ? ' Confira o resumo abaixo — se algo estiver errado, me diga que eu corrijo.' : ' Não achei provas com data; me diga as datas e o conteúdo aqui no chat.');
+      res.json({ success: true, ia: usouIA, perfil, reply, resumo: PE.resumoPerfil(perfil), faltando: PE.faltando(perfil) });
+    } catch (err) {
+      console.error('[Planner manual]', err);
       res.status(500).json({ success: false, msg: err.message });
     }
   });

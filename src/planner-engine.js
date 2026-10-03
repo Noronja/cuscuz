@@ -68,7 +68,7 @@ function limparTema(str) {
     .trim();
 }
 const GENERICA = /^(videos?( apostila)?|extensivo|aulas?|pdf|material|resumos?|\d+)$/i;
-const STOP = new Set(['de', 'da', 'do', 'das', 'dos', 'na', 'no', 'em', 'e', 'a', 'o', 'as', 'os', 'para', 'por', 'com', 'um', 'uma', 'ao', 'aula', 'parte', 'resumo', 'tema']);
+const STOP = new Set(['de', 'da', 'do', 'das', 'dos', 'na', 'no', 'em', 'e', 'a', 'o', 'as', 'os', 'para', 'por', 'com', 'um', 'uma', 'ao', 'aula', 'parte', 'resumo', 'tema', 'anti']);
 export const tokens = s => norm(s).split(/[^a-z0-9]+/).filter(w => w.length > 3 && !STOP.has(w));
 
 const ehBonus = p => /b[oô]nus/i.test(p) ? 1 : 0;
@@ -101,9 +101,13 @@ export function getCatalogo() {
     if (!mapa.has(key)) mapa.set(key, { tema, videos: [] });
     mapa.get(key).videos.push({ id: v.id, titulo: limparTema(v.t) || tema, path: v.path, course: v.course });
   }
-  for (const porCurso of temasPorDisc.values())
+  const videoIdx = [];
+  for (const [discNome, porCurso] of temasPorDisc)
     for (const mapa of porCurso.values())
-      for (const t of mapa.values()) t.videos.sort(natCmp);
+      for (const t of mapa.values()) {
+        t.videos.sort(natCmp);
+        for (const v of t.videos) videoIdx.push({ v, disc: discNome, tema: t.tema, toks: new Set(tokens(t.tema + ' ' + tituloAula(v))) });
+      }
 
   for (const mt of m.materials || []) {
     const segs = String(mt.path || '').split(' / ');
@@ -113,7 +117,7 @@ export function getCatalogo() {
     let disc = detectDisc(pastas + ' / ' + titulo);
     materiais.push({ id: mt.id, titulo, curso: mt.course, path: mt.path, disc: disc ? disc.nome : null, toks: new Set(tokens(titulo)), tipo: ehQuestoes ? 'questoes' : 'resumo' });
   }
-  CAT = { temasPorDisc, materiais, cursos: (m.courses || []).map(c => c.name), totalVideos: (m.videos || []).length };
+  CAT = { temasPorDisc, videoIdx, materiais, cursos: (m.courses || []).map(c => c.name), totalVideos: (m.videos || []).length };
   return CAT;
 }
 
@@ -137,18 +141,40 @@ function acharMaterial(discNome, tema, tipo, cursosPref) {
   let melhor = [];
   for (const mt of cat.materiais) {
     if (mt.tipo !== tipo) continue;
-    if (mt.disc && mt.disc !== discNome && !(discNome.includes('Obstetrícia') || discNome.includes('Ginecologia'))) continue;
-    if (!mt.disc && tipo === 'resumo') continue;
-    if (mt.disc && (discNome === 'Obstetrícia' || discNome === 'Ginecologia') && !['Obstetrícia', 'Ginecologia', 'Ginecologia e Obstetrícia'].includes(mt.disc)) continue;
+    if (discNome && mt.disc && mt.disc !== discNome && !(discNome.includes('Obstetrícia') || discNome.includes('Ginecologia'))) continue;
+    if (discNome && !mt.disc && tipo === 'resumo') continue;
+    if (discNome && mt.disc && (discNome === 'Obstetrícia' || discNome === 'Ginecologia') && !['Obstetrícia', 'Ginecologia', 'Ginecologia e Obstetrícia'].includes(mt.disc)) continue;
     let hit = 0;
     for (const t of tk) if (mt.toks.has(t)) hit++;
     const score = tk.length ? hit / tk.length : 0;
     const bonus = cursosPref && cursosPref.includes(mt.curso) ? 0.05 : 0;
-    if (tipo === 'resumo' && score >= 0.5 && hit >= 1) melhor.push({ mt, s: score + bonus });
-    if (tipo === 'questoes' && hit >= 1) melhor.push({ mt, s: score + bonus });
+    const minimo = discNome ? 0.67 : 0.8;
+    const ok = hit >= 1 && (score >= minimo || (hit >= 2 && score >= 0.5)) && hit / Math.max(1, mt.toks.size) >= 0.4;
+    if (ok) melhor.push({ mt, s: score + bonus });
   }
   melhor.sort((a, b) => b.s - a.s);
   return melhor.slice(0, tipo === 'questoes' ? 1 : 2).map(x => x.mt);
+}
+
+// Procura no acervo as aulas que cobrem um assunto declarado pelo aluno/manual (sem inventar: exige correspondência)
+function acharAulas(discNome, assunto, cursosPref, usados) {
+  const cat = getCatalogo();
+  const tk = tokens(assunto);
+  if (!tk.length) return null;
+  const cand = [];
+  for (const it of cat.videoIdx) {
+    if (discNome && DISC_BY_NAME.has(discNome) && it.disc !== discNome) continue;
+    if (usados && usados.has(it.v.id)) continue;
+    let hit = 0; for (const t of tk) if (it.toks.has(t)) hit++;
+    const sc = hit / tk.length;
+    const minimo = discNome && DISC_BY_NAME.has(discNome) ? 0.67 : 0.8;
+    if (hit >= 1 && (sc >= minimo || (hit >= 2 && sc >= 0.5)) && hit / Math.max(1, it.toks.size) >= 0.3) cand.push({ it, s: sc + (cursosPref && cursosPref.includes(it.v.course) ? 0.05 : 0) });
+  }
+  if (!cand.length) return null;
+  cand.sort((a, b) => b.s - a.s);
+  const top = cand[0].it;
+  const mesmos = cand.filter(c => c.it.tema === top.tema && c.s >= cand[0].s - 0.2).slice(0, 3).map(c => c.it.v);
+  return { tema: assunto, videos: mesmos };
 }
 
 export function resumoCatalogo() {
@@ -164,7 +190,7 @@ export function resumoCatalogo() {
 /* ───────────────────────── Perfil do aluno ───────────────────────── */
 export const PERFIL_VAZIO = () => ({
   objetivo: '', alvo: '', dataProva: '', semData: false,
-  provasFaculdade: [], semProvas: false,
+  provasFaculdade: [], semProvas: false, aulasFaculdade: [], manualNome: '', semConteudo: false,
   horas: null, dificuldades: [], fortes: [], semDificuldades: false,
   metodo: '', cursos: [], anseios: ''
 });
@@ -181,10 +207,17 @@ export function sanePerfil(atual, patch) {
     const novas = x.provasFaculdade.map(o => ({
       disciplina: str(o && o.disciplina, 60),
       data: /^\d{4}-\d{2}-\d{2}$/.test(o && o.data) ? o.data : '',
-      assuntos: Array.isArray(o && o.assuntos) ? o.assuntos.map(a => str(a, 80)).filter(Boolean).slice(0, 30) : []
-    })).filter(o => o.disciplina && o.data).slice(0, 20);
+      tipo: str(o && o.tipo, 40),
+      assuntos: Array.isArray(o && o.assuntos) ? o.assuntos.map(a => str(a, 120)).filter(Boolean).slice(0, 60) : []
+    })).filter(o => o.disciplina && o.data).slice(0, 40);
     if (novas.length) { p.provasFaculdade = novas; p.semProvas = false; }
   }
+  if (Array.isArray(x.aulasFaculdade)) {
+    const au = x.aulasFaculdade.map(o => ({ disciplina: str(o && o.disciplina, 60), data: /^\d{4}-\d{2}-\d{2}$/.test(o && o.data) ? o.data : '', tema: str(o && o.tema, 140) })).filter(o => o.disciplina && o.data && o.tema).slice(0, 500);
+    if (au.length) p.aulasFaculdade = au;
+  }
+  if (typeof x.semConteudo === 'boolean') p.semConteudo = x.semConteudo;
+  if (typeof x.manualNome === 'string' && x.manualNome.trim()) p.manualNome = str(x.manualNome, 120);
   if (typeof x.semProvas === 'boolean') { p.semProvas = x.semProvas; if (x.semProvas) p.provasFaculdade = []; }
   if (Array.isArray(x.horas) && x.horas.length === 7) {
     const h = x.horas.map(v => clamp(Math.round(+v || 0), 0, 960));
@@ -209,6 +242,7 @@ export function faltando(p) {
   if (!p.objetivo) return ['objetivo'];
   if (p.objetivo !== 'graduacao' && !p.dataProva && !p.semData) f.push('prova');
   if (p.objetivo !== 'residencia' && !(p.provasFaculdade || []).length && !p.semProvas) f.push('faculdade');
+  if (p.objetivo !== 'residencia' && (p.provasFaculdade || []).some(x => !(x.assuntos || []).length) && !p.semConteudo) f.push('conteudo');
   if (!p.horas) f.push('horas');
   if (!(p.dificuldades || []).length && !p.semDificuldades) f.push('dificuldades');
   if (!p.metodo) f.push('metodo');
@@ -288,12 +322,16 @@ export function acharDiscs(txt) {
 
 export function parseFaculdade(txt, hoje) {
   const provas = [];
-  const partes = String(txt).split(/[;\n]|,(?=\s*[A-Za-zÀ-ú])/);
+  const partes = String(txt).split(/[;\n]|,(?=[^,;\n]*\d{1,2}\/\d{1,2})/);
   for (const parte of partes) {
+    const m = parte.match(/\d{1,2}[\/\-.]\d{1,2}([\/\-.]\d{2,4})?/);
     const data = parseData(parte, hoje);
     if (!data) continue;
-    const nome = parte.replace(/\d{1,2}[\/\-.]\d{1,2}([\/\-.]\d{2,4})?/g, '').replace(/\b(dia|prova|de|em|no|na|do|da|:|-|–|\()\b/gi, ' ').replace(/[():\-–]/g, ' ').replace(/\s+/g, ' ').trim();
-    provas.push({ disciplina: nome ? nome.charAt(0).toUpperCase() + nome.slice(1) : 'Prova da faculdade', data, assuntos: [] });
+    const antes = m ? parte.slice(0, m.index) : parte;
+    const depois = m ? parte.slice(m.index + m[0].length) : '';
+    const nome = antes.replace(/\b(prova|avalia[cç][aã]o)\b.*$/i, ' ').replace(/\b(dia|prova|de|em|no|na|do|da)\s*$/gi, ' ').replace(/[():\-–]/g, ' ').replace(/\s+/g, ' ').trim();
+    const assuntos = depois.replace(/^[\s:\-–)(]+/, '').replace(/^(conteudo|conteúdo|assuntos?|materia|matéria)\s*[:\-]?\s*/i, '').split(/[,;]|\s+e\s+/).map(a => a.trim()).filter(a => a.length > 2);
+    provas.push({ disciplina: nome ? nome.charAt(0).toUpperCase() + nome.slice(1) : 'Prova da faculdade', data, assuntos });
   }
   return provas;
 }
@@ -301,7 +339,7 @@ export function parseFaculdade(txt, hoje) {
 const NEGA = /^(nao|não|nenhum[a]?|nada|sem|n\/a|ainda nao|nao sei|nao tenho|pular|pula)\b/;
 
 // Interpreta a resposta do aluno para o campo que foi perguntado e devolve o patch do perfil
-export function interpretarResposta(campo, texto, hoje) {
+export function interpretarResposta(campo, texto, hoje, provasAtuais) {
   const n = norm(texto).trim();
   const patch = {};
   if (campo === 'objetivo') {
@@ -323,6 +361,28 @@ export function interpretarResposta(campo, texto, hoje) {
   } else if (campo === 'faculdade') {
     if (NEGA.test(n)) patch.semProvas = true;
     else { const f = parseFaculdade(texto, hoje); if (f.length) patch.provasFaculdade = f; }
+  } else if (campo === 'conteudo') {
+    if (NEGA.test(n)) patch.semConteudo = true;
+    else {
+      const provas = (provasAtuais || []).map(x => ({ ...x }));
+      const linhas = String(texto).split(/\n/).map(l => l.trim()).filter(Boolean);
+      const lista = a => a.split(/[,;]|\s+e\s+/).map(x => x.trim()).filter(x => x.length > 2);
+      let mudou = false;
+      for (const l of linhas) {
+        const segs = l.split(/;\s*(?=[^;:]{3,60}:)/);
+        for (const sg of segs) {
+          const m = sg.match(/^([^:\-–]{3,60})\s*[:\-–]\s*(.+)$/);
+          if (m) {
+            const alvo = provas.find(pr => norm(pr.disciplina).includes(norm(m[1]).trim()) || norm(m[1]).includes(norm(pr.disciplina)));
+            if (alvo) { alvo.assuntos = [...new Set([...(alvo.assuntos || []), ...lista(m[2])])]; mudou = true; }
+          } else {
+            const vazias = provas.filter(pr => !(pr.assuntos || []).length);
+            if (vazias.length === 1) { vazias[0].assuntos = lista(sg); mudou = true; }
+          }
+        }
+      }
+      if (mudou) patch.provasFaculdade = provas;
+    }
   } else if (campo === 'horas') {
     const h = parseHoras(texto); if (h) patch.horas = h;
   } else if (campo === 'dificuldades') {
@@ -362,6 +422,7 @@ export function proximaPergunta(p, jaPerguntouExtras) {
   if (c === 'objetivo') return { campo: 'objetivo', reply: 'Oi! Vou montar seu cronograma conversando com você — sem receita pronta. Primeiro: qual é o seu foco agora?', quick: ['Só graduação (provas da faculdade)', 'Só residência', 'Os dois ao mesmo tempo'] };
   if (c === 'prova') return { campo: 'prova', reply: 'Qual prova de residência você vai fazer e quando é? (ex.: "ENARE, 15/11/2026" ou "USP em março de 2027"). Se ainda não tem data, diga "não sei" que eu trabalho com um ciclo contínuo.', quick: ['Ainda não sei a data'] };
   if (c === 'faculdade') return { campo: 'faculdade', reply: 'Quais provas da faculdade você tem pela frente? Mande disciplina e data, como: "Farmacologia 20/10, Patologia 05/11". Vou proteger a semana de cada uma.', quick: ['Não tenho provas agora'] };
+  if (c === 'conteudo') { const sem = (p.provasFaculdade || []).filter(x => !(x.assuntos || []).length).map(x => x.disciplina); return { campo: 'conteudo', reply: `Para o cronograma ficar alinhado ao manual, preciso do conteúdo de cada prova (${sem.join(', ')}). Digite assim: «Farmacologia: antibióticos, anti-inflamatórios; Patologia: inflamação, neoplasias» — ou envie o PDF do manual do aluno/ementa pelo botão de clipe 📎 ao lado.`, quick: ['Não tenho o conteúdo ainda'] }; }
   if (c === 'horas') return { campo: 'horas', reply: 'Quanto tempo real você consegue estudar? Pode detalhar por dia, por exemplo: "3h de segunda a sexta, 5h no sábado e domingo livre".', quick: ['2h por dia, todos os dias', '3h seg-sex e 4h sáb/dom', '4h seg-sex, domingo livre'] };
   if (c === 'dificuldades') return { campo: 'dificuldades', reply: 'Em quais matérias você tem mais dificuldade? Elas ganham mais peso. Se tiver pontos fortes, diga também ("forte em Cardiologia").', quick: ['Pediatria e Cirurgia', 'Ginecologia e Obstetrícia', 'Clínica Médica', 'Sem dificuldade específica'] };
   if (c === 'metodo') return { campo: 'metodo', reply: 'Como você aprende melhor? Isso define a proporção entre aula, resumo e questões em cada tarefa.', quick: ['Mais aulas', 'Mais resumos/leitura', 'Mais questões', 'Equilibrado'] };
@@ -373,7 +434,9 @@ export function resumoPerfil(p) {
   const l = [];
   l.push(`Foco: ${NOMES(p)}`);
   if (p.alvo || p.dataProva) l.push(`Residência: ${p.alvo || 'prova'}${p.dataProva ? ' em ' + p.dataProva.split('-').reverse().join('/') : ''}`);
-  if ((p.provasFaculdade || []).length) l.push('Provas da faculdade: ' + p.provasFaculdade.map(x => `${x.disciplina} (${x.data.split('-').reverse().slice(0, 2).join('/')})`).join(', '));
+  if ((p.provasFaculdade || []).length) l.push('Provas da faculdade: ' + p.provasFaculdade.map(x => `${x.disciplina} (${x.data.split('-').reverse().slice(0, 2).join('/')}${x.assuntos && x.assuntos.length ? ', ' + x.assuntos.length + ' assuntos' : ', sem conteúdo informado'})`).join(', '));
+  if (p.manualNome) l.push('Manual/ementa usado: ' + p.manualNome);
+  if ((p.aulasFaculdade || []).length) l.push(`${p.aulasFaculdade.length} aulas/TBLs da faculdade com data (prévia agendada no dia anterior)`);
   if (p.horas) l.push('Horas: ' + [1, 2, 3, 4, 5, 6, 0].map(i => `${DIAS_NOME[i].slice(0, 3)} ${(p.horas[i] / 60).toFixed(p.horas[i] % 60 ? 1 : 0)}h`).join(' · '));
   if ((p.dificuldades || []).length) l.push('Dificuldades: ' + p.dificuldades.join(', '));
   if ((p.fortes || []).length) l.push('Pontos fortes: ' + p.fortes.join(', '));
@@ -409,20 +472,25 @@ function montarPool(p, inicio, fim) {
     for (const d of DISCS) if (d.peso > 0) pool.set(d.nome, { nome: d.nome, peso: ajusta(d.nome, d.peso) * escala });
   }
   if (p.objetivo !== 'residencia') {
-    for (const pr of p.provasFaculdade || []) {
+    const porDisc = new Map();
+    for (const pr of (p.provasFaculdade || []).slice().sort((a, b) => a.data.localeCompare(b.data))) {
+      if (diffDias(inicio, pr.data) < 1) continue; // prova passada ou hoje: nada a estudar
       const d = detectDisc(pr.disciplina);
       const nome = d ? (d.go ? 'Obstetrícia' : d.nome) : pr.disciplina;
-      const dias = diffDias(inicio, pr.data);
-      const w = dias < 0 ? 0 : dias <= 7 ? 6 : dias <= 14 ? 4 : dias <= 30 ? 2.5 : 1.2;
-      if (!w) continue;
-      const atual = pool.get(nome);
-      pool.set(nome, { nome, peso: Math.max(atual ? atual.peso : 0, ajusta(nome, w * 2)), custom: !d, assuntos: pr.assuntos || [], prova: pr, exibir: pr.disciplina });
+      if (!porDisc.has(nome)) porDisc.set(nome, { nome, custom: !d, exibir: pr.disciplina, provas: [], fila: [] });
+      const e = porDisc.get(nome);
+      e.provas.push(pr);
+      const lista = pr.assuntos && pr.assuntos.length ? pr.assuntos : ['Conteúdo geral da prova'];
+      lista.forEach((assunto, i) => e.fila.push({ assunto, prova: pr, ordem: i, coberto: false, semConteudo: !(pr.assuntos && pr.assuntos.length) }));
     }
+    for (const e of porDisc.values()) { e.peso = 2; pool.set(e.nome, e); }
     for (const dn of p.dificuldades || []) {
       const d = detectDisc(dn);
       if (d && !pool.has(d.nome) && p.objetivo === 'graduacao') pool.set(d.nome, { nome: d.nome, peso: 2 });
     }
   }
+  pool.forEach(e => { e.base = e.peso; });
+  montarPool.ajusta = ajusta;
   return [...pool.values()];
 }
 
@@ -434,6 +502,7 @@ function passoTexto(ac, ctx) {
         ? `Assista ${vids.length > 1 ? `às ${vids.length} aulas` : 'à aula'} de "${tema}"${parte}. Pause nos quadros e tabelas e anote só o essencial: ${foco}. Não copie o que o professor fala — escreva o que você teria que lembrar na prova.`
         : `Estude "${tema}" no seu material principal da faculdade/cursinho, anotando ${foco}.`;
     case 'resumo':
+      if (ctx.manual) return `Leia no manual da faculdade a seção sobre "${tema}" (conteúdo da prova de ${ctx.manual}). ${ctx.temResumo ? 'Complemente com o resumo indicado ao lado. ' : ''}Monte 1 página só com o que o manual diz que será cobrado: definições, classificações, mecanismos e o que for citado como objetivo de aprendizagem.`;
       return ctx.temResumo
         ? `Leia o resumo indicado de "${tema}" e passe a limpo, em 1 página, o esquema de diagnóstico e conduta. Sublinhe o que a aula ainda não tinha te mostrado.`
         : `Sem resumo pronto para este tema: transforme suas anotações da aula em um mapa de 1 página (definição → diagnóstico → conduta → pegadinhas).`;
@@ -457,7 +526,7 @@ function tituloAula(v) {
 
 function buildEstudo(disc, tema, minutos, metodo, tc, usadosVideos, cursosPref, extra) {
   const info = DISC_BY_NAME.get(disc) || {};
-  const foco = info.foco || 'definição, critérios diagnósticos, conduta e pegadinhas de prova';
+  const foco = (extra && extra.foco) || info.foco || 'definição, critérios diagnósticos, conduta e pegadinhas de prova';
   const banco = info.banco || disc;
   const rt = RATIOS[metodo] || RATIOS.equilibrado;
   let vids = [];
@@ -475,16 +544,16 @@ function buildEstudo(disc, tema, minutos, metodo, tc, usadosVideos, cursosPref, 
   const aulaMin = vids.length ? vids.length * MIN_AULA : 0;
   const subs = vids.map(tituloAula).filter(Boolean);
   const subtema = subs.length ? (subs.length > 1 ? `${subs[0]} (+${subs.length - 1})` : subs[0]) : '';
-  const temaBusca = [tema, ...subs].join(' ');
+  const temaBusca = (extra && extra.assunto) ? extra.assunto : [tema, ...subs].join(' ');
   let flashMin = Math.max(5, r5(minutos * rt.flash));
-  const resMat = acharMaterial(disc, temaBusca, 'resumo', cursosPref);
+  const resMat = acharMaterial(DISC_BY_NAME.has(disc) ? disc : null, temaBusca, 'resumo', cursosPref);
   let resMin = r5(minutos * rt.resumo + (aulaMin ? 0 : minutos * rt.aula * 0.6));
   if (!resMat.length && rt.resumo < 0.3 && aulaMin) resMin = Math.min(resMin, 10);
   let qMin = minutos - aulaMin - resMin - flashMin;
   if (qMin < 10) { qMin = 10; resMin = Math.max(5, minutos - aulaMin - qMin - flashMin); }
   const nq = Math.max(5, Math.round(qMin / 3));
   const temaTxt = subs[0] && vids.length === 1 ? subs[0] : tema;
-  const ctx = { tema: temaTxt, disc, foco, vids, parte, temResumo: resMat.length > 0, nq };
+  const ctx = { tema: (extra && extra.assunto) || temaTxt, disc: (extra && extra.exibir) || disc, foco, vids, parte, temResumo: resMat.length > 0, nq, manual: extra && extra.manual };
   const passos = []; const recursos = [];
   if (vids.length) {
     passos.push({ acao: 'aula', minutos: aulaMin, texto: passoTexto('aula', ctx), recursos: vids.map(v => recursos.push({ tipo: 'video', id: v.id, titulo: tituloAula(v) || tema, curso: v.course }) - 1) });
@@ -496,20 +565,23 @@ function buildEstudo(disc, tema, minutos, metodo, tc, usadosVideos, cursosPref, 
     const idxs = resMat.map(m => recursos.push({ tipo: 'pdf', id: m.id, titulo: m.titulo, curso: m.curso }) - 1);
     passos.push({ acao: 'resumo', minutos: resMin, texto: passoTexto('resumo', ctx), recursos: idxs });
   }
-  const bq = acharMaterial(disc, temaBusca, 'questoes', cursosPref);
-  const qIdx = [recursos.push({ tipo: 'questoes', titulo: `Questões: ${tema}`, tema, disc: banco }) - 1];
+  const bq = acharMaterial(DISC_BY_NAME.has(disc) ? disc : null, temaBusca, 'questoes', cursosPref);
+  const temaQ = (extra && extra.assunto) || tema;
+  const qIdx = [recursos.push({ tipo: 'questoes', titulo: `Questões: ${temaQ}`, tema: temaQ, disc: banco }) - 1];
   if (bq.length) qIdx.push(recursos.push({ tipo: 'pdf', id: bq[0].id, titulo: bq[0].titulo, curso: bq[0].curso, rotulo: 'Banco em PDF' }) - 1);
   passos.push({ acao: 'questoes', minutos: qMin, texto: passoTexto('questoes', ctx), recursos: qIdx });
-  const fIdx = [recursos.push({ tipo: 'flashcards', titulo: `Flashcards: ${tema}`, tema, disc }) - 1];
+  const fIdx = [recursos.push({ tipo: 'flashcards', titulo: `Flashcards: ${temaQ}`, tema: temaQ, disc }) - 1];
   passos.push({ acao: 'flashcards', minutos: flashMin, texto: passoTexto('flashcards', ctx), recursos: fIdx });
   passos.forEach((s, i) => (s.n = i + 1));
   const total = passos.reduce((a, s) => a + s.minutos, 0);
   return {
-    tipo: 'estudo', titulo: `${extra && extra.exibir || disc} — ${subtema || tema}`, materia: disc, tema: subs[0] && vids.length === 1 ? subs[0] : tema, modulo: tema, minutos: total, passos, recursos,
+    tipo: 'estudo', titulo: `${extra && extra.exibir || disc} — ${(extra && extra.assunto) || subtema || tema}`, materia: disc, tema: (extra && extra.assunto) || (subs[0] && vids.length === 1 ? subs[0] : tema), modulo: tema, minutos: total, passos, recursos,
     estrategia: Object.fromEntries(passos.map(s => [s.acao, s.minutos])),
     _vids: vids.map(v => v.id)
   };
 }
+
+const chaveCob = (disc, assunto) => norm(disc) + '|' + norm(assunto);
 
 export function gerarTarefas({ perfil, hoje, inicio, dias, retidas = [] }) {
   const p = { ...PERFIL_VAZIO(), ...perfil };
@@ -528,8 +600,14 @@ export function gerarTarefas({ perfil, hoje, inicio, dias, retidas = [] }) {
   mantidas.forEach(t => (t._vids || (t.recursos || []).filter(r => r.tipo === 'video').map(r => r.id)).forEach(id => usados.add(id)));
 
   const pool = montarPool(p, ini, fim);
+  const ajusta = montarPool.ajusta;
   const credit = new Map(pool.map(x => [x.nome, 0]));
-  const somaPeso = pool.reduce((a, x) => a + x.peso, 0) || 1;
+  // cobertura do conteúdo da prova já cumprida em tarefas mantidas
+  const cobertas = new Set();
+  const chave = chaveCob;
+  retidas.forEach(t => { if (t && t.cobre && t.status === 'feito') cobertas.add(t.cobre); });
+  pool.forEach(e => (e.fila || []).forEach(it => { if (cobertas.has(chave(e.nome, it.assunto))) it.coberto = true; }));
+  const aulasPend = (p.aulasFaculdade || []).filter(a => a.data >= ini).map(a => ({ ...a, feita: false }));
   const temasCache = new Map();
   const getTemas = nome => { if (!temasCache.has(nome)) temasCache.set(nome, temasDaDisc(nome, p.cursos)); return temasCache.get(nome); };
   const temaAtual = nome => getTemas(nome).find(t => t.videos.some(v => !usados.has(v.id)));
@@ -599,6 +677,22 @@ export function gerarTarefas({ perfil, hoje, inicio, dias, retidas = [] }) {
         ], recursos: [{ tipo: 'simulado', titulo: 'Simulado do banco de questões', disc: '', tema: '' }], estrategia: { simulado: nq * 3 }, observacoes: 'Treino de resistência e de tempo de prova. Simule o ambiente real: sem celular, sem pausa.', status: 'pendente' });
         usado += mn; pendenteErros = true;
       }
+      // 2b) prévia das aulas/TBLs da faculdade (conforme o manual): no dia anterior
+      let previas = 0;
+      for (const a of aulasPend.filter(x => !x.feita && (x.data === addDias(d, 1) || x.data === d)).slice(0, 2)) {
+        if (avail - usado < 40) break;
+        a.feita = true;
+        const dd = detectDisc(a.disciplina);
+        const nomeD = dd ? (dd.go ? 'Obstetrícia' : dd.nome) : a.disciplina;
+        const tc = acharAulas(dd ? nomeD : null, a.tema, p.cursos, usados);
+        const mn = 35;
+        const recursos = []; const passos = [];
+        if (tc) { passos.push({ n: 1, acao: 'aula', minutos: 0, texto: `Se quiser reforço, há aula do acervo sobre este assunto: "${tituloAula(tc.videos[0]) || a.tema}".`, recursos: [recursos.push({ tipo: 'video', id: tc.videos[0].id, titulo: tituloAula(tc.videos[0]) || a.tema, curso: tc.videos[0].course }) - 1] }); passos[0].minutos = 5; }
+        passos.push({ n: passos.length + 1, acao: 'resumo', minutos: 20, texto: `Leia no manual a parte de "${a.tema}" antes da aula de ${brDate(a.data)}. Anote 3 perguntas que você espera que o professor responda e os termos que não conhece.`, recursos: [] });
+        passos.push({ n: passos.length + 1, acao: 'questoes', minutos: mn - 20 - (tc ? 5 : 0), texto: `Faça 4–5 questões sobre "${a.tema}" para testar o que já sabe antes da aula.`, recursos: [recursos.push({ tipo: 'questoes', titulo: `Questões: ${a.tema}`, tema: a.tema, disc: nomeD }) - 1] });
+        tarefasDia.push({ id: mkId(d), data: d, tipo: 'estudo', titulo: `Prévia da aula — ${a.disciplina}: ${a.tema}`, materia: nomeD, tema: a.tema, minutos: passos.reduce((x, s) => x + s.minutos, 0), passos, recursos, estrategia: Object.fromEntries(passos.map(s => [s.acao, s.minutos])), observacoes: `Aula/TBL da faculdade em ${brDate(a.data)}, conforme o manual. Chegar com leitura prévia aumenta muito o aproveitamento.`, cobre: chave(nomeD, a.tema), status: 'pendente', _semRevisao: true });
+        usado += passos.reduce((x, s) => x + s.minutos, 0); previas++;
+      }
       // 3) blocos principais de estudo
       let resto = avail - usado;
       if (veiaPerigo && provaProx) {
@@ -611,6 +705,22 @@ export function gerarTarefas({ perfil, hoje, inicio, dias, retidas = [] }) {
           resto -= mn;
         }
       } else if (resto >= 20 && pool.length) {
+        // pesos dinâmicos do conteúdo das provas: quanto mais assunto pendente e menos dias, mais peso
+        pool.forEach(e => {
+          if (!e.fila) return;
+          const ups = e.provas.filter(pr => diffDias(d, pr.data) >= 1);
+          if (!ups.length) { e.peso = 0; e._need = 0; return; }
+          const prox = ups[0]; const dd = diffDias(d, prox.data);
+          const pend = e.fila.filter(it => !it.coberto && it.prova === prox).length;
+          const total = e.fila.filter(it => it.prova === prox).length;
+          const span = Math.max(1, diffDias(ini, prox.data));
+          const desejado = Math.ceil(total * clamp((diffDias(ini, d) + 1) / (0.7 * span), 0, 1));
+          const feitos = total - pend;
+          const atraso = Math.max(0, desejado - feitos);
+          const need = pend / Math.max(1, dd - 2);
+          e._need = atraso > 1 ? need : 0; e.proxima = prox; e._podeNovo = feitos < desejado;
+          e.peso = ajusta(e.nome, clamp(1 + atraso * 2 + (dd <= 7 ? 3 : dd <= 14 ? 1.5 : 0), 1, 14));
+        });
         const nBlocos = resto < 60 ? 1 : clamp(Math.round(resto / 100), 1, 4);
         const tam = r5(resto / nBlocos);
         const escolhidas = new Set();
@@ -624,14 +734,20 @@ export function gerarTarefas({ perfil, hoje, inicio, dias, retidas = [] }) {
             if (e && (b === 0 || (b === 1 && diffDias(d, provaProx.data) <= 5 && nBlocos > 1) )) escolha = e;
           }
           if (!escolha) {
-            pool.forEach(x => credit.set(x.nome, credit.get(x.nome) + x.peso));
-            const cand = pool.filter(x => !escolhidas.has(x.nome) && true).sort((a, b) => credit.get(b.nome) - credit.get(a.nome));
-            escolha = cand[0] || pool[0];
+            const ativos = pool.filter(x => x.peso > 0);
+            if (!ativos.length) break;
+            ativos.forEach(x => credit.set(x.nome, credit.get(x.nome) + x.peso));
+            const somaPeso = ativos.reduce((a, x) => a + x.peso, 0) || 1;
+            const cand = ativos.filter(x => !escolhidas.has(x.nome)).sort((a, b) => credit.get(b.nome) - credit.get(a.nome));
+            escolha = cand[0] || ativos[0];
             credit.set(escolha.nome, credit.get(escolha.nome) - somaPeso);
           }
           escolhidas.add(escolha.nome);
-          const t = montarBloco(escolha, tam, d, p, usados, temaAtual, assuntoIdx, provaProx);
-          if (t) { t.id = mkId(d); t.data = d; tarefasDia.push(t); if (t.tipo === 'estudo') { (t._vids || []).forEach(id => usados.add(id)); agendarRevisoes(t); } }
+          const reps = escolha.fila && tam >= 90 && (escolha._need || 0) > 0.8 ? 2 : 1;
+          for (let q = 0; q < reps; q++) {
+            const t = montarBloco(escolha, reps > 1 ? r5(tam / 2) : tam, d, p, usados, temaAtual, assuntoIdx, provaProx);
+            if (t) { t.id = mkId(d); t.data = d; tarefasDia.push(t); if (t.tipo === 'estudo') { (t._vids || []).forEach(id => usados.add(id)); agendarRevisoes(t); } }
+          }
         }
       }
     }
@@ -660,7 +776,7 @@ function buildEstudoRevisaoProva(nome, prova, mn, disc0) {
   return {
     tipo: 'estudo', titulo: `Véspera da prova — ${prova.disciplina}`, materia: nome, tema: 'Revisão final', minutos: mn,
     passos: [
-      { n: 1, acao: 'resumo', minutos: r5(mn * 0.5), texto: `Releia apenas seus resumos e anotações de ${prova.disciplina}, focando em ${foco}. Não abra conteúdo novo.`, recursos: [] },
+      { n: 1, acao: 'resumo', minutos: r5(mn * 0.5), texto: (prova.assuntos && prova.assuntos.length) ? `Releia seus resumos dos tópicos da prova, na ordem do manual: ${prova.assuntos.slice(0, 10).join('; ')}${prova.assuntos.length > 10 ? '…' : ''}. Marque o que ainda não está firme. Não abra conteúdo novo.` : `Releia apenas seus resumos e anotações de ${prova.disciplina}, focando em ${foco}. Não abra conteúdo novo.`, recursos: [] },
       { n: 2, acao: 'questoes', minutos: r5(mn * 0.4), texto: 'Refaça as questões que você errou antes. Só as erradas.', recursos: [0] },
       { n: 3, acao: 'flashcards', minutos: Math.max(5, mn - r5(mn * 0.5) - r5(mn * 0.4)), texto: 'Passe os flashcards devidos e pare. Durma cedo.', recursos: [1] }
     ],
@@ -674,6 +790,31 @@ function montarBloco(escolha, minutos, data, p, usados, temaAtual, assuntoIdx, p
   const nome = escolha.nome;
   const metodo = p.metodo || 'equilibrado';
   const obs = [];
+  if (escolha.fila && escolha.proxima) {
+    const prox = escolha.proxima; const dd = diffDias(data, prox.data);
+    const doProx = escolha.fila.filter(it => it.prova === prox);
+    let it = escolha._podeNovo === false ? null : doProx.find(x => !x.coberto);
+    let revisao = false;
+    if (!it) { // todo o conteúdo já foi visto: revisão ativa (questões + erros) em rodízio
+      const cob = doProx.filter(x => x.coberto);
+      const base = cob.length ? cob : doProx;
+      const k = assuntoIdx.get(nome + '|rev') || 0; assuntoIdx.set(nome + '|rev', k + 1);
+      it = base[k % base.length]; revisao = true;
+    } else it.coberto = true;
+    const cobertos = doProx.filter(x => x.coberto).length;
+    const discCat = DISC_BY_NAME.has(nome) ? nome : null;
+    const tc = revisao ? null : acharAulas(discCat, it.assunto, p.cursos, usados);
+    const t = buildEstudo(nome, it.assunto, minutos, revisao ? 'questoes' : metodo, tc, usados, p.cursos, { assunto: it.assunto, exibir: escolha.exibir || nome, manual: `${escolha.exibir || nome}, ${brDate(prox.data)}`, foco: 'o que o manual e o professor destacam como conteúdo da prova' });
+    if (revisao) { t.titulo = `${escolha.exibir || nome} — Revisão ativa: ${it.assunto}`; t.passos.forEach(s => { if (s.acao === 'questoes') s.texto = 'Conteúdo todo visto: resolva questões deste assunto e, para cada erro, volte ao manual e releia o trecho correspondente.'; }); }
+    t.materia = nome; t.cobre = revisao ? undefined : chaveCob(nome, it.assunto);
+    const o = [];
+    o.push(`Conteúdo da prova de ${escolha.exibir || nome} (${brDate(prox.data)}${dd >= 0 ? `, em ${dd} dia${dd === 1 ? '' : 's'}` : ''}): assunto ${doProx.indexOf(it) + 1} de ${doProx.length}${revisao ? ' — revisão' : ''}; cobertura planejada ${cobertos}/${doProx.length}.`);
+    if (it.semConteudo) o.push('Você ainda não informou o conteúdo desta prova — envie o manual/ementa no chat para eu alinhar cada assunto.');
+    if (!tc && !revisao) o.push('Sem aula equivalente no acervo: use o manual da faculdade como fonte principal.');
+    t.observacoes = o.join(' ');
+    t.status = 'pendente';
+    return t;
+  }
   const dif = (p.dificuldades || []).map(norm).some(x => norm(nome).includes(x) || x.includes(norm(nome)) || (x === 'clinica medica' && (DISC_BY_NAME.get(nome) || {}).banco === 'Clínica Médica'));
   if (dif) obs.push(`${nome} está nas suas dificuldades, por isso recebe mais blocos.`);
   if (escolha.prova) {
