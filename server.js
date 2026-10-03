@@ -10,6 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI, Type } from '@google/genai';
 import * as cheerio from 'cheerio';
 import { plGerarPlanSinergia as plEngineGerarPlan } from './smart_scheduler.js';
+import { registerPlanner } from './src/planner-routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -3127,6 +3128,8 @@ app.get('/api/planner/deck', async (req, res) => {
     res.status(500).json({ success: false, msg: err.message });
   }
 });
+
+registerPlanner(app, { generateWithGemini, getGeminiClient });
 
 // Serve static assets from root directory
 app.use(express.static(__dirname, {

@@ -3368,13 +3368,13 @@ async function doLogin(){const u=cleanStr($('login-user').value.trim()),p=$('log
  err.style.display='none';startApp();
  try{loadDriveFolder(DRIVE_ROOT_ID,'Cursos',false);loadQuestionsBankFromAPI(true);if(typeof fetchRadarMedico==='function')fetchRadarMedico()}catch(_){}}
 function logout(){if(confirm('Sair? Os dados continuam salvos neste dispositivo.')){localStorage.removeItem('medplan_logged');localStorage.removeItem('cuscuz_token');location.reload()}}
-function payload(){return{db:DB,done:[...DONE],fav:[...FAV],quiz:QUIZS,last:lsGet('acv_last',null),days:lsGet('acv_days',[]),sims:SIMS,decks:DECKS,wrong:[...WRONG],resumos:RESUMOS,fc:FCS,fcsrs:FCSRS}}
+function payload(){return{db:DB,done:[...DONE],fav:[...FAV],quiz:QUIZS,last:lsGet('acv_last',null),days:lsGet('acv_days',[]),sims:SIMS,decks:DECKS,wrong:[...WRONG],resumos:RESUMOS,fc:FCS,fcsrs:FCSRS,plv2:lsGet('planner-v2-plan',null)}}
 function pushCloud(){if(!CLOUD_ON||!SYNC_USER)return;setDot('sync');
  FBDB.ref('users/'+safeUser(SYNC_USER)+'/state').set(payload()).then(()=>setDot('ok')).catch(()=>setDot('off'))}
 function applyCloud(cl){lsSet(LS,Object.assign(JSON.parse(JSON.stringify(DEFDB)),cl.db||{}));
  lsSet('acv_done',cl.done||[]);lsSet('acv_fav',cl.fav||[]);lsSet('acv_quiz',cl.quiz||{});lsSet('acv_last',cl.last||null);
  lsSet('acv_days',cl.days||[]);lsSet('acv_sims',cl.sims||[]);lsSet('acv_decks',cl.decks||[]);lsSet('acv_wrong',cl.wrong||[]);
- lsSet('acv_resumos',cl.resumos||{});lsSet('acv_fc',cl.fc||[]);lsSet('acv_fc_srs',cl.fcsrs||{})}
+ lsSet('acv_resumos',cl.resumos||{});lsSet('acv_fc',cl.fc||[]);lsSet('acv_fc_srs',cl.fcsrs||{});if(cl.plv2)lsSet('planner-v2-plan',cl.plv2)}
 
 function startApp(){
  $('login-screen').style.display='none'; 
@@ -10070,5 +10070,6 @@ function enterDriveCourse(id, name) {
   .sim-prova-card{max-width:100%;min-width:0}
 }
 </style>
+<script src="/planner-v2.js"></script>
 </body>
 </html>
