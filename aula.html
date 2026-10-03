@@ -2,7 +2,10 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<meta name="theme-color" content="#080c14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Aula — Cuscuz-MED</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -674,10 +677,103 @@
   .toast.visivel { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast i { color: var(--accent); font-size: 17px; }
 
+  * { -webkit-tap-highlight-color: transparent; }
+  button, a, input, select, .item-aula, .alternativa-btn, .sim-nav-cell-btn { touch-action: manipulation; }
+
   @media (max-width: 1020px) {
-    .aula-layout { grid-template-columns: 1fr; }
-    .sidebar { position: static; max-height: 560px; }
+    .aula-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 10px 12px 36px;
+    }
+    .coluna-principal {
+      order: 1;
+      width: 100%;
+    }
+    .sidebar {
+      order: 2;
+      width: 100%;
+      position: static;
+      max-height: 480px;
+    }
     .topbar .curso-nome { display: none; }
+  }
+
+  @media (max-width: 640px) {
+    .topbar {
+      padding: 8px 12px;
+      height: 52px;
+    }
+    .topbar .voltar {
+      padding: 6px 10px;
+      font-size: 12px;
+      min-height: 38px;
+    }
+    .topbar .logo {
+      font-size: 15px;
+    }
+    .player-container {
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+    .aula-info-card, .questoes-card, .materiais-card {
+      padding: 14px 12px;
+      border-radius: 16px;
+    }
+    .aula-titulo {
+      font-size: 16px;
+      line-height: 1.35;
+    }
+    .card-acoes {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+    .card-acoes .acoes-esquerda, .card-acoes .acoes-direita {
+      width: 100%;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .btn-acao {
+      flex: 1;
+      justify-content: center;
+      min-height: 42px;
+      font-size: 12px;
+      padding: 8px 10px;
+    }
+    .btn-acao.destaque {
+      width: 100%;
+      order: 10;
+    }
+    .alternativa-btn {
+      padding: 12px 14px;
+      font-size: 13.5px;
+      min-height: 48px;
+      border-radius: 12px;
+    }
+    .questao-item {
+      padding: 14px 12px;
+      border-radius: 14px;
+    }
+    .sim-nav-grid {
+      padding: 10px;
+      gap: 5px;
+    }
+    .sim-nav-cell-btn {
+      width: 30px;
+      height: 30px;
+      font-size: 11px;
+    }
+    .treino-controles {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+    .treino-controles > div {
+      width: 100%;
+      justify-content: space-between;
+    }
   }
 </style>
 </head>
