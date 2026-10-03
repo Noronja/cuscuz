@@ -9160,6 +9160,9 @@ function ac2InitNativeVideoListeners() {
       isDragging = true;
       seekTo(e);
     });
+    const tp = (e) => { const t0 = e.touches && e.touches[0]; if (t0) seekTo({ clientX: t0.clientX }); };
+    tWrap.addEventListener('touchstart', tp, { passive: true });
+    tWrap.addEventListener('touchmove', tp, { passive: true });
     window.addEventListener('mousemove', (e) => {
       if (isDragging) seekTo(e);
       if (tTip && tWrap.contains(e.target) && nv.duration) {
@@ -9424,24 +9427,15 @@ function ac2Ativar(id, autoPlay = false) {
     nv.classList.add('ativo');
     ac2InitNativeVideoListeners();
     const streamUrl = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(id));
+    nv.preload = 'auto';
     if (nv.getAttribute('data-vid') !== id) {
       nv.setAttribute('data-vid', id);
+      nv._retries = 0;
+      // O servidor já retoma sozinho se o Drive cair; o navegador cuida do buffer com HTTP Range.
       nv.src = streamUrl;
       nv.load();
-      if (!window.ac2MSE) window.ac2MSE = new AC2MSEPlayer(nv);
-      window.ac2MSE.load(streamUrl, () => {
-        nv.src = streamUrl;
-        nv.load();
-        if (autoPlay) {
-          nv.play().catch(() => {});
-        }
-      });
-      if (autoPlay) {
-        nv.play().catch(() => {});
-      } else {
-        nv.pause();
-        ac2SetPlayingState(false);
-      }
+      if (autoPlay) nv.play().catch(() => {});
+      else { nv.pause(); ac2SetPlayingState(false); }
     } else if (autoPlay) {
       nv.play().catch(() => {});
     } else {
@@ -9449,16 +9443,22 @@ function ac2Ativar(id, autoPlay = false) {
       ac2SetPlayingState(false);
     }
     nv.onerror = () => {
-      console.warn('Native video error on Liquid Glass player, retrying stream...');
+      if (nv.getAttribute('data-vid') !== id) return;
+      nv._retries = (nv._retries || 0) + 1;
+      const t = nv.currentTime || 0, tocava = !nv.paused;
+      if (nv._retries > 4) {
+        toast('Não consegui carregar esta aula agora. Toque em ↻ para tentar de novo ou abra pelo botão Drive.', 'error');
+        return;
+      }
+      if (nv._retries === 1) toast('Reconectando a aula…', 'info');
       setTimeout(() => {
-        if (nv && nv.getAttribute('data-vid') === id) {
-          nv.src = streamUrl;
-          nv.load();
-          if (autoPlay) nv.play().catch(() => {});
-        }
-      }, 2500);
-      toast('⚠️ Oscilação momentânea na conexão, reconectando vídeo...', 'warning');
+        if (!nv || nv.getAttribute('data-vid') !== id) return;
+        nv.src = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(id));
+        nv.load();
+        nv.addEventListener('loadedmetadata', function once() { nv.removeEventListener('loadedmetadata', once); try { if (t > 1) nv.currentTime = t; } catch (_) {} if (tocava) nv.play().catch(() => {}); }, { once: true });
+      }, 1200 * nv._retries);
     };
+    nv.onplaying = () => { nv._retries = 0; };
   }
 }
 

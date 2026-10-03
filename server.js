@@ -567,7 +567,43 @@ app.get('/api/drive/video-info', async (req, res) => {
   res.json({ info: out });
 });
 
-// Streaming direto de vídeo do Google Drive com suporte a HTTP Range (Seeking e buffer nativo)
+// ── Streaming do Google Drive ──────────────────────────────────────────────
+// Abre o arquivo no Drive tentando várias URLs. O timeout vale só até chegarem os cabeçalhos
+// (um AbortSignal.timeout normal também cortaria o corpo do vídeo depois de alguns segundos).
+function driveCandidates(fileId) {
+  const c = [];
+  if (DRIVE_API_KEY) c.push(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&key=${DRIVE_API_KEY}`);
+  c.push(`https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`);
+  c.push(`https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}&confirm=t`);
+  return c;
+}
+async function driveOpen(fileId, start, end, method, client) {
+  let lastErr = null;
+  for (const url of driveCandidates(fileId)) {
+    if (client.signal.aborted) return null;
+    const ac = new AbortController();
+    const onAbort = () => ac.abort();
+    client.signal.addEventListener('abort', onAbort, { once: true });
+    const timer = setTimeout(() => ac.abort(), 12000);
+    try {
+      const headers = {};
+      if (start != null) headers.Range = `bytes=${start}-${end != null ? end : ''}`;
+      const resp = await fetch(url, { method, headers, signal: ac.signal });
+      clearTimeout(timer);
+      const ct = resp.headers.get('content-type') || '';
+      if ((resp.ok || resp.status === 206) && !ct.includes('text/html')) return { resp, ac, url };
+      try { ac.abort(); } catch (_) {}
+      lastErr = new Error('HTTP ' + resp.status + (ct.includes('text/html') ? ' (página HTML — arquivo sem link público?)' : ''));
+    } catch (err) {
+      clearTimeout(timer);
+      lastErr = err;
+    }
+  }
+  if (lastErr) console.warn(`[Stream] ${fileId}: ${lastErr.message}`);
+  return null;
+}
+
+// Streaming de vídeo com HTTP Range. Se a conexão com o Drive cair no meio, retoma sozinho do byte onde parou.
 app.all('/api/drive/stream/:id', async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -575,130 +611,117 @@ app.all('/api/drive/stream/:id', async (req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Accept');
     return res.sendStatus(204);
   }
-
   const fileId = cleanDriveId(req.params.id);
   if (!fileId) return res.status(400).send('ID de arquivo inválido');
 
-  const range = req.headers.range;
-  const fetchHeaders = {};
-  if (range) fetchHeaders['Range'] = range;
+  const client = new AbortController();
+  res.on('close', () => client.abort());
+  const m = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
+  const hasRange = !!(m && m[1] !== '');
+  const reqStart = hasRange ? parseInt(m[1], 10) : 0;
+  const reqEnd = hasRange && m[2] !== '' ? parseInt(m[2], 10) : null;
+  const isHead = req.method === 'HEAD';
 
-  // Lista de URLs candidatas para contornar bloqueios/timeouts do Google
-  const candidates = [
-    `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`,
-    `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}&confirm=t`
-  ];
-  if (DRIVE_API_KEY) {
-    candidates.push(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&key=${DRIVE_API_KEY}`);
+  let up = await driveOpen(fileId, hasRange ? reqStart : null, hasRange ? reqEnd : null, isHead ? 'HEAD' : 'GET', client);
+  if (!up) return res.status(502).json({ error: 'Não foi possível conectar ao Google Drive para reproduzir este vídeo.' });
+
+  const cr = /bytes (\d+)-(\d+)\/(\d+|\*)/.exec(up.resp.headers.get('content-range') || '');
+  const cl = parseInt(up.resp.headers.get('content-length') || '0', 10);
+  let total = cr && cr[3] !== '*' ? parseInt(cr[3], 10) : (up.resp.status === 200 ? cl : 0);
+  let upAbs = up.resp.status === 206 && cr ? parseInt(cr[1], 10) : 0; // posição absoluta do primeiro byte que o Drive está enviando
+  const ct = up.resp.headers.get('content-type') || 'video/mp4';
+
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Disposition', 'inline');
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.setHeader('Content-Type', ct);
+  const lm = up.resp.headers.get('last-modified'); if (lm) res.setHeader('Last-Modified', lm);
+
+  // Sem tamanho total conhecido: repassa direto (sem retomada)
+  if (!total) {
+    res.status(up.resp.status);
+    if (cl) res.setHeader('Content-Length', cl);
+    if (cr) res.setHeader('Content-Range', up.resp.headers.get('content-range'));
+    if (isHead || !up.resp.body) return res.end();
+    const ns = Readable.fromWeb(up.resp.body);
+    ns.on('error', () => { try { res.destroy(); } catch (_) {} });
+    return ns.pipe(res);
   }
 
-  let driveRes = null;
-  let lastErr = null;
+  const outStart = hasRange ? reqStart : 0;
+  const outEnd = clamp0(hasRange && reqEnd != null ? Math.min(reqEnd, total - 1) : total - 1);
+  if (outStart > outEnd) { try { up.ac.abort(); } catch (_) {} res.status(416).setHeader('Content-Range', `bytes */${total}`); return res.end(); }
+  if (hasRange) {
+    res.status(206);
+    res.setHeader('Content-Range', `bytes ${outStart}-${outEnd}/${total}`);
+  } else res.status(200);
+  res.setHeader('Content-Length', outEnd - outStart + 1);
+  if (isHead) { try { up.ac.abort(); } catch (_) {} return res.end(); }
 
-  for (const driveUrl of candidates) {
-    try {
-      const resp = await fetch(driveUrl, {
-        method: req.method === 'HEAD' ? 'HEAD' : 'GET',
-        headers: fetchHeaders,
-        signal: AbortSignal.timeout(10000)
-      });
-      if (resp.ok || resp.status === 206) {
-        driveRes = resp;
-        break;
-      }
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-
-  if (!driveRes) {
-    console.warn(`[Stream] Falha ao obter stream do vídeo ${fileId}:`, lastErr ? lastErr.message : 'Todos os endpoints falharam');
-    return res.status(502).json({ error: 'Não foi possível conectar ao Google Drive para reproduzir este vídeo.', details: lastErr ? lastErr.message : 'timeout' });
-  }
-
+  let pos = outStart; // próximo byte absoluto a enviar
+  let tentativas = 0;
   try {
-    const contentType = driveRes.headers.get('content-type') || 'video/mp4';
-    if (contentType.includes('text/html')) {
-      return res.status(403).send('Este arquivo requer autenticação ou não está com link público no Google Drive.');
+    while (pos <= outEnd && !client.signal.aborted) {
+      let reader = null;
+      try {
+        reader = up.resp.body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          let buf = Buffer.from(value.buffer, value.byteOffset, value.byteLength);
+          const chunkStart = upAbs; upAbs += buf.length;
+          if (upAbs <= pos) continue; // ainda antes do ponto desejado
+          if (chunkStart < pos) buf = buf.subarray(pos - chunkStart);
+          if (pos + buf.length - 1 > outEnd) buf = buf.subarray(0, outEnd - pos + 1);
+          pos += buf.length;
+          if (!res.write(buf)) await new Promise(ok => { const f = () => { res.off('drain', f); res.off('close', f); ok(); }; res.on('drain', f); res.on('close', f); });
+          if (client.signal.aborted) break;
+          if (pos > outEnd) break;
+        }
+      } catch (err) {
+        if (client.signal.aborted) break;
+        console.warn(`[Stream] ${fileId}: conexão com o Drive caiu em ${pos}/${total} (${err.message})`);
+      }
+      try { up.ac.abort(); } catch (_) {}
+      if (pos > outEnd || client.signal.aborted) break;
+      // queda no meio do arquivo: reabre a partir do byte onde parou
+      if (++tentativas > 6) throw new Error('Drive não retomou o stream');
+      await new Promise(r => setTimeout(r, 400 * tentativas));
+      up = await driveOpen(fileId, pos, outEnd, 'GET', client);
+      if (!up) throw new Error('Drive indisponível ao retomar');
+      const cr2 = /bytes (\d+)-(\d+)\/(\d+|\*)/.exec(up.resp.headers.get('content-range') || '');
+      upAbs = up.resp.status === 206 && cr2 ? parseInt(cr2[1], 10) : 0;
     }
-
-    res.status(driveRes.status);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Accept');
-    res.setHeader('Content-Disposition', 'inline');
-    res.setHeader('Accept-Ranges', 'bytes');
-
-    ['content-type', 'content-length', 'content-range', 'last-modified'].forEach(h => {
-      const v = driveRes.headers.get(h);
-      if (v) res.setHeader(h, v);
-    });
-
-    if (req.method === 'HEAD') {
-      return res.end();
-    }
-
-    if (driveRes.body) {
-      const nodeStream = Readable.fromWeb(driveRes.body);
-      nodeStream.pipe(res);
-      req.on('close', () => {
-        try { nodeStream.destroy(); } catch (e) {}
-      });
-    } else {
-      res.end();
-    }
+    if (!client.signal.aborted) res.end();
   } catch (err) {
-    console.error('Erro no stream do vídeo:', err);
-    if (!res.headersSent) res.status(500).send(err.message);
+    console.error('[Stream] falha definitiva:', err.message);
+    try { res.destroy(); } catch (_) {}
+  } finally {
+    try { up && up.ac.abort(); } catch (_) {}
   }
 });
+const clamp0 = n => Math.max(0, n);
 
 // Download direto de PDFs do Google Drive para caching offline no IndexedDB
 app.get('/api/drive/pdf/:id', async (req, res) => {
   const fileId = cleanDriveId(req.params.id);
   if (!fileId) return res.status(400).send('ID de arquivo inválido');
-
-  const candidates = [
-    `https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`,
-    `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}&confirm=t`
-  ];
-  if (DRIVE_API_KEY) {
-    candidates.unshift(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&key=${DRIVE_API_KEY}`);
-  }
-
-  let r = null;
-  let lastErr = null;
-  for (const u of candidates) {
-    try {
-      const resp = await fetch(u, { signal: AbortSignal.timeout(10000) });
-      if (resp.ok) {
-        r = resp;
-        break;
-      }
-    } catch (e) {
-      lastErr = e;
-    }
-  }
-
-  if (!r) {
-    return res.status(502).send('Não foi possível obter o PDF do Google Drive: ' + (lastErr ? lastErr.message : 'timeout'));
-  }
-
+  const client = new AbortController();
+  res.on('close', () => client.abort());
+  const up = await driveOpen(fileId, null, null, 'GET', client);
+  if (!up) return res.status(502).send('Não foi possível obter o PDF do Google Drive.');
   try {
-    const ct = r.headers.get('content-type') || 'application/pdf';
+    const ct = up.resp.headers.get('content-type') || 'application/pdf';
     res.setHeader('Content-Type', ct.includes('text/html') ? 'application/pdf' : ct);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Disposition', 'inline');
-    const cl = r.headers.get('content-length');
+    const cl = up.resp.headers.get('content-length');
     if (cl) res.setHeader('Content-Length', cl);
-
-    const nodeStream = Readable.fromWeb(r.body);
-    nodeStream.pipe(res);
-    req.on('close', () => {
-      try { nodeStream.destroy(); } catch (e) {}
-    });
+    const ns = Readable.fromWeb(up.resp.body);
+    ns.on('error', () => { try { res.destroy(); } catch (_) {} });
+    ns.pipe(res);
   } catch (err) {
-    console.error('Erro ao baixar PDF para offline:', err);
+    console.error('Erro ao baixar PDF:', err);
     if (!res.headersSent) res.status(500).send(err.message);
   }
 });
