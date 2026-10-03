@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
 <meta name="theme-color" content="#080c14">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,6 +19,12 @@
 /* Auth da API: anexa o token em /api/* e volta ao login se o servidor responder 401 */
 (function(){
   window.cuscuzMediaUrl = function (u) { try { var t = localStorage.getItem('cuscuz_token'); return t ? u + (u.indexOf('?') >= 0 ? '&' : '?') + 't=' + encodeURIComponent(t) : u; } catch (e) { return u; } };
+  window.cuscuzPauseAll = function () {
+    try { document.querySelectorAll('video,audio').forEach(function (v) { try { v.pause(); } catch (e) {} }); } catch (e) {}
+    try { document.querySelectorAll('#ac2-player iframe').forEach(function (f) { f.src = 'about:blank'; }); } catch (e) {}
+    try { if (window.ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo(); } catch (e) {}
+  };
+  window.appLocked = function () { var l = document.getElementById('login-screen'); return !!l && getComputedStyle(l).display !== 'none'; };
   var _f = window.fetch.bind(window);
   window.fetch = function(u, o){
     var s = typeof u === 'string' ? u : (u && u.url) || '';
@@ -29,9 +37,21 @@
     }
     return _f(u, o).then(function(r){
       if (isApi && r.status === 401) {
-        try { localStorage.removeItem('cuscuz_token'); localStorage.removeItem('medplan_logged'); } catch (e) {}
+        var tinha = false;
+        try { tinha = !!localStorage.getItem('cuscuz_token'); localStorage.removeItem('cuscuz_token'); localStorage.removeItem('medplan_logged'); } catch (e) {}
+        if (window.cuscuzPauseAll) cuscuzPauseAll();
         var ls = document.getElementById('login-screen');
-        if (ls) ls.style.display = 'flex'; else if (!window.__authRedirected) { window.__authRedirected = true; location.href = '/'; }
+        if (ls) {
+          ls.style.display = 'flex';
+          // Só recarrega se havia uma sessão que o servidor recusou; no máximo 1x a cada 15 s (nunca em loop)
+          var agora = Date.now(), ult = 0;
+          try { ult = +sessionStorage.getItem('cuscuz_reload_ts') || 0; } catch (e) {}
+          if (tinha && !window.__authReloading && agora - ult > 15000) {
+            window.__authReloading = true;
+            try { sessionStorage.setItem('cuscuz_reload_ts', String(agora)); } catch (e) {}
+            location.reload();
+          }
+        } else if (!window.__authRedirected) { window.__authRedirected = true; location.href = '/'; }
       }
       return r;
     });
@@ -2007,7 +2027,7 @@ mark.exam-highlight {
           <!-- 1. Video Player Responsivo -->
           <div class="ac2-player-wrap">
             <div class="ac2-player" id="ac2-player">
-              <video id="ac2-native-video" playsinline preload="auto" style="position:absolute;inset:0;width:100%;height:100%;background:#000;display:none;object-fit:contain;z-index:1"></video>
+              <video id="ac2-native-video" playsinline webkit-playsinline x-webkit-airplay="allow" preload="metadata" style="position:absolute;inset:0;width:100%;height:100%;background:#000;display:none;object-fit:contain;z-index:1"></video>
 
               <!-- Custom Video Player Controls Overlay (Liquid Glass) -->
               <div class="ac2-custom-controls" id="ac2-custom-controls">
@@ -3346,7 +3366,7 @@ async function doLogin(){const u=cleanStr($('login-user').value.trim()),p=$('log
  }catch(e){err.textContent='Servidor indisponível. Tente de novo em instantes.';err.style.display='block';return}
  SYNC_USER=u;localStorage.setItem('medplan_logged','1');localStorage.setItem('medplan_user',u);
  err.style.display='none';startApp();
- try{loadDriveFolder(DRIVE_ROOT_ID,'Cursos',false);loadQuestionsBankFromAPI(true)}catch(_){}}
+ try{loadDriveFolder(DRIVE_ROOT_ID,'Cursos',false);loadQuestionsBankFromAPI(true);if(typeof fetchRadarMedico==='function')fetchRadarMedico()}catch(_){}}
 function logout(){if(confirm('Sair? Os dados continuam salvos neste dispositivo.')){localStorage.removeItem('medplan_logged');localStorage.removeItem('cuscuz_token');location.reload()}}
 function payload(){return{db:DB,done:[...DONE],fav:[...FAV],quiz:QUIZS,last:lsGet('acv_last',null),days:lsGet('acv_days',[]),sims:SIMS,decks:DECKS,wrong:[...WRONG],resumos:RESUMOS,fc:FCS,fcsrs:FCSRS}}
 function pushCloud(){if(!CLOUD_ON||!SYNC_USER)return;setDot('sync');
@@ -6915,12 +6935,16 @@ window.addEventListener('DOMContentLoaded',()=>{
    searchInput.addEventListener('input', e=>searchDebounced(e.target.value));
    document.addEventListener('click', e => { if(!e.target.closest('#search-wrap')) srHide() });
  }
- if(localStorage.getItem('medplan_logged')==='1'&&localStorage.getItem('cuscuz_token')){SYNC_USER=localStorage.getItem('medplan_user');startApp()}else refreshAll();
+ // Sem login: nada é carregado nem tocado (a tela de login fica sozinha); com login, tudo abre normalmente
+ const __logado=localStorage.getItem('medplan_logged')==='1'&&localStorage.getItem('cuscuz_token');
+ if(__logado){SYNC_USER=localStorage.getItem('medplan_user');startApp()}
  updateWrongBtn();
  initPinnedPdfs();
- loadDriveFolder(DRIVE_ROOT_ID, 'Cursos', false);
- loadQuestionsBankFromAPI(true);
- fetchRadarMedico();
+ if(__logado){
+  loadDriveFolder(DRIVE_ROOT_ID, 'Cursos', false);
+  loadQuestionsBankFromAPI(true);
+  fetchRadarMedico();
+ }
 });
 window.addEventListener('load',()=>{if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'});
 </script>
@@ -7171,6 +7195,7 @@ async function handleAiChatSubmit(e){
 // Carregar histórico prévio do Supabase/Backend se existir
 async function restoreAiHistory(){
   if(!aiConversationId) return;
+  if(!localStorage.getItem('cuscuz_token')) return; // sem login não chama a API
   try {
     const r = await fetch('/api/conversations/' + aiConversationId);
     if(!r.ok) return;
@@ -8987,11 +9012,15 @@ window.ac2TogglePiP = async function () {
 window.ac2ToggleFullscreen = function () {
   const wrap = document.querySelector('.ac2-player-wrap');
   if (!wrap) return;
-  if (!document.fullscreenElement) {
+  const nv = $('ac2-native-video');
+  const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+  if (!fsEl) {
     if (wrap.requestFullscreen) wrap.requestFullscreen();
     else if (wrap.webkitRequestFullscreen) wrap.webkitRequestFullscreen();
+    else if (nv && nv.webkitEnterFullscreen) nv.webkitEnterFullscreen(); // iPhone: só o <video> vai a tela cheia
   } else {
     if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
   }
 };
 
@@ -9373,6 +9402,7 @@ window.ac2AlternarModoPlayer = function () {
 };
 
 function ac2Ativar(id, autoPlay = false) {
+  if (window.appLocked && appLocked()) return; // nada carrega nem toca por trás da tela de login
   const ph = $('ac2-ph');
   if (ph) ph.style.display = 'none';
 
@@ -9566,6 +9596,8 @@ function ac2Buffer() {
     const bufTxt = $('ac2-buffer-txt');
     if (bufTxt) bufTxt.textContent = 'HD 1080p';
   });
+  // No celular não pré-carrega o iframe da próxima aula (economiza dados e memória)
+  if (window.matchMedia && window.matchMedia('(max-width:820px)').matches) return;
   prox.forEach(v => {
     if (!AC2.iframes.has(v.id)) ac2CriarIframe(v, false);
   });
@@ -10030,5 +10062,13 @@ function enterDriveCourse(id, name) {
   });
 }
 </script>
+<style id="mobile-tabs-fix">
+/* Abas largas quebram de linha no celular em vez de estourar a tela */
+@media (max-width:820px){
+  .sim-tab-nav,.treino-tabs-bar{flex-wrap:wrap !important;gap:8px}
+  .sim-tab-btn,.treino-tab-btn{flex:1 1 calc(50% - 8px);min-width:0;justify-content:center;white-space:normal;text-align:center}
+  .sim-prova-card{max-width:100%;min-width:0}
+}
+</style>
 </body>
 </html>

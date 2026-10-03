@@ -13,6 +13,12 @@
 /* Auth da API: anexa o token em /api/* e volta ao login se o servidor responder 401 */
 (function(){
   window.cuscuzMediaUrl = function (u) { try { var t = localStorage.getItem('cuscuz_token'); return t ? u + (u.indexOf('?') >= 0 ? '&' : '?') + 't=' + encodeURIComponent(t) : u; } catch (e) { return u; } };
+  window.cuscuzPauseAll = function () {
+    try { document.querySelectorAll('video,audio').forEach(function (v) { try { v.pause(); } catch (e) {} }); } catch (e) {}
+    try { document.querySelectorAll('#ac2-player iframe').forEach(function (f) { f.src = 'about:blank'; }); } catch (e) {}
+    try { if (window.ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo(); } catch (e) {}
+  };
+  window.appLocked = function () { var l = document.getElementById('login-screen'); return !!l && getComputedStyle(l).display !== 'none'; };
   var _f = window.fetch.bind(window);
   window.fetch = function(u, o){
     var s = typeof u === 'string' ? u : (u && u.url) || '';
@@ -25,9 +31,21 @@
     }
     return _f(u, o).then(function(r){
       if (isApi && r.status === 401) {
-        try { localStorage.removeItem('cuscuz_token'); localStorage.removeItem('medplan_logged'); } catch (e) {}
+        var tinha = false;
+        try { tinha = !!localStorage.getItem('cuscuz_token'); localStorage.removeItem('cuscuz_token'); localStorage.removeItem('medplan_logged'); } catch (e) {}
+        if (window.cuscuzPauseAll) cuscuzPauseAll();
         var ls = document.getElementById('login-screen');
-        if (ls) ls.style.display = 'flex'; else if (!window.__authRedirected) { window.__authRedirected = true; location.href = '/'; }
+        if (ls) {
+          ls.style.display = 'flex';
+          // Só recarrega se havia uma sessão que o servidor recusou; no máximo 1x a cada 15 s (nunca em loop)
+          var agora = Date.now(), ult = 0;
+          try { ult = +sessionStorage.getItem('cuscuz_reload_ts') || 0; } catch (e) {}
+          if (tinha && !window.__authReloading && agora - ult > 15000) {
+            window.__authReloading = true;
+            try { sessionStorage.setItem('cuscuz_reload_ts', String(agora)); } catch (e) {}
+            location.reload();
+          }
+        } else if (!window.__authRedirected) { window.__authRedirected = true; location.href = '/'; }
       }
       return r;
     });
