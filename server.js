@@ -3175,6 +3175,19 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Erros não tratados viram log em vez de derrubar o servidor (no Render isso causaria reinício e quedas de stream)
+process.on('uncaughtException', err => console.error('[uncaughtException]', err && err.stack || err));
+process.on('unhandledRejection', err => console.error('[unhandledRejection]', err && err.stack || err));
+
+// Qualquer erro em rota /api responde JSON (nunca HTML) para o front tratar com mensagem clara
+app.use((err, req, res, next) => {
+  console.error('[Erro]', req.method, req.path, err && err.message);
+  if (res.headersSent) return next(err);
+  const status = err && (err.status || err.statusCode) || 500;
+  if (req.path.startsWith('/api')) return res.status(status).json({ success: false, error: status === 413 ? 'Arquivo grande demais' : status === 400 ? 'Requisição inválida' : 'Erro interno do servidor', msg: err && err.message });
+  res.status(status).send('Erro interno');
+});
+
 const server = app.listen(PORT, HOST, () => {
   console.log(`Cuscuz-MED running at http://${HOST}:${PORT}`);
   checkDriveKey();

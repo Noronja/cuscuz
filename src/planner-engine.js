@@ -535,7 +535,7 @@ function buildEstudo(disc, tema, minutos, metodo, tc, usadosVideos, cursosPref, 
     const restantes = tc.videos.filter(v => !usadosVideos.has(v.id));
     if (restantes.length) {
       let n = rt.aula > 0.2 ? Math.max(1, Math.floor((minutos * rt.aula) / MIN_AULA + 0.3)) : 0;
-      n = Math.min(n, restantes.length, Math.max(1, Math.floor((minutos - 25) / MIN_AULA)));
+      n = Math.min(n, restantes.length, Math.floor((minutos - 20) / MIN_AULA));
       vids = restantes.slice(0, n);
       const idxIni = tc.videos.indexOf(vids[0]) + 1;
       if (tc.videos.length > 1 && vids.length) parte = vids.length > 1 ? ` (aulas ${idxIni}–${idxIni + vids.length - 1} de ${tc.videos.length} deste tema)` : ` (aula ${idxIni} de ${tc.videos.length} deste tema)`;
@@ -582,6 +582,26 @@ function buildEstudo(disc, tema, minutos, metodo, tc, usadosVideos, cursosPref, 
 }
 
 const chaveCob = (disc, assunto) => norm(disc) + '|' + norm(assunto);
+
+// Garante que a tarefa caiba no tempo reservado (dias curtos): reduz e, se preciso, descarta passos de menor prioridade
+function trimTask(t, minutos) {
+  if (!t || !t.passos) return t;
+  const soma = () => t.passos.reduce((a, s) => a + (s.minutos || 0), 0);
+  const ordem = ['flashcards', 'resumo', 'erros', 'questoes'];
+  for (const ac of ordem) {
+    if (soma() <= minutos) break;
+    for (const st of t.passos) if (st.acao === ac && st.minutos > 5) st.minutos = Math.max(5, st.minutos - (soma() - minutos));
+  }
+  for (const ac of ['flashcards', 'resumo']) {
+    if (soma() <= minutos || t.passos.length <= 1) break;
+    const i = t.passos.findIndex(s => s.acao === ac);
+    if (i >= 0) t.passos.splice(i, 1);
+  }
+  t.passos.forEach((s, i) => (s.n = i + 1));
+  t.minutos = soma();
+  if (t.estrategia) t.estrategia = Object.fromEntries(t.passos.map(s => [s.acao, s.minutos]));
+  return t;
+}
 
 export function gerarTarefas({ perfil, hoje, inicio, dias, retidas = [] }) {
   const p = { ...PERFIL_VAZIO(), ...perfil };
@@ -746,7 +766,7 @@ export function gerarTarefas({ perfil, hoje, inicio, dias, retidas = [] }) {
           const reps = escolha.fila && tam >= 90 && (escolha._need || 0) > 0.8 ? 2 : 1;
           for (let q = 0; q < reps; q++) {
             const t = montarBloco(escolha, reps > 1 ? r5(tam / 2) : tam, d, p, usados, temaAtual, assuntoIdx, provaProx);
-            if (t) { t.id = mkId(d); t.data = d; tarefasDia.push(t); if (t.tipo === 'estudo') { (t._vids || []).forEach(id => usados.add(id)); agendarRevisoes(t); } }
+            if (t) { trimTask(t, reps > 1 ? r5(tam / 2) : tam); t.id = mkId(d); t.data = d; tarefasDia.push(t); if (t.tipo === 'estudo') { (t._vids || []).forEach(id => usados.add(id)); agendarRevisoes(t); } }
           }
         }
       }

@@ -9427,10 +9427,10 @@ function ac2Ativar(id, autoPlay = false) {
     nv.classList.add('ativo');
     ac2InitNativeVideoListeners();
     const streamUrl = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(id));
-    nv.preload = 'auto';
+    nv.preload = autoPlay ? 'auto' : 'metadata'; // só baixa o vídeo inteiro quando o aluno der play
     if (nv.getAttribute('data-vid') !== id) {
       nv.setAttribute('data-vid', id);
-      nv._retries = 0;
+      nv._retries = 0; nv._played = !!autoPlay; nv._failed = false;
       // O servidor já retoma sozinho se o Drive cair; o navegador cuida do buffer com HTTP Range.
       nv.src = streamUrl;
       nv.load();
@@ -9444,6 +9444,7 @@ function ac2Ativar(id, autoPlay = false) {
     }
     nv.onerror = () => {
       if (nv.getAttribute('data-vid') !== id) return;
+      if (!nv._played) { nv._failed = true; return; } // ninguém deu play ainda: não insiste nem avisa
       nv._retries = (nv._retries || 0) + 1;
       const t = nv.currentTime || 0, tocava = !nv.paused;
       if (nv._retries > 4) {
@@ -9459,6 +9460,10 @@ function ac2Ativar(id, autoPlay = false) {
       }, 1200 * nv._retries);
     };
     nv.onplaying = () => { nv._retries = 0; };
+    nv.onplay = () => {
+      nv._played = true; nv.preload = 'auto';
+      if (nv._failed || nv.error) { nv._failed = false; nv._retries = 0; nv.src = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(id)); nv.load(); nv.play().catch(() => {}); }
+    };
   }
 }
 
