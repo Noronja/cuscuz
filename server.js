@@ -11,6 +11,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import * as cheerio from 'cheerio';
 import { plGerarPlanSinergia as plEngineGerarPlan } from './smart_scheduler.js';
 import { registerPlanner } from './src/planner-routes.js';
+import { registerJarvis } from './src/jarvis.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -3153,6 +3154,7 @@ app.get('/api/planner/deck', async (req, res) => {
 });
 
 registerPlanner(app, { generateWithGemini, getGeminiClient });
+registerJarvis(app, { generateWithGemini, getGeminiClient });
 
 // Serve static assets from root directory
 app.use(express.static(__dirname, {

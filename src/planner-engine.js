@@ -517,7 +517,7 @@ function passoTexto(ac, ctx) {
 function tituloAula(v) {
   let t = limparTema(v.titulo || '');
   t = t.replace(/\s*-?\s*\d+h\d+m\s*$/i, '').replace(/\b(USAR ESTE|NOVO|ATUALIZADO)\b/gi, ' ');
-  t = t.replace(/^(v[ií]deo\s*aula|aula\s*b[oô]nus|aulab[oô]nus|aula)\s*/i, '').replace(/\bMEDCURSO\b/gi, ' ').replace(/\bS\d{1,2}\b/g, ' ').replace(/\b[A-Z]{2,4}\d{1,2}\b/g, ' ');
+  t = t.replace(/\bMEDCURSO\b/gi, ' ').replace(/\bS\d{1,2}\b/g, ' ').replace(/\b[A-Z]{2,4}\d{1,2}\b/g, ' ').replace(/^\s*(v[ií]deo\s*aula|aula\s*b[oô]nus|aulab[oô]nus|aula)\s*/i, '');
   t = t.replace(/\s+/g, ' ').replace(/^[-–:\s]+|[-–:\s]+$/g, '').trim();
   if ((t.match(/[A-Za-zÀ-ú]/g) || []).length < 5) return '';
   if (t === t.toUpperCase()) t = t.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
@@ -887,4 +887,19 @@ function montarBloco(escolha, minutos, data, p, usados, temaAtual, assuntoIdx, p
   t.observacoes = obs.filter(Boolean).join(' ') + (obs.filter(Boolean).length ? ' ' : '') + `Foco da matéria: ${(DISC_BY_NAME.get(nome) || {}).foco || 'conceitos mais cobrados'}.`;
   t.status = 'pendente';
   return t;
+}
+
+// Busca livre de aulas por voz/texto ("aula de talassemia"): exige correspondência real com o título/tema
+export function buscarAulasLivre(q, limite = 3) {
+  const cat = getCatalogo();
+  const tk = tokens(q);
+  if (!tk.length) return [];
+  const out = [];
+  for (const it of cat.videoIdx) {
+    let hit = 0; for (const t of tk) if (it.toks.has(t) || [...it.toks].some(x => x.startsWith(t) && t.length >= 5)) hit++;
+    const sc = hit / tk.length;
+    if (hit >= 1 && sc >= 0.5) out.push({ id: it.v.id, titulo: tituloAula(it.v) || it.tema, tema: it.tema, disc: it.disc, curso: it.v.course, s: sc + (it.v.course === 'MEDCURSO' ? 0.01 : 0) });
+  }
+  out.sort((a, b) => b.s - a.s);
+  return out.slice(0, limite);
 }

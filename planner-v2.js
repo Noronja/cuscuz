@@ -230,6 +230,7 @@
         busy = false; const s2 = chatState(); s2.msgs.push({ role: 'model', content: 'Não consegui ler o arquivo (' + e.message + '). Você pode digitar o conteúdo de cada prova aqui no chat.' }); set(K_CHAT, s2); renderChat();
       }
     },
+    ajustar(txt) { this.conversar(); setTimeout(() => this.enviar(JSON.stringify(String(txt))), 50); },
     voltar() { renderPlano(); },
     reiniciar() { if (!confirm('Recomeçar a conversa? (seu cronograma atual é mantido até você gerar outro)')) return; localStorage.removeItem(K_CHAT); init(true); },
     maisSemanas() { const p = get(K_PLAN, null); if (!p) return; const dias = Math.round((new Date(p.fim) - new Date(hoje())) / 864e5) + 1 + 28; gerar({ dias: Math.min(120, Math.max(28, dias)) }); },
