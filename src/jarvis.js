@@ -3,8 +3,8 @@ import { Type } from '@google/genai';
 import crypto from 'crypto';
 import * as PE from './planner-engine.js';
 
-const ACOES = ['ir_para', 'abrir_aula', 'praticar_questoes', 'abrir_flashcards', 'abrir_erros', 'concluir_tarefa', 'ajustar_plano', 'gerar_plano'];
-const DESTINOS = ['inicio', 'acervo', 'treino', 'simulados', 'planner', 'calendario', 'semana', 'preparatorio'];
+const ACOES = ['iniciar_gravacao', 'ir_para', 'abrir_aula', 'praticar_questoes', 'abrir_flashcards', 'abrir_erros', 'concluir_tarefa', 'ajustar_plano', 'gerar_plano'];
+const DESTINOS = ['inicio', 'acervo', 'treino', 'simulados', 'planner', 'calendario', 'semana', 'preparatorio', 'aula'];
 
 function pcm16ToWav(pcm, rate = 24000) {
   const h = Buffer.alloc(44);
@@ -30,6 +30,7 @@ function interpretarLocal(texto, ctx) {
   if (/(terminei|conclui|concluí|fiz|ja fiz)/.test(n)) return { fala: 'Marcando como concluída.', acoes: [{ tipo: 'concluir_tarefa', tarefa: texto.replace(/^.*?(terminei|conclu\w+|fiz)\s*/i, '') }] };
   if (/(cansad|sem tempo|nao consigo|reorganiz|ajust|mudar o plano|adiant|atras)/.test(n)) return { fala: 'Entendido. Vamos ajustar o cronograma, conte-me o que mudou.', acoes: [{ tipo: 'ajustar_plano', texto }] };
   if (/(gerar|montar|criar).*(cronograma|plano)/.test(n)) return { fala: 'Vamos montar o seu cronograma.', acoes: [{ tipo: 'gerar_plano' }] };
+  if (/(grav\w+|transcre\w+).*(aula)|aula do dia|modo aula/.test(n)) return { fala: 'Abrindo o modo aula do dia. Pode começar a gravação quando estiver pronto.', acoes: [{ tipo: 'ir_para', destino: 'aula' }] };
   const dest = [['simulado', 'simulados'], ['calend', 'calendario'], ['semana', 'semana'], ['planner|cronograma|planej', 'planner'], ['acervo|aulas|curso', 'acervo'], ['treino|questoes', 'treino'], ['inicio|home|painel', 'inicio']].find(([k]) => new RegExp(k).test(n));
   if (dest && /(abr|va|vai|ir|mostr|leve|ver)/.test(n)) return { fala: `Abrindo ${dest[1]}.`, acoes: [{ tipo: 'ir_para', destino: dest[1] }] };
   return { fala: `Desculpe, ${nome}, não entendi. Experimente: "o que tenho hoje", "abra a aula de talassemia", "questões de pediatria" ou "abra os flashcards".`, acoes: [] };
@@ -49,7 +50,7 @@ export function registerJarvis(app, { generateWithGemini, getGeminiClient }) {
         try {
           const sistema = `Você é o JARVIS, assistente de voz pessoal de um estudante de medicina brasileiro, dentro do app Cuscuz-MED. Fale português do Brasil com elegância discreta, calma e levemente irônica, como um mordomo inglês muito competente. Chame o aluno de «${ctx.nome || 'doutor'}». Respostas CURTAS (1 a 3 frases), pois serão faladas em voz alta: sem markdown, listas, emojis ou siglas difíceis de pronunciar.
 Contexto atual do aluno (JSON): ${JSON.stringify({ hoje: ctx.hoje || [], flashcardsVencidos: ctx.flashcards, errosSalvos: ctx.erros, dataHoje: ctx.dataHoje, planoAtivo: !!ctx.planoAtivo })}
-Você controla o app emitindo "acoes". Tipos: ir_para(destino: ${DESTINOS.join('|')}), abrir_aula(busca: termo do tema — o sistema procura no acervo real), praticar_questoes(tema, disciplina), abrir_flashcards, abrir_erros, concluir_tarefa(tarefa: trecho do título de uma tarefa de hoje), ajustar_plano(texto: o que o aluno quer mudar), gerar_plano. Só emita ação quando o aluno pedir algo que a exija. Para conversa, dúvidas de medicina ou motivação, apenas responda em "fala" (seja correto; diga quando não tiver certeza). Nunca invente que uma aula existe: use abrir_aula com busca. Não faça diagnóstico nem prescrição para casos reais.`;
+Você controla o app emitindo "acoes". Tipos: iniciar_gravacao (abre o modo Aula do dia e começa a gravar/transcrever a aula da faculdade), ir_para(destino: ${DESTINOS.join('|')}), abrir_aula(busca: termo do tema — o sistema procura no acervo real), praticar_questoes(tema, disciplina), abrir_flashcards, abrir_erros, concluir_tarefa(tarefa: trecho do título de uma tarefa de hoje), ajustar_plano(texto: o que o aluno quer mudar), gerar_plano. Só emita ação quando o aluno pedir algo que a exija. Para conversa, dúvidas de medicina ou motivação, apenas responda em "fala" (seja correto; diga quando não tiver certeza). Nunca invente que uma aula existe: use abrir_aula com busca. Não faça diagnóstico nem prescrição para casos reais.`;
           const r = await generateWithGemini({
             contents: [...hist.map(h => ({ role: h.role === 'user' ? 'user' : 'model', parts: [{ text: String(h.content || '').slice(0, 500) }] })), { role: 'user', parts: [{ text: texto }] }],
             config: {

@@ -8,7 +8,7 @@
   const hojeISO = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Fortaleza' }).format(new Date());
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
-  const DEST = { inicio: 'view-inicio', acervo: 'view-acervo', treino: 'view-treino', simulados: 'view-simulados', planner: 'view-planneria', calendario: 'view-calendario', semana: 'view-semana', preparatorio: 'view-preparatorio' };
+  const DEST = { inicio: 'view-inicio', acervo: 'view-acervo', treino: 'view-treino', simulados: 'view-simulados', planner: 'view-planneria', calendario: 'view-calendario', semana: 'view-semana', preparatorio: 'view-preparatorio', aula: 'view-auladia' };
   let estado = 'idle', rec = null, audio = null, ttsOff = 0, hist = [], aberto = false, falando = false;
 
   function css() {
@@ -113,6 +113,7 @@
     try {
       switch (a.tipo) {
         case 'ir_para': return irPara(a.destino);
+        case 'iniciar_gravacao': irPara('aula'); return setTimeout(() => window.auladia && auladia.iniciar(), 400);
         case 'abrir_aula':
           irPara('acervo');
           return (typeof ac2Init === 'function' ? ac2Init() : Promise.resolve()).then(() => ac2Abrir(a.id, false, true));
