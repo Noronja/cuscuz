@@ -10,7 +10,7 @@
   const mmss = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(Math.floor(s % 60)).padStart(2, '0');
   const hms = s => (s >= 3600 ? Math.floor(s / 3600) + 'h' : '') + String(Math.floor((s % 3600) / 60)).padStart(2, '0') + 'min';
 
-  let geminiOk = null;
+  let geminiOk = null, iniciando = false;
   let rec = null;       // estado da gravação em andamento
   let sessAtual = null; // sessão exibida (em gravação ou aberta do histórico)
   let abaRes = 'transcricao';
@@ -201,16 +201,36 @@
     return c.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) || '';
   }
 
+  async function pedirMicrofone() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) { toast('Este navegador não permite gravar áudio. Use Safari (iOS 14.3+) ou Chrome.', 'error'); return null; }
+    try { return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+    catch (e) {
+      try { return await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e2) { e = e2; }
+      const n = (e && e.name) || '';
+      if (n === 'NotAllowedError' || n === 'SecurityError') toast('O navegador bloqueou o microfone para este site. No iPhone: Ajustes › Safari › Microfone › Permitir (ou toque em "aA" na barra do Safari › Ajustes do Site › Microfone › Permitir) e recarregue a página.', 'error');
+      else if (n === 'NotReadableError' || n === 'AbortError') toast('O microfone está ocupado por outro app/aba (ligação, Jarvis, outra gravação). Feche e tente de novo.', 'error');
+      else if (n === 'NotFoundError') toast('Nenhum microfone encontrado neste aparelho.', 'error');
+      else toast('Não consegui acessar o microfone (' + (n || 'erro') + ').', 'error');
+      return null;
+    }
+  }
+
   async function iniciar() {
-    if (rec) return;
-    garantirView(); css();
-    if ($('view-auladia') && !$('view-auladia').classList.contains('active')) { go(VIEW); await new Promise(r => setTimeout(r, 200)); }
-    if (geminiOk === null) await render();
-    const disc = ($('ad-disc') || {}).value || '', tema = ($('ad-tema') || {}).value || '', parte = ($('ad-parte') || {}).value || 'Única', cor = ($('ad-cor') || {}).value || 'dourado';
-    if (!navigator.mediaDevices || !window.MediaRecorder) { toast('Este navegador não permite gravar áudio. Use Safari (iOS 14.3+) ou Chrome.', 'error'); return; }
-    let stream;
-    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
-    catch (e) { toast('Preciso da permissão do microfone. Libere nas configurações do navegador e tente de novo.', 'error'); return; }
+    if (rec || iniciando) return;
+    iniciando = true;
+    try {
+      // lê o formulário e pede o microfone ANTES de qualquer outra espera: o iPhone só libera o microfone no toque do usuário
+      const disc = ($('ad-disc') || {}).value || '', tema = ($('ad-tema') || {}).value || '', parte = ($('ad-parte') || {}).value || 'Única', cor = ($('ad-cor') || {}).value || 'dourado';
+      const stream = await pedirMicrofone();
+      if (!stream) return;
+      garantirView(); css();
+      if (geminiOk === null) { try { geminiOk = !!(await (await fetch('/api/aula/status')).json()).gemini; } catch (_) { geminiOk = false; } }
+      if ($('view-auladia') && !$('view-auladia').classList.contains('active')) { go(VIEW); await new Promise(r => setTimeout(r, 200)); }
+      await comecar(stream, disc, tema, parte, cor);
+    } finally { iniciando = false; }
+  }
+
+  async function comecar(stream, disc, tema, parte, cor) {
     const sess = { id: 'a' + Date.now(), data: hojeISO(), inicio: Date.now(), disciplina: disc.trim(), tema: tema.trim(), parte, cor, duracao: 0, chunks: [], marcas: [], texto: '', live: '', resultado: null };
     const mime = escolherMime();
     rec = { sess, stream, mime, mr: null, t0: Date.now(), parar: false, fila: [], enviando: false, chunkIdx: 0, silencio: 0, timers: [], ctx: null, wake: null, sr: null };
