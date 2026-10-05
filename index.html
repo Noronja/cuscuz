@@ -4183,7 +4183,7 @@ function openDriveItemById(fileId) {
       temaEl.textContent = cleanTema;
       qtdEl.textContent = '…';
       if (typeof buscarQtdQuestoesTema === 'function') {
-        buscarQtdQuestoesTema(cleanTema, currentFolderName).then(({ count, questions }) => {
+        buscarQtdQuestoesTema(cleanTema, currentFolderName, '').then(({ count, questions }) => {
           if ($('modal-praticar-qtd')) $('modal-praticar-qtd').textContent = count;
           window._questoesModalAtual = { tema: cleanTema, disc: currentFolderName, questions };
         }).catch(() => {
@@ -9129,6 +9129,30 @@ function ac2InitNativeVideoListeners() {
 
   nv.addEventListener('timeupdate', ac2OnTimeUpdate);
   nv.addEventListener('progress', ac2SyncBuffer);
+  // Travamento: mostra "carregando" e, se a rede engasgar de vez, reabre o stream no ponto exato
+  let stallT = null, stallN = 0;
+  const spin = on => { const w = document.querySelector('.ac2-player-wrap'); if (w) w.classList.toggle('ac2-buffering', !!on); };
+  const clearStall = () => { clearTimeout(stallT); stallT = null; spin(false); };
+  const armStall = () => {
+    if (nv.paused || stallT || !nv._played) return;
+    spin(true);
+    stallT = setTimeout(() => {
+      stallT = null;
+      if (nv.paused || nv.readyState >= 3) { spin(false); return; }
+      if (++stallN > 5) return;
+      const t = nv.currentTime || 0, id = nv.getAttribute('data-vid');
+      const tocava = !nv.paused;
+      nv.src = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(id));
+      nv.addEventListener('loadedmetadata', function once() { nv.removeEventListener('loadedmetadata', once); try { if (t > 0.5) nv.currentTime = t; } catch (_) {} if (tocava) nv.play().catch(() => {}); }, { once: true });
+      nv.load();
+      armStall();
+    }, 9000);
+  };
+  nv.addEventListener('waiting', armStall);
+  nv.addEventListener('stalled', () => { if (nv.readyState < 3) armStall(); });
+  nv.addEventListener('playing', () => { stallN = 0; clearStall(); });
+  nv.addEventListener('canplay', () => { if (!nv.paused) clearStall(); });
+  nv.addEventListener('pause', clearStall);
   nv.addEventListener('loadedmetadata', ac2OnLoadedMetadata);
   nv.addEventListener('play', () => ac2SetPlayingState(true));
   nv.addEventListener('pause', () => ac2SetPlayingState(false));
@@ -9148,12 +9172,17 @@ function ac2InitNativeVideoListeners() {
   const tTip = $('ac2-time-tooltip');
   if (tWrap) {
     let isDragging = false;
+    let seekTimer = null;
     const seekTo = (e) => {
       const rect = tWrap.getBoundingClientRect();
       const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       if (nv.duration) {
-        nv.currentTime = pos * nv.duration;
-        ac2OnTimeUpdate();
+        // Arrastar a barra não dispara uma requisição por pixel: só o último ponto vale (evita lag/travadas)
+        const alvo = pos * nv.duration;
+        const fill = $('ac2-timeline-play');
+        if (fill) fill.style.width = (pos * 100) + '%';
+        clearTimeout(seekTimer);
+        seekTimer = setTimeout(() => { try { nv.currentTime = alvo; } catch (_) {} ac2OnTimeUpdate(); }, 140);
       }
     };
     tWrap.addEventListener('mousedown', (e) => {
@@ -9944,34 +9973,38 @@ function limparPrefixoTema(str) {
     .trim();
 }
 
-async function buscarQtdQuestoesTema(tema, disc) {
+function moduloDaAula(v) {
+  const path = (v && typeof v === 'object' && v.path) ? String(v.path) : '';
+  const parts = path.split('/').map(p => p.trim()).filter(Boolean);
+  parts.pop(); // nome do arquivo
+  const generico = /^(videos?\s*apostila|videoaulas?|aulas|videos|apostilas|geral|conteudo|drive|google\s*drive|materiais|guia\s*pos|medcurso(\s*\d{4})?|estrat[eé]gia(\s*med)?(\s*\d{4})?|sanar|revalida|med)$/i;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i].replace(/^(MEDCURSO|SANAR)\s*-\s*[A-Za-z]{2,5}\s*\d*\s*-\s*/i, '').trim();
+    if (p && !generico.test(p) && !/^\d+$/.test(p)) return p;
+  }
+  return '';
+}
+
+async function buscarQtdQuestoesTema(tema, disc, modulo) {
   try {
-    const qUrl = `/api/questions/match?disciplina=${encodeURIComponent(disc || '')}&tema=${encodeURIComponent(tema || '')}&limit=80`;
+    const qUrl = `/api/questions/match?disciplina=${encodeURIComponent(disc || '')}&tema=${encodeURIComponent(tema || '')}&modulo=${encodeURIComponent(modulo || '')}&limit=40`;
     const res = await fetch(qUrl);
     if (res.ok) {
       const data = await res.json();
-      if (data && data.questions && data.questions.length) {
-        const count = data.totalAvailable || data.count || data.questions.length;
-        return { count, questions: data.questions };
+      if (data && Array.isArray(data.questions)) {
+        return { count: data.questions.length, questions: data.questions, bancoCount: data.bancoCount || 0, iaCount: data.iaCount || 0 };
       }
     }
   } catch (_) {}
-
-  // Fallback no cliente com BANK_QUESTIONS / getSimQuestionsBank
+  // Offline: só o que bate de verdade com o tema (todas as palavras-chave), nunca questões aleatórias
   const all = typeof getSimQuestionsBank === 'function' ? getSimQuestionsBank() : [];
-  if (all && all.length) {
-    const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    const tNorm = norm(tema);
-    const tokens = tNorm.split(/[\s\-–—:,/]+/).filter(w => w.length > 2);
-    const matched = all.filter(q => {
-      const txt = norm([q.statement, q.explanation, q.specialty, q.subspecialty, ...(q.tags || []), (q.options || []).join(' ')].join(' '));
-      return tokens.some(tok => txt.includes(tok));
-    });
-    const count = matched.length > 0 ? matched.length : Math.min(all.length, 20);
-    return { count, questions: matched.length ? matched : all.slice(0, 20) };
-  }
-
-  return { count: 20, questions: [] };
+  const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const tokens = norm(tema + ' ' + (modulo || '')).split(/[^a-z0-9]+/).filter(w => w.length > 4);
+  const matched = tokens.length ? all.filter(q => {
+    const txt = norm([q.statement, q.explanation, q.specialty, q.subspecialty, ...(q.tags || [])].join(' '));
+    return tokens.filter(tok => txt.includes(tok.slice(0, -1))).length >= Math.max(1, Math.ceil(tokens.length * 0.6));
+  }).slice(0, 40) : [];
+  return { count: matched.length, questions: matched, bancoCount: matched.length, iaCount: 0 };
 }
 
 function ac2AtualizarBotaoPraticar(v) {
@@ -9980,16 +10013,30 @@ function ac2AtualizarBotaoPraticar(v) {
   const qtdEl = $('ac2-praticar-qtd');
   if (!wrap || !temaEl || !qtdEl) return;
 
-  const cleanTema = extrairTemaLimpoDaAula(v);
+  let cleanTema = extrairTemaLimpoDaAula(v);
+  let modulo = moduloDaAula(v);
+  const vid = v && v.id;
+  // Nome do arquivo costuma ser o assunto exato ("Mielom.mp4" dentro da pasta "Hemat"): ele vira o tema da busca
+  const fname = String((v.path || '').split('/').pop() || '').replace(/\.(mp4|webm|mkv|mov)$/i, '').replace(/^\d+[\.\-_\s]+/, '').replace(/_/g, ' ').trim();
+  if (fname.length >= 5 && /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\-()]+$/.test(fname) && !/^(indice|índice|introdu|docume|conteudo|resumo|mapa|slide|apostila)/i.test(fname)
+      && cleanTema.toLowerCase().indexOf(fname.toLowerCase().slice(0, 5)) < 0) {
+    modulo = (cleanTema + ' ' + modulo).trim();
+    cleanTema = fname;
+  }
+  cleanTema = cleanTema.replace(/\b(VIDEOAULA|MEDCURSO|RMAIS)\b/gi, '').replace(/\b[A-Za-z]{1,4}\d+\b/g, '').replace(/\s+/g, ' ').trim() || cleanTema;
   wrap.style.display = 'flex';
   temaEl.textContent = cleanTema;
   qtdEl.textContent = '…';
+  window._questoesTemaAtual = null;
 
-  buscarQtdQuestoesTema(cleanTema, v.disc).then(({ count, questions }) => {
-    if ($('ac2-praticar-qtd')) $('ac2-praticar-qtd').textContent = count;
-    window._questoesTemaAtual = { tema: cleanTema, disc: v.disc, questions };
+  buscarQtdQuestoesTema(cleanTema, v.disc, modulo).then(({ count, questions, bancoCount, iaCount }) => {
+    if (AC2.atualId && vid && AC2.atualId !== vid) return; // o aluno já foi para outra aula
+    if ($('ac2-praticar-qtd')) $('ac2-praticar-qtd').textContent = count + (iaCount ? ` · ${iaCount} IA` : '');
+    window._questoesTemaAtual = { tema: cleanTema, disc: v.disc, modulo, questions, bancoCount, iaCount };
+    const btn = $('ac2-btn-praticar');
+    if (btn) { btn.disabled = !count; btn.style.opacity = count ? '' : '.55'; btn.title = count ? 'Questões selecionadas para esta videoaula' : 'Nenhuma questão do banco corresponde a esta aula ainda'; }
   }).catch(() => {
-    if ($('ac2-praticar-qtd')) $('ac2-praticar-qtd').textContent = '20';
+    if ($('ac2-praticar-qtd')) $('ac2-praticar-qtd').textContent = '0';
   });
 }
 
@@ -10012,15 +10059,11 @@ window.iniciarSimuladoDoTema = async function(tema, disc, questions) {
   let qs = Array.isArray(questions) && questions.length ? [...questions] : [];
   if (!qs.length) {
     toast('Carregando questões selecionadas do tema…', 'info');
-    const res = await buscarQtdQuestoesTema(tema, disc);
+    const res = await buscarQtdQuestoesTema(tema, disc, '');
     qs = res.questions || [];
   }
   if (!qs.length) {
-    const all = typeof getSimQuestionsBank === 'function' ? getSimQuestionsBank() : [];
-    qs = all.slice(0, 80);
-  }
-  if (!qs.length) {
-    toast('Nenhuma questão encontrada para este tema no momento.', 'warning');
+    toast('Ainda não há questões do banco sobre esta aula. Ative a chave Gemini para gerar questões do tema.', 'warning');
     return;
   }
 
@@ -10034,7 +10077,7 @@ window.iniciarSimuladoDoTema = async function(tema, disc, questions) {
   const n = qs.length;
   const min = Math.max(15, Math.round(n * 2));
   SR = {
-    qs: shuffle(qs),
+    qs: qs,
     i: 0,
     ans: Array(n).fill(-1),
     flagged: Array(n).fill(false),
@@ -10074,6 +10117,9 @@ function enterDriveCourse(id, name) {
   .sim-tab-btn,.treino-tab-btn{flex:1 1 calc(50% - 8px);min-width:0;justify-content:center;white-space:normal;text-align:center}
   .sim-prova-card{max-width:100%;min-width:0}
 }
+
+.ac2-player-wrap.ac2-buffering::after{content:"";position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:#00E1D9;animation:ac2spin .8s linear infinite;pointer-events:none;z-index:6}
+@keyframes ac2spin{to{transform:rotate(360deg)}}
 </style>
 <script src="/planner-v2.js"></script>
 <script src="/jarvis.js"></script>

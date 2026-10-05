@@ -1,3 +1,4 @@
+import { selecionar as selecionarQuestoes, norm } from './src/questoes-aula.js';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -660,45 +661,70 @@ app.all('/api/drive/stream/:id', async (req, res) => {
   res.setHeader('Content-Length', outEnd - outStart + 1);
   if (isHead) { try { up.ac.abort(); } catch (_) {} return res.end(); }
 
+  // Read-ahead: lê do Drive numa fila (até ~24 MB) enquanto o cliente consome, suavizando as oscilações de velocidade
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+  if (res.flushHeaders) res.flushHeaders();
+  const MAX_Q = 24 * 1024 * 1024;
   let pos = outStart; // próximo byte absoluto a enviar
   let tentativas = 0;
-  try {
-    while (pos <= outEnd && !client.signal.aborted) {
-      let reader = null;
-      try {
-        reader = up.resp.body.getReader();
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          let buf = Buffer.from(value.buffer, value.byteOffset, value.byteLength);
-          const chunkStart = upAbs; upAbs += buf.length;
-          if (upAbs <= pos) continue; // ainda antes do ponto desejado
-          if (chunkStart < pos) buf = buf.subarray(pos - chunkStart);
-          if (pos + buf.length - 1 > outEnd) buf = buf.subarray(0, outEnd - pos + 1);
-          pos += buf.length;
-          if (!res.write(buf)) await new Promise(ok => { const f = () => { res.off('drain', f); res.off('close', f); ok(); }; res.on('drain', f); res.on('close', f); });
+  const fila = []; let filaBytes = 0, fim = false, falha = null, aviso = null;
+  const acorda = () => { if (aviso) { const f = aviso; aviso = null; f(); } };
+  const espera = () => new Promise(ok => { aviso = ok; });
+  const produtor = (async () => {
+    try {
+      while (pos <= outEnd && !client.signal.aborted) {
+        let lido = pos; // posição absoluta já enfileirada
+        let reader = null;
+        try {
+          reader = up.resp.body.getReader();
+          for (;;) {
+            while (filaBytes >= MAX_Q && !client.signal.aborted) await espera();
+            if (client.signal.aborted) break;
+            const { done, value } = await reader.read();
+            if (done) break;
+            let buf = Buffer.from(value.buffer, value.byteOffset, value.byteLength);
+            const chunkStart = upAbs; upAbs += buf.length;
+            if (upAbs <= lido) continue;
+            if (chunkStart < lido) buf = buf.subarray(lido - chunkStart);
+            if (lido + buf.length - 1 > outEnd) buf = buf.subarray(0, outEnd - lido + 1);
+            lido += buf.length; fila.push(buf); filaBytes += buf.length; acorda();
+            if (lido > outEnd) break;
+          }
+        } catch (err) {
           if (client.signal.aborted) break;
-          if (pos > outEnd) break;
+          console.warn(`[Stream] ${fileId}: conexão com o Drive caiu em ${lido}/${total} (${err.message})`);
         }
-      } catch (err) {
-        if (client.signal.aborted) break;
-        console.warn(`[Stream] ${fileId}: conexão com o Drive caiu em ${pos}/${total} (${err.message})`);
+        try { up.ac.abort(); } catch (_) {}
+        if (lido > outEnd || client.signal.aborted) break;
+        if (++tentativas > 6) throw new Error('Drive não retomou o stream');
+        await new Promise(r => setTimeout(r, 400 * tentativas));
+        up = await driveOpen(fileId, lido, outEnd, 'GET', client);
+        if (!up) throw new Error('Drive indisponível ao retomar');
+        const cr2 = /bytes (\d+)-(\d+)\/(\d+|\*)/.exec(up.resp.headers.get('content-range') || '');
+        upAbs = up.resp.status === 206 && cr2 ? parseInt(cr2[1], 10) : 0;
       }
-      try { up.ac.abort(); } catch (_) {}
-      if (pos > outEnd || client.signal.aborted) break;
-      // queda no meio do arquivo: reabre a partir do byte onde parou
-      if (++tentativas > 6) throw new Error('Drive não retomou o stream');
-      await new Promise(r => setTimeout(r, 400 * tentativas));
-      up = await driveOpen(fileId, pos, outEnd, 'GET', client);
-      if (!up) throw new Error('Drive indisponível ao retomar');
-      const cr2 = /bytes (\d+)-(\d+)\/(\d+|\*)/.exec(up.resp.headers.get('content-range') || '');
-      upAbs = up.resp.status === 206 && cr2 ? parseInt(cr2[1], 10) : 0;
+    } catch (e) { falha = e; }
+    fim = true; acorda();
+  })();
+  try {
+    let enviado = outStart;
+    while (!client.signal.aborted) {
+      if (!fila.length) {
+        if (fim) break;
+        await espera();
+        continue;
+      }
+      const b = fila.shift(); filaBytes -= b.length; acorda();
+      enviado += b.length;
+      if (!res.write(b)) await new Promise(ok => { const f = () => { res.off('drain', f); res.off('close', f); ok(); }; res.on('drain', f); res.on('close', f); });
     }
+    if (falha) throw falha;
     if (!client.signal.aborted) res.end();
   } catch (err) {
     console.error('[Stream] falha definitiva:', err.message);
     try { res.destroy(); } catch (_) {}
   } finally {
+    client.abort(); acorda();
     try { up && up.ac.abort(); } catch (_) {}
   }
 });
@@ -1154,194 +1180,57 @@ app.get('/api/questions/bank', (req, res) => {
   res.json({ success: true, count: bank.length, questions: bank });
 });
 
-// 1.1 Match inteligente de questões por tags, tema e disciplina (Página de Aula) - À PROVA DE FALHAS
+// 1.1 Questões da videoaula: só entram questões que falam do tema/módulo da aula (cobertura mínima de conceitos).
+// Se o banco tiver poucas e houver Gemini, completa com questões inéditas sobre o MESMO tema (marcadas como IA).
+const _qIaCache = new Map();
 app.get('/api/questions/match', async (req, res) => {
   try {
-    const rawTags = String(req.query.tags || '');
-    const disciplina = String(req.query.disciplina || req.query.disc || '');
-    const tema = String(req.query.tema || req.query.titulo || '');
-    const curso = String(req.query.curso || '');
-    const limit = Math.max(1, Math.min(200, parseInt(req.query.limit, 10) || 80));
-
-    const stopwords = new Set(['de', 'da', 'do', 'das', 'dos', 'em', 'para', 'com', 'sem', 'por', 'sobre', 'que', 'uma', 'uns', 'umas', 'aula', 'curso', 'modulo', 'parte', 'bloco', 'extensivo', 'intensivo', 'geral', 'medicina', 'video', 'videos']);
-    const normText = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
-
-    const tagsList = rawTags ? rawTags.split(',').map(normText).filter(Boolean) : [];
-    const normTema = normText(tema);
-    const normDisc = normText(disciplina);
-    const normCurso = normText(curso);
-
-    // Dicionário de Sinônimos Clínicos e Radicais Médicos (Ontologia Médica para Provas)
-    const CLINICAL_SYNONYMS = {
-      'arritmi': ['fibrila', 'flutter', 'taquicard', 'bradicard', 'bav', 'sinusal', 'cha2ds2', 'has bled', 'cardiovers', 'amiodaron', 'diltiazem', 'verapamil', 'metoprolol', 'varfarin', 'doac', 'anticoagula', 'onda f', 'ritmo irregular', 'eletrocardiogram', 'ecg', 'holter'],
-      'fibrila': ['flutter', 'arritmi', 'taquiarritmi', 'cha2ds2', 'vasc', 'has bled', 'cardiovers', 'amiodaron', 'diltiazem', 'anticoagula', 'varfarin', 'doac', 'onda f', 'ritmo irregular', 'atrial'],
-      'flutter': ['fibrila', 'arritmi', 'taquiarritmi', 'cardiovers', 'onda f', 'serrilhad', 'istmo cavotricuspideo'],
-      'hipertens': ['pressao arterial', 'mapa', 'mrpa', 'ieca', 'bra', 'losartan', 'enalapril', 'anlodipin', 'hidroclorotiazid', 'espironolacton', 'anti-hipertensivo', 'emergencia hipertensiva'],
-      'has': ['hipertens', 'pressao arterial', 'mapa', 'mrpa', 'ieca', 'bra', 'losartan', 'enalapril'],
-      'insufici': ['insuficiencia cardiaca', 'icfer', 'icfen', 'fracao de ejecao', 'bnp', 'pro-bnp', 'b3', 'b4', 'ortopneia', 'edema agudo', 'arni', 'sacubitril', 'valsartan', 'espironolacton', 'isglt2'],
-      'coronar': ['infarto', 'iam', 'sca', 'angina', 'supradesnivelamento', 'troponina', 'angioplastia', 'dupla antiagregacao', 'cateterismo'],
-      'infart': ['iam', 'sca', 'angina', 'supradesnivelamento', 'troponina', 'angioplastia', 'cateterismo'],
-      'asma': ['dpoc', 'broncoespas', 'espirometr', 'vef1', 'cvf', 'formoterol', 'salbutamol', 'budesonid', 'saba', 'laba', 'gina', 'sibilo', 'corticoide inalatorio'],
-      'dpoc': ['asma', 'enfisema', 'bronquite', 'espirometr', 'vef1', 'tabagismo', 'gold', 'oxigenoterapia'],
-      'diabet': ['glicem', 'hba1c', 'insulin', 'metformin', 'isglt2', 'dapagliflozin', 'empagliflozin', 'glp-1', 'cetoacidos', 'cad', 'hiperosmolar'],
-      'tireoid': ['hipotireoid', 'hipertireoid', 'tsh', 't4 livre', 'graves', 'hashimoto', 'levotiroxin', 'tapazol', 'propiltiouracil', 'nodulo tireoidiano'],
-      'apendic': ['apendice', 'abdome agudo', 'blumberg', 'rovsing', 'mcburney', 'laparoscop', 'apendicectom'],
-      'colecist': ['colelitiase', 'murphy', 'vesicula biliar', 'coledocolitiase', 'colangite', 'charcot'],
-      'pancreatit': ['amilase', 'lipase', 'ranson', 'baltazar', 'balthazar', 'necrose pancreatica'],
-      'seps': ['choque septico', 'sofa', 'qsofa', 'lactato', 'hemocultura', 'noradrenalina'],
-      'traum': ['atls', 'politraumatiz', 'pneumotorax', 'hemotorax', 'tamponamento', 'glasgow', 'fast', 'e-fast'],
-      'gestan': ['gestacao', 'pre-natal', 'preeclamps', 'eclamps', 'parto', 'cesare', 'dheg', 'cardiotocograf'],
-      'parto': ['cesare', 'trabalho de parto', 'tocotraumatismo', 'bacia', 'dilatacao', 'puerperio'],
-      'pediatr': ['puericultur', 'aleitament', 'desenvolviment', 'vacina', 'calendario vacinal', 'curvas da oms', 'percentil', 'lactente', 'pre-escolar', 'bronquiolit'],
-      'vacina': ['calendario vacinal', 'imunizacao', 'pentavalente', 'pneumococica', 'triplice viral', 'hpv', 'bcg'],
-      'reflux': ['drge', 'esofago', 'barrett', 'pirose', 'eda', 'omeprazol', 'ibp', 'phmetria'],
-      'avc': ['ave', 'isquemico', 'hemorragico', 'trombectomi', 'rtpa', 'trombolise', 'afasia'],
-      'renais': ['ira', 'drc', 'creatinina', 'clearance', 'kdigo', 'hemodialise', 'glomerulonefrite'],
-      'pneumoni': ['pac', 'curb-65', 'amoxicilina', 'claritromicina', 'azitromicina', 'ceftriaxona', 'infiltrado']
-    };
-
-    const rawTokens = [
-      ...normTema.split(/\s+/),
-      ...normDisc.split(/\s+/),
-      ...normCurso.split(/\s+/),
-      ...tagsList
-    ].filter(t => t.length > 2 && !stopwords.has(t));
-
-    const stems = new Set();
-    rawTokens.forEach(t => {
-      const s = t.length > 5 ? t.slice(0, t.length - 2) : t;
-      stems.add(s);
-      for (const [k, list] of Object.entries(CLINICAL_SYNONYMS)) {
-        if (t.includes(k) || k.includes(t)) {
-          list.forEach(item => stems.add(item));
-        }
-      }
-    });
-
+    const disciplina = String(req.query.disciplina || req.query.disc || '').slice(0, 120);
+    const tema = String(req.query.tema || req.query.titulo || '').slice(0, 200);
+    const modulo = String(req.query.modulo || req.query.curso || '').slice(0, 200);
+    const limit = Math.max(1, Math.min(60, parseInt(req.query.limit, 10) || 40));
     const bank = readQuestionsBank();
-    if (!bank.length) {
-      return res.json({ success: true, count: 0, totalAvailable: 0, questions: [], tags: [...stems] });
-    }
-
-    const scored = bank.map(q => {
-      let score = 0;
-      const spec = normText(q.specialty || '');
-      const sub = normText(q.subspecialty || '');
-      const st = normText(q.statement || '');
-      const opts = normText((q.options || []).join(' '));
-      const exp = normText(q.explanation || '');
-      const qTags = Array.isArray(q.tags) ? q.tags.map(normText).join(' ') : normText(q.tags || '');
-      const full = st + ' ' + opts + ' ' + exp;
-
-      // Correspondência exata da frase do tema
-      if (normTema && normTema.length > 3 && full.includes(normTema)) score += 90;
-
-      // Radicais e sinônimos médicos clínicos
-      stems.forEach(stem => {
-        if (st.includes(stem)) score += 25;
-        if (opts.includes(stem)) score += 15;
-        if (exp.includes(stem)) score += 10;
-        if (sub.includes(stem)) score += 30;
-        if (qTags.includes(stem)) score += 25;
-        if (spec.includes(stem)) score += 15;
-      });
-
-      // Bônus se pertencer à grande área clínica da aula
-      if (normDisc && (spec.includes(normDisc) || sub.includes(normDisc))) score += 20;
-
-      return { q, score };
-    });
-
-    // CRÍTICO: Filtra apenas questões que TÊM relação clínica real com o tema (score >= 25)
-    // NUNCA preenche com questões aleatórias de matérias não relacionadas
-    scored.sort((a, b) => b.score - a.score);
-    const relevant = scored.filter(s => s.score >= 25);
-    let matched = relevant.slice(0, limit).map(s => s.q);
-
-    // Se houver poucas questões (< 12) e a API do Gemini estiver ativa, sintetiza questões oficiais do tema
+    const r = selecionarQuestoes(bank, { tema, modulo, disc: disciplina, limit });
+    let questions = r.questions;
+    let iaCount = 0;
+    const MIN = 10;
+    const assunto = (tema && r.termos.length ? tema : (modulo || tema)).trim();
     const gemini = getGeminiClient();
-    if (matched.length < 12 && gemini && (normTema.length > 3 || normDisc.length > 3)) {
-      try {
-        const assunto = tema || disciplina || 'Medicina';
-        const aiPrompt = `Você é um preceptor médico especialista em residência médica (ENARE, USP, UNIFESP, AMRIGS, Revalida).
-Gere exatamente 12 questões clínicas inéditas de alto rendimento estritamente sobre o tema: "${assunto}" (Disciplina: "${disciplina || 'Clínica Médica'}").
-Cada questão deve possuir:
-- Enunciado com caso clínico detalhado e conduta/diagnóstico esperado
-- 4 alternativas realistas no array options: ["A) ...", "B) ...", "C) ...", "D) ..."]
-- correctIndex (número 0 a 3 indicando a resposta correta)
-- correctLetter ('A', 'B', 'C' ou 'D')
-- explanation técnica aprofundada com justificativa de preceptor
-- institution: 'Simulado Oficial Residência'
-- year: 2026
-- specialty: '${disciplina || 'Clínica Médica'}'
-- subspecialty: '${assunto}'
-
-Retorne estritamente um array JSON com o formato solicitado.`;
-
-        const aiRes = await gemini.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: aiPrompt,
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  statement: { type: Type.STRING },
-                  options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  correctIndex: { type: Type.INTEGER },
-                  correctLetter: { type: Type.STRING },
-                  explanation: { type: Type.STRING },
-                  institution: { type: Type.STRING },
-                  year: { type: Type.INTEGER },
-                  specialty: { type: Type.STRING },
-                  subspecialty: { type: Type.STRING }
-                },
-                required: ['statement', 'options', 'correctIndex', 'explanation']
-              }
-            }
-          }
-        });
-
-        if (aiRes.text) {
-          const novas = JSON.parse(aiRes.text);
-          if (Array.isArray(novas) && novas.length) {
-            const novasFormatadas = novas.map((nq, nIdx) => ({
-              id: 'q-ai-' + Date.now() + '-' + nIdx,
-              statement: nq.statement,
-              options: nq.options,
-              correctIndex: nq.correctIndex || 0,
-              correctLetter: nq.correctLetter || String.fromCharCode(65 + (nq.correctIndex || 0)),
-              explanation: nq.explanation,
-              institution: nq.institution || 'Simulado Oficial Residência',
-              year: nq.year || 2026,
-              specialty: nq.specialty || disciplina || 'Clínica Médica',
-              subspecialty: nq.subspecialty || tema || 'Geral',
-              difficulty: 'Médio',
-              tags: [disciplina, tema, 'Simulado'].filter(Boolean),
-              createdAt: new Date().toISOString()
+    if (questions.length < MIN && gemini && assunto.length > 3 && req.query.ia !== '0') {
+      const key = norm(assunto) + '|' + norm(disciplina);
+      let novas = _qIaCache.get(key);
+      if (!novas) {
+        try {
+          const falta = Math.min(10, MIN + 2 - questions.length);
+          const aiRes = await Promise.race([
+            gemini.models.generateContent({
+              model: 'gemini-3.8-flash',
+              contents: `Você é preceptor de residência médica (ENARE, USP, UNIFESP, AMRIGS, Revalida).
+Crie ${falta} questões de múltipla escolha inéditas, estritamente sobre o tema desta videoaula: "${assunto}"${disciplina ? ` (área: ${disciplina})` : ''}.
+Regras: caso clínico objetivo, 4 alternativas ("A) ...", "B) ..."), apenas UMA correta, comentário técnico curto que explique por que a correta está certa e as demais erradas. Não saia do tema. Varie o foco (diagnóstico, conduta, fisiopatologia, exames).`,
+              config: { responseMimeType: 'application/json', responseSchema: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { statement: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, correctIndex: { type: Type.INTEGER }, explanation: { type: Type.STRING } }, required: ['statement', 'options', 'correctIndex', 'explanation'] } } }
+            }),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 25000))
+          ]);
+          const arr = JSON.parse(aiRes.text || '[]');
+          novas = (Array.isArray(arr) ? arr : []).filter(q => q && q.statement && Array.isArray(q.options) && q.options.length >= 3 && Number.isInteger(q.correctIndex) && q.correctIndex >= 0 && q.correctIndex < q.options.length)
+            .map((q, i) => ({
+              id: 'q-ia-' + Buffer.from(key).toString('base64').slice(0, 10) + '-' + i,
+              statement: q.statement, options: q.options, correctIndex: q.correctIndex,
+              correctLetter: String.fromCharCode(65 + q.correctIndex), explanation: q.explanation || '',
+              institution: 'Gerada por IA', year: new Date().getFullYear(), specialty: disciplina || 'Medicina',
+              subspecialty: assunto, difficulty: 'Médio', tags: [assunto], source: 'ia', _rel: 'ia'
             }));
-
-            // Adiciona ao topo e persiste no banco
-            matched = [...matched, ...novasFormatadas].slice(0, limit);
-            const atualBank = readQuestionsBank();
-            writeQuestionsBank([...atualBank, ...novasFormatadas]);
-          }
-        }
-      } catch (aiErr) {
-        console.warn('[Questions Match] Síntese AI alternativa indisponível:', aiErr.message);
+          if (novas.length) { _qIaCache.set(key, novas); if (_qIaCache.size > 100) _qIaCache.delete(_qIaCache.keys().next().value); }
+        } catch (e) { console.warn('[Questões da aula] geração por IA indisponível:', e.message); novas = []; }
       }
+      iaCount = novas.length;
+      questions = [...questions, ...novas].slice(0, limit);
     }
-
     res.json({
-      success: true,
-      count: matched.length,
-      totalAvailable: Math.max(relevant.length, matched.length),
-      questions: matched,
-      matchedTags: [...stems],
-      tema,
-      disciplina
+      success: true, count: questions.length, totalAvailable: questions.length,
+      bancoCount: questions.length - iaCount, iaCount, exatas: r.exatas, termos: r.termos,
+      questions, tema, modulo, disciplina
     });
   } catch (err) {
     console.error('Erro em /api/questions/match:', err.message);
