@@ -24,7 +24,7 @@ const PERFIL_SCHEMA = {
   }
 };
 
-export function registerPlanner(app, { generateWithGemini, getGeminiClient }) {
+export function registerPlanner(app, { generateWithGemini, getGeminiClient, getBank }) {
   // GET /api/planner/v2/catalogo — o que existe no acervo
   app.get('/api/planner/v2/catalogo', (_req, res) => res.json({ success: true, ...PE.resumoCatalogo() }));
 
@@ -152,7 +152,7 @@ Para cada disciplina/módulo informe: provas/avaliações (data, tipo como P1/P2
       if (!perfil.objetivo) return res.status(400).json({ success: false, msg: 'Perfil incompleto: falta o objetivo.' });
       const retidas = Array.isArray(req.body.retidas) ? req.body.retidas.filter(t => t && t.data && t.data < hoje && t.status === 'feito').slice(0, 2000) : [];
       const dias = req.body.dias ? Math.max(7, Math.min(120, +req.body.dias)) : undefined;
-      const plan = PE.gerarTarefas({ perfil: { ...perfil, horas: perfil.horas || null }, hoje, inicio: hoje, dias, retidas });
+      const plan = PE.gerarTarefas({ perfil: { ...perfil, horas: perfil.horas || null }, hoje, inicio: hoje, dias, retidas, banco: typeof getBank === 'function' ? getBank() : null });
       plan.tarefas.forEach(t => delete t._vids);
       res.json({ success: true, plan });
     } catch (err) {

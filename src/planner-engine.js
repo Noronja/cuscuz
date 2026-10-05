@@ -6,6 +6,21 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 
+import { selecionar as selecionarQuestoes } from './questoes-aula.js';
+let _BANCO = null; // banco de questões do servidor (para ligar cada tarefa às questões reais da aula)
+const _qCache = new Map();
+function infoQuestoes(tema, modulo, disc) {
+  if (!_BANCO || !_BANCO.length || !tema) return null;
+  const k = norm(tema) + '|' + norm(modulo || '');
+  if (_qCache.has(k)) return _qCache.get(k);
+  let r = null;
+  try {
+    const x = selecionarQuestoes(_BANCO, { tema, modulo, disc, limit: 60 });
+    const fontes = [...new Set(x.questions.filter(q => q.institution && q.year).map(q => q.institution + ' ' + q.year))].slice(0, 3);
+    r = { n: x.total, exatas: x.exatas, fontes };
+  } catch (_) { r = null; }
+  _qCache.set(k, r); return r;
+}
 export const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const MIN_AULA = 35; // duração média estimada de uma videoaula do acervo
@@ -506,8 +521,16 @@ function passoTexto(ac, ctx) {
       return ctx.temResumo
         ? `Leia o resumo indicado de "${tema}" e passe a limpo, em 1 página, o esquema de diagnóstico e conduta. Sublinhe o que a aula ainda não tinha te mostrado.`
         : `Sem resumo pronto para este tema: transforme suas anotações da aula em um mapa de 1 página (definição → diagnóstico → conduta → pegadinhas).`;
-    case 'questoes':
-      return `Resolva ${ctx.nq} questões de ${disc} sobre "${tema}" no modo cronometrado (~3 min cada). Para cada erro, escreva em uma linha por que errou (conceito, atenção ou chute) — isso vira sua lista de revisão.`;
+    case 'questoes': {
+      const q = ctx.qinfo;
+      const fonte = q && q.fontes && q.fontes.length ? ` (ex.: ${q.fontes.join(', ')})` : '';
+      const base = q && q.n >= 10
+        ? `O banco tem ${q.n} questões sobre "${tema}"${fonte}. Resolva ${Math.min(ctx.nq, q.n)} em modo cronometrado (~3 min cada) pelo botão Questões desta tarefa.`
+        : q && q.n > 0
+          ? `Há ${q.n} questão(ões) sobre "${tema}" no banco local${fonte}; o botão Questões desta tarefa completa com o banco do Hardworq e, se faltar, gera questões do tema. Meta: ${ctx.nq} questões em modo cronometrado (~3 min cada).`
+          : `Resolva ${ctx.nq} questões de ${disc} sobre "${tema}" em modo cronometrado (~3 min cada) pelo botão Questões desta tarefa (ele busca no banco completo do Hardworq e, se faltar, gera questões do tema).`;
+      return `${base} Para cada erro, escreva em uma linha por que errou (conceito, atenção ou chute) — isso vira sua lista de revisão.`;
+    }
     case 'flashcards':
       return `Crie/revise flashcards de "${tema}": 1 cartão por critério, dose ou conduta que você errou ou hesitou. Limite de 10 cartões novos.`;
     default: return '';
@@ -526,7 +549,7 @@ function tituloAula(v) {
 
 function buildEstudo(disc, tema, minutos, metodo, tc, usadosVideos, cursosPref, extra) {
   const info = DISC_BY_NAME.get(disc) || {};
-  const foco = (extra && extra.foco) || info.foco || 'definição, critérios diagnósticos, conduta e pegadinhas de prova';
+  const foco = (extra && extra.foco) || 'definição, critérios diagnósticos, conduta de escolha e as pegadinhas que o professor destacar sobre este tema';
   const banco = info.banco || disc;
   const rt = RATIOS[metodo] || RATIOS.equilibrado;
   let vids = [];
@@ -566,8 +589,10 @@ function buildEstudo(disc, tema, minutos, metodo, tc, usadosVideos, cursosPref, 
     passos.push({ acao: 'resumo', minutos: resMin, texto: passoTexto('resumo', ctx), recursos: idxs });
   }
   const bq = acharMaterial(DISC_BY_NAME.has(disc) ? disc : null, temaBusca, 'questoes', cursosPref);
-  const temaQ = (extra && extra.assunto) || tema;
-  const qIdx = [recursos.push({ tipo: 'questoes', titulo: `Questões: ${temaQ}`, tema: temaQ, disc: banco }) - 1];
+  const temaQ = (extra && extra.assunto) || (vids.length === 1 && subs[0] ? subs[0] : tema);
+  ctx.qinfo = infoQuestoes(temaQ, (extra && extra.assunto) ? '' : tema, banco);
+  if (ctx.qinfo && ctx.qinfo.n >= 10) ctx.nq = Math.max(5, Math.min(ctx.nq, ctx.qinfo.n));
+  const qIdx = [recursos.push({ tipo: 'questoes', titulo: `Questões: ${temaQ}`, tema: temaQ, modulo: (extra && extra.assunto) ? '' : tema, disc: banco }) - 1];
   if (bq.length) qIdx.push(recursos.push({ tipo: 'pdf', id: bq[0].id, titulo: bq[0].titulo, curso: bq[0].curso, rotulo: 'Banco em PDF' }) - 1);
   passos.push({ acao: 'questoes', minutos: qMin, texto: passoTexto('questoes', ctx), recursos: qIdx });
   const fIdx = [recursos.push({ tipo: 'flashcards', titulo: `Flashcards: ${temaQ}`, tema: temaQ, disc }) - 1];
@@ -603,7 +628,8 @@ function trimTask(t, minutos) {
   return t;
 }
 
-export function gerarTarefas({ perfil, hoje, inicio, dias, retidas = [] }) {
+export function gerarTarefas({ perfil, hoje, inicio, dias, retidas = [], banco = null }) {
+  _BANCO = Array.isArray(banco) ? banco : null; _qCache.clear();
   const p = { ...PERFIL_VAZIO(), ...perfil };
   const horas = p.horas || [0, 120, 120, 120, 120, 120, 0];
   const ini = inicio || hoje;

@@ -10063,11 +10063,11 @@ window.modalPraticarQuestoesTema = function() {
   iniciarSimuladoDoTema(tema, disc, (cache && cache.questions) || []);
 };
 
-window.iniciarSimuladoDoTema = async function(tema, disc, questions) {
+window.iniciarSimuladoDoTema = async function(tema, disc, questions, modulo) {
   let qs = Array.isArray(questions) && questions.length ? [...questions] : [];
   if (!qs.length) {
     toast('Carregando questões selecionadas do tema…', 'info');
-    const res = await buscarQtdQuestoesTema(tema, disc, '');
+    const res = await buscarQtdQuestoesTema(tema, disc, modulo || '');
     qs = res.questions || [];
   }
   if (!qs.length) {

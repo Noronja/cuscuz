@@ -3131,7 +3131,7 @@ app.get('/api/planner/deck', async (req, res) => {
   }
 });
 
-registerPlanner(app, { generateWithGemini, getGeminiClient });
+registerPlanner(app, { generateWithGemini, getGeminiClient, getBank: () => readQuestionsBank() });
 registerJarvis(app, { generateWithGemini, getGeminiClient });
 registerAula(app, { generateWithGemini, getGeminiClient });
 

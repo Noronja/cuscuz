@@ -145,12 +145,26 @@
     } catch (_) {}
   }
 
+  // Liga a tarefa às aulas que você mesmo gravou (Aula do dia): resumo, flashcards e transcrição daquele conteúdo
+  const nrm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  function gravadasDe(t) {
+    let l = []; try { l = JSON.parse(localStorage.getItem('aula-dia-sessoes') || '[]'); } catch (_) {}
+    if (!l.length || t.tipo !== 'estudo') return [];
+    const tt = new Set(nrm((t.tema || '') + ' ' + (t.modulo || '') + ' ' + (t.titulo || '')).split(/[^a-z0-9]+/).filter(w => w.length > 4));
+    return l.filter(s => s.pronto || s.revisada).filter(s => {
+      const dOk = nrm(t.titulo + ' ' + (t.materia || '')).includes(nrm(s.disciplina || '').slice(0, 6)) && nrm(s.disciplina).length > 2;
+      const toks = nrm(s.tema).split(/[^a-z0-9]+/).filter(w => w.length > 4);
+      return dOk && toks.some(w => tt.has(w));
+    }).slice(0, 2);
+  }
+
   function tarefaRow(t) {
     const cor = COR[t.tipo] || 'var(--teal)';
     const passos = (t.passos || []).map(s => `<div class="plv2-st"><i class="ph ${ICON[s.acao] || 'ph-check'}"></i><div><b>${E(NOME[s.acao] || s.acao)}${s.minutos ? ' · ' + s.minutos + ' min' : ''}</b><div>${E(s.texto)}</div></div></div>`).join('');
-    const recs = (t.recursos || []).map((r, i) => {
-      const ic = r.tipo === 'video' ? 'ph-play-circle' : r.tipo === 'pdf' ? 'ph-file-pdf' : r.tipo === 'questoes' || r.tipo === 'simulado' ? 'ph-list-checks' : r.tipo === 'erros' ? 'ph-warning-circle' : 'ph-cards';
-      const rot = r.tipo === 'video' ? 'Aula' : r.tipo === 'pdf' ? (r.rotulo || 'Resumo/PDF') : r.tipo === 'questoes' ? 'Questões' : r.tipo === 'simulado' ? 'Simulado' : r.tipo === 'erros' ? 'Caderno de erros' : 'Flashcards';
+    const extras = gravadasDe(t).map(g => ({ tipo: 'aulagravada', id: g.id, titulo: [g.disciplina, g.tema, g.parte !== 'Única' ? g.parte : ''].filter(Boolean).join(' — ') }));
+    const recs = (t.recursos || []).concat(extras).map((r, i) => {
+      const ic = r.tipo === 'aulagravada' ? 'ph-microphone-stage' : r.tipo === 'video' ? 'ph-play-circle' : r.tipo === 'pdf' ? 'ph-file-pdf' : r.tipo === 'questoes' || r.tipo === 'simulado' ? 'ph-list-checks' : r.tipo === 'erros' ? 'ph-warning-circle' : 'ph-cards';
+      const rot = r.tipo === 'aulagravada' ? 'Sua aula gravada' : r.tipo === 'video' ? 'Aula' : r.tipo === 'pdf' ? (r.rotulo || 'Resumo/PDF') : r.tipo === 'questoes' ? 'Questões' : r.tipo === 'simulado' ? 'Simulado' : r.tipo === 'erros' ? 'Caderno de erros' : 'Flashcards';
       return `<button class="plv2-rec" onclick="plv2.abrir('${E(t.id)}',${i})"><i class="ph ${ic}" style="color:var(--teal);font-size:16px"></i><span><b>${rot}:</b> ${E(String(r.titulo).replace(/^(Questões|Flashcards|Aula): /, ''))}</span></button>`;
     }).join('');
     const est = t.estrategia || {}; const chips = Object.entries(est).filter(([, v]) => v).map(([k, v]) => `<em>${E(NOME[k] || k)} ${v}′</em>`).join('');
@@ -183,7 +197,10 @@
   /* ───────────── Abrir materiais ───────────── */
   function abrir(tid, idx) {
     const plano = get(K_PLAN, null); if (!plano) return;
-    const t = plano.tarefas.find(x => x.id === tid); const rec = t && t.recursos[idx]; if (!rec) return;
+    const t = plano.tarefas.find(x => x.id === tid); if (!t) return;
+    let rec = t.recursos[idx];
+    if (!rec) { const g = gravadasDe(t)[idx - t.recursos.length]; if (g) rec = { tipo: 'aulagravada', id: g.id }; }
+    if (!rec) return;
     try {
       if (rec.tipo === 'video') {
         go('view-acervo');
@@ -192,13 +209,15 @@
       } else if (rec.tipo === 'pdf') {
         window.open(window.cuscuzMediaUrl ? cuscuzMediaUrl('/api/drive/pdf/' + encodeURIComponent(rec.id)) : '/api/drive/pdf/' + encodeURIComponent(rec.id), '_blank');
       } else if (rec.tipo === 'questoes') {
-        iniciarSimuladoDoTema(rec.tema || t.tema, rec.disc || t.materia, []);
+        iniciarSimuladoDoTema(rec.tema || t.tema, rec.disc || t.materia, [], rec.modulo || '');
       } else if (rec.tipo === 'flashcards') {
         go('view-treino'); setTimeout(() => { try { startFC(); } catch (_) {} }, 150);
       } else if (rec.tipo === 'erros') {
         go('view-treino'); setTimeout(() => { try { startWrongQuiz(); } catch (_) {} }, 150);
       } else if (rec.tipo === 'simulado') {
         go('view-simulados');
+      } else if (rec.tipo === 'aulagravada') {
+        go('view-auladia'); setTimeout(() => { try { auladia.abrir(rec.id); } catch (_) {} }, 350);
       }
     } catch (e) { if (window.toast) toast('Não consegui abrir: ' + e.message, 'error'); }
   }
