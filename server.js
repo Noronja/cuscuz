@@ -1,4 +1,4 @@
-import { selecionar as selecionarQuestoes, norm } from './src/questoes-aula.js';
+import { selecionar as selecionarQuestoes, norm, acharDoencas } from './src/questoes-aula.js';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -1149,30 +1149,42 @@ Se o usuário perguntar sobre o funcionamento da plataforma, funcionalidades, cr
    ═══════════════════════════════════════════════════════════════ */
 const QUESTIONS_BANK_FILE = path.join(__dirname, 'data', 'questions-bank.json');
 
+let _bankCache = null;
+let _bankTimer = null;
 function readQuestionsBank() {
+  if (_bankCache) return _bankCache;
   try {
     if (fs.existsSync(QUESTIONS_BANK_FILE)) {
-      const raw = fs.readFileSync(QUESTIONS_BANK_FILE, 'utf8');
-      const data = JSON.parse(raw);
-      if (Array.isArray(data)) return data;
+      const data = JSON.parse(fs.readFileSync(QUESTIONS_BANK_FILE, 'utf8'));
+      if (Array.isArray(data)) return (_bankCache = data);
     }
   } catch (err) {
     console.error('Erro ao ler questions-bank.json:', err.message);
   }
-  return [];
+  return (_bankCache = []);
 }
 
-function writeQuestionsBank(questions) {
+// Escrita: atualiza a memória na hora e grava o arquivo (compacto) em segundo plano, sem bloquear o servidor
+function flushQuestionsBank() {
   try {
     const dir = path.dirname(QUESTIONS_BANK_FILE);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(QUESTIONS_BANK_FILE, JSON.stringify(questions, null, 2), 'utf8');
+    const tmp = QUESTIONS_BANK_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(_bankCache || []), 'utf8');
+    fs.renameSync(tmp, QUESTIONS_BANK_FILE);
     return true;
   } catch (err) {
     console.error('Erro ao escrever questions-bank.json:', err.message);
     return false;
   }
 }
+function writeQuestionsBank(questions) {
+  _bankCache = questions;
+  clearTimeout(_bankTimer);
+  _bankTimer = setTimeout(flushQuestionsBank, 3000);
+  return true;
+}
+process.on('SIGTERM', () => { if (_bankTimer) { clearTimeout(_bankTimer); flushQuestionsBank(); } });
 
 // 1. Obter todas as questões prontas do banco (Aba 1)
 app.get('/api/questions/bank', (req, res) => {
@@ -1183,6 +1195,7 @@ app.get('/api/questions/bank', (req, res) => {
 // 1.1 Questões da videoaula: só entram questões que falam do tema/módulo da aula (cobertura mínima de conceitos).
 // Se o banco tiver poucas e houver Gemini, completa com questões inéditas sobre o MESMO tema (marcadas como IA).
 const _qIaCache = new Map();
+const _qVivoCache = new Map();
 app.get('/api/questions/match', async (req, res) => {
   try {
     const disciplina = String(req.query.disciplina || req.query.disc || '').slice(0, 120);
@@ -1192,7 +1205,37 @@ app.get('/api/questions/match', async (req, res) => {
     const bank = readQuestionsBank();
     const r = selecionarQuestoes(bank, { tema, modulo, disc: disciplina, limit });
     let questions = r.questions;
-    let iaCount = 0;
+    let iaCount = 0, vivoCount = 0, doencasUsadas = [];
+    // Banco completo do Hardworq (30 mil+): acha a(s) doença(s) do catálogo que correspondem à aula e busca só elas
+    if (req.query.vivo !== '0' && (HWQ.email && HWQ.senha || HWQ_STATE.userToken || HWQ.cookie)) {
+      try {
+        const doencas = await hwqListarDoencas();
+        const alvo = acharDoencas(doencas, tema, modulo);
+        if (alvo.length) {
+          const key = alvo.map(d => d.id).sort().join(',');
+          let vivo = _qVivoCache.get(key);
+          if (!vivo || Date.now() - vivo.at > 6 * 3600 * 1000) {
+            if (!HWQ_STATE.userToken) await hwqLogin();
+            const busca = await Promise.race([
+              hwqFetchAll({ ids_doencas: alvo.map(d => d.id), qtd_maxima: Math.min(limit, 60), areas: ['Clínica Médica', 'Cirurgia Geral', 'Pediatria', 'Ginecologia e Obstetrícia', 'Medicina Preventiva'] }),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 25000))
+            ]);
+            const lista = busca && !busca.error && !busca.authFailed ? parseHardworqPayload(busca.questions) : [];
+            vivo = { at: Date.now(), questions: lista.map(q => Object.assign({}, q, { _rel: 'alta' })) };
+            if (lista.length) { _qVivoCache.set(key, vivo); if (_qVivoCache.size > 80) _qVivoCache.delete(_qVivoCache.keys().next().value); }
+          }
+          doencasUsadas = alvo.map(d => d.nome);
+          const vistos = new Set();
+          const juntas = [];
+          for (const q of [...vivo.questions, ...questions]) {
+            const k = q.remoteId != null ? 'r' + q.remoteId : q.id;
+            if (vistos.has(k)) continue; vistos.add(k); juntas.push(q);
+          }
+          vivoCount = vivo.questions.length;
+          questions = juntas.slice(0, limit);
+        }
+      } catch (e) { console.warn('[Questões da aula] banco Hardworq indisponível:', e.message); }
+    }
     const MIN = 10;
     const assunto = (tema && r.termos.length ? tema : (modulo || tema)).trim();
     const gemini = getGeminiClient();
@@ -1229,7 +1272,7 @@ Regras: caso clínico objetivo, 4 alternativas ("A) ...", "B) ..."), apenas UMA 
     }
     res.json({
       success: true, count: questions.length, totalAvailable: questions.length,
-      bancoCount: questions.length - iaCount, iaCount, exatas: r.exatas, termos: r.termos,
+      bancoCount: questions.length - iaCount, iaCount, vivoCount, doencas: doencasUsadas, exatas: r.exatas, termos: r.termos,
       questions, tema, modulo, disciplina
     });
   } catch (err) {
@@ -1242,20 +1285,24 @@ Regras: caso clínico objetivo, 4 alternativas ("A) ...", "B) ..."), apenas UMA 
 // sem perda, salvando em sua totalidade no arquivo persistente questions-bank.json
 app.post('/api/questions/bank/sync', (req, res) => {
   try {
-    const { questions } = req.body || {};
+    const { questions, since, limit } = req.body || {};
     let m = { imported: 0, updated: 0, total: 0 };
     if (Array.isArray(questions) && questions.length > 0) {
       m = mergeQuestionsIntoBank(questions);
     }
     const fullBank = readQuestionsBank();
-    console.log(`📚 [Banco Sync] Sincronização total concluída: ${fullBank.length} questões salvas permanentemente.`);
+    // Incremental: o app só recebe o que chegou depois da última sincronização (em lotes), não o banco inteiro de novo
+    const lim = Math.max(200, Math.min(4000, parseInt(limit, 10) || 3000));
+    const desde = since ? String(since) : '';
+    const novas = desde ? fullBank.filter(q => (q.createdAt || '') >= desde) : fullBank.slice();
+    novas.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+    const lote = novas.slice(0, lim);
+    const more = novas.length > lote.length;
+    const nextSince = lote.length ? (lote[lote.length - 1].createdAt || desde) : desde;
     res.json({
-      success: true,
-      count: fullBank.length,
-      total: fullBank.length,
-      imported: m.imported || 0,
-      updated: m.updated || 0,
-      questions: fullBank
+      success: true, count: fullBank.length, total: fullBank.length,
+      imported: m.imported || 0, updated: m.updated || 0,
+      questions: lote, more, nextSince, incremental: !!desde
     });
   } catch (err) {
     console.error('Erro em /api/questions/bank/sync:', err.message);
@@ -1299,7 +1346,10 @@ const HWQ = {
   cookie: process.env.HARDWORQ_COOKIE || '',
   autoSync: /^(1|true|on)$/i.test(process.env.HARDWORQ_AUTO_SYNC || ''),
   syncIntervalHours: Math.max(1, parseInt(process.env.HARDWORQ_SYNC_INTERVAL_H, 10) || 6),
-  maxBankSize: Math.max(50, parseInt(process.env.HARDWORQ_MAX_BANK, 10) || 400)
+  maxBankSize: Math.max(50, parseInt(process.env.HARDWORQ_MAX_BANK, 10) || 400),
+  // Espelho contínuo do banco completo (ligado sozinho quando há login; desligue com HARDWORQ_MIRROR=0)
+  mirror: !/^(0|false|off)$/i.test(process.env.HARDWORQ_MIRROR || ''),
+  mirrorMax: Math.max(500, parseInt(process.env.HARDWORQ_MIRROR_MAX, 10) || 12000)
 };
 const HWQ_STATE = { userToken: null, lastLoginAt: null, lastLoginOk: null, lastSyncAt: null, lastSyncOk: null, lastSyncResult: null, doencas: null, doencasAt: 0 };
 
@@ -1634,7 +1684,7 @@ function mergeQuestionsIntoBank(parsed) {
     seenStmts.add(key);
     const i = indexById.has(q.id) ? indexById.get(q.id) : (indexByStmt.has(key) ? indexByStmt.get(key) : null);
     if (i != null) {
-      bank[i] = { ...bank[i], ...q };
+      bank[i] = { ...bank[i], ...q, createdAt: bank[i].createdAt || q.createdAt };
       updated++;
     } else {
       fresh.push(q);
@@ -1848,6 +1898,44 @@ async function autoSyncHardworq() {
 }
 setTimeout(autoSyncHardworq, 20000);
 setInterval(autoSyncHardworq, HWQ.syncIntervalHours * 60 * 60 * 1000);
+
+// ── Espelho contínuo: percorre o catálogo de doenças do Hardworq (~358) e traz as questões de cada uma,
+// uma por vez e com pausa entre elas. Ao terminar a volta, descansa e recomeça (pega questões novas). ──
+const MIRROR_FILE = path.join(__dirname, 'data', 'hwq-mirror.json');
+const MIRROR = { running: false, idx: 0, total: 0, passes: 0, lastAt: null, lastDoenca: '', novas: 0, erro: '' };
+try { Object.assign(MIRROR, JSON.parse(fs.readFileSync(MIRROR_FILE, 'utf8')), { running: false }); } catch (_) {}
+const saveMirror = () => { try { fs.writeFileSync(MIRROR_FILE, JSON.stringify({ idx: MIRROR.idx, passes: MIRROR.passes, lastAt: MIRROR.lastAt })); } catch (_) {} };
+
+async function mirrorTick() {
+  if (!HWQ.mirror || !(HWQ.email && HWQ.senha) || MIRROR.running) return setTimeout(mirrorTick, 5 * 60 * 1000);
+  MIRROR.running = true;
+  let espera = 25 * 1000;
+  try {
+    if (!HWQ_STATE.userToken) await hwqLogin();
+    const doencas = await hwqListarDoencas();
+    MIRROR.total = doencas.length;
+    if (!doencas.length) throw new Error('catálogo de doenças vazio');
+    if (readQuestionsBank().length >= HWQ.mirrorMax) { espera = HWQ.syncIntervalHours * 3600 * 1000; MIRROR.erro = 'limite do espelho atingido'; }
+    else {
+      if (MIRROR.idx >= doencas.length) { MIRROR.idx = 0; MIRROR.passes++; espera = HWQ.syncIntervalHours * 3600 * 1000; }
+      else {
+        const d = doencas[MIRROR.idx];
+        const busca = await hwqFetchAll({ ids_doencas: [d.id], qtd_maxima: 400 });
+        if (busca.authFailed) { HWQ_STATE.userToken = null; throw new Error('login recusado'); }
+        const lista = !busca.error && busca.status < 400 ? parseHardworqPayload(busca.questions) : [];
+        if (lista.length) { const m = mergeQuestionsIntoBank(lista); MIRROR.novas += m.imported; }
+        MIRROR.lastDoenca = d.nome; MIRROR.idx++; MIRROR.lastAt = new Date().toISOString(); MIRROR.erro = '';
+        saveMirror();
+      }
+    }
+  } catch (e) { MIRROR.erro = String(e.message || e).slice(0, 120); espera = 3 * 60 * 1000; }
+  MIRROR.running = false;
+  setTimeout(mirrorTick, espera);
+}
+setTimeout(mirrorTick, 45000);
+app.get('/api/questions/mirror', (req, res) => {
+  res.json({ success: true, ...MIRROR, ativo: HWQ.mirror && !!(HWQ.email && HWQ.senha), bankCount: readQuestionsBank().length, limite: HWQ.mirrorMax });
+});
 
 // Login no boot apenas se não houver token reutilizável — credenciais certas entram em segundos
 setTimeout(() => { if (!HWQ_STATE.userToken && HWQ.email && HWQ.senha) hwqLogin(); }, 5000);

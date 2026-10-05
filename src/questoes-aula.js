@@ -54,8 +54,8 @@ function indexar(bank) {
   if (_idxFor === bank && _idx) return _idx;
   const docs = bank.map(q => {
     const st = norm(q.statement);
-    const ex = norm(q.explanation);
-    const op = norm((q.options || []).join(' '));
+    const ex = norm(String(q.explanation || '').slice(0, 900));
+    const op = '';
     const meta = norm([q.subspecialty, q.specialty, ...(Array.isArray(q.tags) ? q.tags : [])].join(' '));
     return { q, st, ex, op, meta, all: ' ' + st + ' ' + ex + ' ' + op + ' ' + meta + ' ' };
   });
@@ -115,4 +115,22 @@ function selecionar(bank, { tema, modulo, disc, limit = 40 } = {}) {
   return { questions: sel, total: pontuadas.length, exatas, termos: principais };
 }
 
-export { selecionar, norm, tokens };
+// Acha no catálogo de doenças do Hardworq (~358) as que correspondem à aula, para buscar no banco completo (30 mil+)
+function acharDoencas(doencas, tema, modulo) {
+  const cobre = (dTok, base) => dTok.every(d => {
+    const sd = stemOf(d);
+    return base.some(b => { const sb = stemOf(b); return sb === sd || (sd.length >= 5 && sb.length >= 5 && (sb.startsWith(sd) || sd.startsWith(sb))) || sinonimosDe(b).some(x => stemOf(x) === sd); });
+  });
+  const baseT = tokens(tema), baseM = tokens(modulo);
+  const out = [];
+  for (const d of doencas || []) {
+    const dt = tokens(d.nome);
+    if (!dt.length) continue;
+    if (cobre(dt, baseT)) out.push({ d, peso: 2 + dt.length });
+    else if (!baseT.length && cobre(dt, baseM)) out.push({ d, peso: 1 + dt.length });
+  }
+  out.sort((a, b) => b.peso - a.peso);
+  return out.slice(0, 3).map(x => x.d);
+}
+
+export { selecionar, norm, tokens, acharDoencas };

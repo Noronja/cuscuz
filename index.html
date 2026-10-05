@@ -4898,43 +4898,40 @@ async function loadQuestionsBankFromAPI(silent = true) {
       }
     }
 
-    // 2) Sincronização TOTAL bidirecional: envia todas as locais para o servidor mesclar e recebe a união completa
-    const payloadQuestions = localQuestions.length ? localQuestions : BANK_QUESTIONS;
-    let res = null;
-    try {
-      res = await fetch('/api/questions/bank/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions: payloadQuestions })
-      });
-    } catch (_) {
-      res = await fetch('/api/questions/bank');
-    }
-
-    if (res && res.ok) {
+    // 2) Sincronização incremental: envia só as questões suas (geradas/importadas à mão) e baixa só o que chegou depois da última vez
+    const base = localQuestions.length ? localQuestions : BANK_QUESTIONS;
+    const proprias = base.filter(q => q && !String(q.source || '').startsWith('Hardworq')).slice(0, 2000);
+    let since = base.length ? (lsGet('cuscuz_bank_since', '') || '') : '';
+    const map = new Map();
+    const chave = q => (q && q.id) ? q.id : (q && q.statement ? q.statement.trim().slice(0, 80).toLowerCase() : null);
+    base.forEach(q => { const k = chave(q); if (k) map.set(k, q); });
+    let recebidas = 0, ok = false;
+    for (let volta = 0; volta < 25; volta++) {
+      let res = null;
+      try {
+        res = await fetch('/api/questions/bank/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ questions: volta === 0 ? proprias : [], since, limit: 3000 })
+        });
+      } catch (_) { break; }
+      if (!res || !res.ok) break;
       const data = await res.json();
-      if (data && Array.isArray(data.questions) && data.questions.length > 0) {
-        // Mapa unificador garantindo preservação de todas as questões
-        const map = new Map();
-        // Inclui as do servidor
-        data.questions.forEach(q => {
-          if (q && q.id) map.set(q.id, q);
-          else if (q && q.statement) map.set(q.statement.trim().slice(0, 80).toLowerCase(), q);
-        });
-        // Garante que qualquer questão local não se perca
-        payloadQuestions.forEach(q => {
-          if (q && q.id && !map.has(q.id)) map.set(q.id, q);
-          else if (q && q.statement && !map.has(q.statement.trim().slice(0, 80).toLowerCase())) {
-            map.set(q.statement.trim().slice(0, 80).toLowerCase(), q);
-          }
-        });
-
+      if (!data || !Array.isArray(data.questions)) break;
+      ok = true;
+      data.questions.forEach(q => { const k = chave(q); if (k) { if (!map.has(k)) recebidas++; map.set(k, q); } });
+      if (!data.more || !data.nextSince || data.nextSince === since) { since = data.nextSince || since; break; }
+      since = data.nextSince;
+    }
+    if (ok) {
+      if (since) lsSet('cuscuz_bank_since', since);
+      if (recebidas || !base.length || map.size !== BANK_QUESTIONS.length) {
         BANK_QUESTIONS = Array.from(map.values());
         prepareBankQuestionsSearchIndex(BANK_QUESTIONS);
         persistQuestionsCache(BANK_QUESTIONS);
-        if (!silent) {
-          toast(`✅ Banco sincronizado na totalidade: ${BANK_QUESTIONS.length.toLocaleString('pt-BR')} questões salvas e disponíveis!`, 'success');
-        }
+      }
+      if (!silent) {
+        toast(`✅ Banco atualizado: ${BANK_QUESTIONS.length.toLocaleString('pt-BR')} questões (${recebidas.toLocaleString('pt-BR')} novas)`, 'success');
       }
     }
   } catch (err) {
@@ -4946,6 +4943,17 @@ async function loadQuestionsBankFromAPI(silent = true) {
   if (typeof renderHome === 'function') renderHome();
   if (typeof updateBadges === 'function') updateBadges();
 }
+
+// Mantém o banco sempre atualizado: ao abrir, a cada 10 min e quando o app volta para a tela
+let _bancoSyncando = false;
+async function bancoAtualizarAuto() {
+  if (_bancoSyncando || (window.appLocked && appLocked())) return;
+  _bancoSyncando = true;
+  try { await loadQuestionsBankFromAPI(true); } catch (_) {}
+  _bancoSyncando = false;
+}
+setInterval(bancoAtualizarAuto, 10 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) bancoAtualizarAuto(); });
 
 async function refreshQuestionsBank() {
   toast('Sincronizando a totalidade do banco de questões...', 'info');

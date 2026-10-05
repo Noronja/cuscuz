@@ -25,6 +25,11 @@ services:
         value: "6"
       - key: HARDWORQ_MAX_BANK
         value: "2000"
+      # Espelho contínuo do banco do Hardworq (liga sozinho quando há e-mail/senha)
+      - key: HARDWORQ_MIRROR
+        value: "1"
+      - key: HARDWORQ_MIRROR_MAX
+        value: "12000"
       # Google Drive API
       - key: GOOGLE_DRIVE_API_KEY
         sync: false
