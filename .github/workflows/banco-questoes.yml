@@ -1,0 +1,32 @@
+# Cataloga o banco de questões do Hardworq dentro do repositório (data/questions-bank.json.gz).
+# O Render recebe o arquivo no próximo deploy e o site já abre com o banco pronto, sem sincronizar.
+# Requer os segredos HARDWORQ_EMAIL e HARDWORQ_SENHA (Settings › Secrets and variables › Actions).
+name: banco-questoes
+on:
+  schedule:
+    - cron: "0 6 1 * *"   # todo dia 1 do mês, 03:00 (Brasília)
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  catalogar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Baixar o banco completo
+        env:
+          HARDWORQ_EMAIL: ${{ secrets.HARDWORQ_EMAIL }}
+          HARDWORQ_SENHA: ${{ secrets.HARDWORQ_SENHA }}
+        run: node scripts/baixar-banco.mjs
+      - name: Commitar o banco
+        run: |
+          git config user.name "banco-questoes[bot]"
+          git config user.email "actions@users.noreply.github.com"
+          git rm -q --cached data/questions-bank.json 2>/dev/null || true
+          git add data/questions-bank.json.gz
+          git diff --cached --quiet || (git commit -m "chore: atualizar banco de questões (catálogo completo)" && git pull --rebase origin main && git push origin HEAD:main)

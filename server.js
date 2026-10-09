@@ -5,6 +5,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { execFile } from 'child_process';
+import zlib from 'zlib';
 import { Readable } from 'stream';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
@@ -1151,15 +1152,18 @@ const QUESTIONS_BANK_FILE = path.join(__dirname, 'data', 'questions-bank.json');
 
 let _bankCache = null;
 let _bankTimer = null;
+let _bankDirty = false;
+const QUESTIONS_BANK_GZ = QUESTIONS_BANK_FILE + '.gz';
+// O banco pré-catalogado vem no repositório compactado (.json.gz, gerado pelo GitHub Actions); o .json é o arquivo de trabalho
 function readQuestionsBank() {
   if (_bankCache) return _bankCache;
   try {
-    if (fs.existsSync(QUESTIONS_BANK_FILE)) {
-      const data = JSON.parse(fs.readFileSync(QUESTIONS_BANK_FILE, 'utf8'));
-      if (Array.isArray(data)) return (_bankCache = data);
-    }
+    let raw = null;
+    if (fs.existsSync(QUESTIONS_BANK_FILE)) raw = fs.readFileSync(QUESTIONS_BANK_FILE, 'utf8');
+    else if (fs.existsSync(QUESTIONS_BANK_GZ)) raw = zlib.gunzipSync(fs.readFileSync(QUESTIONS_BANK_GZ)).toString('utf8');
+    if (raw) { const data = JSON.parse(raw); if (Array.isArray(data)) return (_bankCache = data); }
   } catch (err) {
-    console.error('Erro ao ler questions-bank.json:', err.message);
+    console.error('Erro ao ler o banco de questões:', err.message);
   }
   return (_bankCache = []);
 }
@@ -1172,6 +1176,7 @@ function flushQuestionsBank() {
     const tmp = QUESTIONS_BANK_FILE + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(_bankCache || []), 'utf8');
     fs.renameSync(tmp, QUESTIONS_BANK_FILE);
+    _bankDirty = false;
     return true;
   } catch (err) {
     console.error('Erro ao escrever questions-bank.json:', err.message);
@@ -1179,12 +1184,14 @@ function flushQuestionsBank() {
   }
 }
 function writeQuestionsBank(questions) {
-  _bankCache = questions;
+  _bankCache = questions; _bankDirty = true;
   clearTimeout(_bankTimer);
   _bankTimer = setTimeout(flushQuestionsBank, 3000);
   return true;
 }
-process.on('SIGTERM', () => { if (_bankTimer) { clearTimeout(_bankTimer); flushQuestionsBank(); } });
+const _sairLimpo = () => { clearTimeout(_bankTimer); if (_bankDirty) flushQuestionsBank(); process.exit(0); };
+process.on('SIGTERM', _sairLimpo);
+process.on('SIGINT', _sairLimpo);
 
 // 1. Obter todas as questões prontas do banco (Aba 1)
 app.get('/api/questions/bank', (req, res) => {
@@ -1299,11 +1306,17 @@ app.post('/api/questions/bank/sync', (req, res) => {
     const lote = novas.slice(0, lim);
     const more = novas.length > lote.length;
     const nextSince = lote.length ? (lote[lote.length - 1].createdAt || desde) : desde;
-    res.json({
+    const corpo = JSON.stringify({
       success: true, count: fullBank.length, total: fullBank.length,
       imported: m.imported || 0, updated: m.updated || 0,
       questions: lote, more, nextSince, incremental: !!desde
     });
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    if (/\bgzip\b/.test(req.headers['accept-encoding'] || '') && corpo.length > 20000) {
+      res.setHeader('Content-Encoding', 'gzip'); res.setHeader('Vary', 'Accept-Encoding');
+      return zlib.gzip(corpo, (e, z) => e ? res.end(corpo) : res.end(z));
+    }
+    res.end(corpo);
   } catch (err) {
     console.error('Erro em /api/questions/bank/sync:', err.message);
     res.status(500).json({ success: false, msg: err.message });
@@ -1909,13 +1922,13 @@ const saveMirror = () => { try { fs.writeFileSync(MIRROR_FILE, JSON.stringify({ 
 async function mirrorTick() {
   if (!HWQ.mirror || !(HWQ.email && HWQ.senha) || MIRROR.running) return setTimeout(mirrorTick, 5 * 60 * 1000);
   MIRROR.running = true;
-  let espera = 25 * 1000;
+  let espera = Math.max(1, parseFloat(process.env.HARDWORQ_MIRROR_PAUSE_S) || 25) * 1000;
   try {
     if (!HWQ_STATE.userToken) await hwqLogin();
     const doencas = await hwqListarDoencas();
     MIRROR.total = doencas.length;
     if (!doencas.length) throw new Error('catálogo de doenças vazio');
-    if (readQuestionsBank().length >= HWQ.mirrorMax) { espera = HWQ.syncIntervalHours * 3600 * 1000; MIRROR.erro = 'limite do espelho atingido'; }
+    if (readQuestionsBank().length >= HWQ.mirrorMax) { MIRROR.passes = Math.max(MIRROR.passes, 1); espera = HWQ.syncIntervalHours * 3600 * 1000; MIRROR.erro = 'limite do espelho atingido'; }
     else {
       if (MIRROR.idx >= doencas.length) { MIRROR.idx = 0; MIRROR.passes++; espera = HWQ.syncIntervalHours * 3600 * 1000; }
       else {

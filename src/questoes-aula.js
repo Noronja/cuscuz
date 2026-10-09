@@ -53,8 +53,8 @@ let _idx = null, _idxFor = null;
 function indexar(bank) {
   if (_idxFor === bank && _idx) return _idx;
   const docs = bank.map(q => {
-    const st = norm(q.statement);
-    const ex = norm(String(q.explanation || '').slice(0, 900));
+    const st = norm(String(q.statement || '').slice(0, 900));
+    const ex = norm(String(q.explanation || '').slice(0, 500));
     const op = '';
     const meta = norm([q.subspecialty, q.specialty, ...(Array.isArray(q.tags) ? q.tags : [])].join(' '));
     return { q, st, ex, op, meta, all: ' ' + st + ' ' + ex + ' ' + op + ' ' + meta + ' ' };

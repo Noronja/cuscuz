@@ -13,3 +13,8 @@ Thumbs.db
 *.log
 
 data/planner-decks.json
+
+# Banco de questões: o .json é arquivo de trabalho do servidor; o que vai ao repositório é o .json.gz
+data/questions-bank.json
+data/questions-bank.json.tmp
+data/hwq-mirror.json
