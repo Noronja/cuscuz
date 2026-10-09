@@ -12,7 +12,7 @@ const PLAIN = path.join(raiz, 'data', 'questions-bank.json');
 const GZ = PLAIN + '.gz';
 const PORT = 3999, BASE = `http://127.0.0.1:${PORT}`;
 const LIMITE_MS = (parseFloat(process.env.BANCO_TIMEOUT_H) || 5) * 3600 * 1000;
-if (!process.env.HARDWORQ_EMAIL || !process.env.HARDWORQ_SENHA) { console.error('Defina HARDWORQ_EMAIL e HARDWORQ_SENHA.'); process.exit(2); }
+if (!process.env.HARDWORQ_EMAIL || !process.env.HARDWORQ_SENHA) { console.log('Sem HARDWORQ_EMAIL/HARDWORQ_SENHA neste ambiente: nada a fazer (o Render já publica o banco sozinho com GITHUB_TOKEN).'); process.exit(0); }
 
 const contar = f => { try { return JSON.parse(fs.existsSync(f) ? (f.endsWith('.gz') ? zlib.gunzipSync(fs.readFileSync(f)).toString() : fs.readFileSync(f, 'utf8')) : '[]').length; } catch { return 0; } };
 const antes = Math.max(contar(PLAIN), contar(GZ));

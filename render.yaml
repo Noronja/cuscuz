@@ -29,7 +29,10 @@ services:
       - key: HARDWORQ_MIRROR
         value: "1"
       - key: HARDWORQ_MIRROR_MAX
-        value: "12000"
+        value: "25000"
+      # Token do GitHub (Fine-grained, Contents: read and write neste repositório) para o servidor publicar o banco catalogado
+      - key: GITHUB_TOKEN
+        sync: false
       # Google Drive API
       - key: GOOGLE_DRIVE_API_KEY
         sync: false

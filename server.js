@@ -1153,15 +1153,19 @@ const QUESTIONS_BANK_FILE = path.join(__dirname, 'data', 'questions-bank.json');
 let _bankCache = null;
 let _bankTimer = null;
 let _bankDirty = false;
+let _bankBase = 0; // quantas questões o repositório já tinha quando o servidor subiu
 const QUESTIONS_BANK_GZ = QUESTIONS_BANK_FILE + '.gz';
 // O banco pré-catalogado vem no repositório compactado (.json.gz, gerado pelo GitHub Actions); o .json é o arquivo de trabalho
 function readQuestionsBank() {
   if (_bankCache) return _bankCache;
   try {
-    let raw = null;
-    if (fs.existsSync(QUESTIONS_BANK_FILE)) raw = fs.readFileSync(QUESTIONS_BANK_FILE, 'utf8');
-    else if (fs.existsSync(QUESTIONS_BANK_GZ)) raw = zlib.gunzipSync(fs.readFileSync(QUESTIONS_BANK_GZ)).toString('utf8');
-    if (raw) { const data = JSON.parse(raw); if (Array.isArray(data)) return (_bankCache = data); }
+    const lerPlain = () => (fs.existsSync(QUESTIONS_BANK_FILE) ? JSON.parse(fs.readFileSync(QUESTIONS_BANK_FILE, 'utf8')) : []);
+    const lerGz = () => (fs.existsSync(QUESTIONS_BANK_GZ) ? JSON.parse(zlib.gunzipSync(fs.readFileSync(QUESTIONS_BANK_GZ)).toString('utf8')) : []);
+    let a = [], b = [];
+    try { a = lerPlain(); } catch (e) { console.warn('banco .json ilegível:', e.message); }
+    try { b = lerGz(); } catch (e) { console.warn('banco .json.gz ilegível:', e.message); }
+    const data = b.length > a.length ? b : a; // vale o mais completo
+    if (Array.isArray(data) && data.length) { _bankBase = data.length; return (_bankCache = data); }
   } catch (err) {
     console.error('Erro ao ler o banco de questões:', err.message);
   }
@@ -1362,7 +1366,7 @@ const HWQ = {
   maxBankSize: Math.max(50, parseInt(process.env.HARDWORQ_MAX_BANK, 10) || 400),
   // Espelho contínuo do banco completo (ligado sozinho quando há login; desligue com HARDWORQ_MIRROR=0)
   mirror: !/^(0|false|off)$/i.test(process.env.HARDWORQ_MIRROR || ''),
-  mirrorMax: Math.max(500, parseInt(process.env.HARDWORQ_MIRROR_MAX, 10) || 12000)
+  mirrorMax: Math.max(500, parseInt(process.env.HARDWORQ_MIRROR_MAX, 10) || 25000)
 };
 const HWQ_STATE = { userToken: null, lastLoginAt: null, lastLoginOk: null, lastSyncAt: null, lastSyncOk: null, lastSyncResult: null, doencas: null, doencasAt: 0 };
 
@@ -1919,6 +1923,33 @@ const MIRROR = { running: false, idx: 0, total: 0, passes: 0, lastAt: null, last
 try { Object.assign(MIRROR, JSON.parse(fs.readFileSync(MIRROR_FILE, 'utf8')), { running: false }); } catch (_) {}
 const saveMirror = () => { try { fs.writeFileSync(MIRROR_FILE, JSON.stringify({ idx: MIRROR.idx, passes: MIRROR.passes, lastAt: MIRROR.lastAt })); } catch (_) {} };
 
+
+// Publica o banco completo no GitHub (arquivo .json.gz) quando o espelho junta bem mais questões que o repositório tem.
+// Precisa só de GITHUB_TOKEN no Render (token com permissão "Contents: read and write" neste repositório).
+let _publicando = false;
+async function publicarBancoGitHub() {
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
+  const repo = process.env.GITHUB_REPO || 'Noronja/cuscuz';
+  const branch = process.env.GITHUB_BRANCH || 'main';
+  const bank = readQuestionsBank();
+  if (!token || _publicando || bank.length < _bankBase + Math.max(200, _bankBase * 0.05)) return;
+  _publicando = true;
+  const api = p => `https://api.github.com/repos/${repo}/contents/${p}`;
+  const h = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'User-Agent': 'cuscuz-med', 'X-GitHub-Api-Version': '2022-11-28' };
+  try {
+    const sha = async p => { const r = await fetch(api(p) + '?ref=' + branch, { headers: h }); return r.ok ? (await r.json()).sha : null; };
+    const conteudo = zlib.gzipSync(Buffer.from(JSON.stringify(bank)), { level: 9 }).toString('base64');
+    const gzPath = 'data/questions-bank.json.gz';
+    const put = await fetch(api(gzPath), { method: 'PUT', headers: h, body: JSON.stringify({ message: `chore: banco de questões (${bank.length} questões) [auto]`, content: conteudo, branch, sha: (await sha(gzPath)) || undefined }) });
+    if (!put.ok) throw new Error('GitHub ' + put.status + ' ' + (await put.text()).slice(0, 120));
+    const shaPlain = await sha('data/questions-bank.json');
+    if (shaPlain) await fetch(api('data/questions-bank.json'), { method: 'DELETE', headers: h, body: JSON.stringify({ message: 'chore: remove banco antigo em .json (agora .json.gz)', sha: shaPlain, branch }) });
+    _bankBase = bank.length; MIRROR.publicadoEm = new Date().toISOString(); MIRROR.erroPublicar = '';
+    console.log(`💾 [Banco] ${bank.length} questões publicadas no GitHub (${gzPath}).`);
+  } catch (e) { MIRROR.erroPublicar = String(e.message || e).slice(0, 160); console.warn('⚠️ [Banco] não consegui publicar no GitHub:', MIRROR.erroPublicar); }
+  _publicando = false;
+}
+
 async function mirrorTick() {
   if (!HWQ.mirror || !(HWQ.email && HWQ.senha) || MIRROR.running) return setTimeout(mirrorTick, 5 * 60 * 1000);
   MIRROR.running = true;
@@ -1928,9 +1959,9 @@ async function mirrorTick() {
     const doencas = await hwqListarDoencas();
     MIRROR.total = doencas.length;
     if (!doencas.length) throw new Error('catálogo de doenças vazio');
-    if (readQuestionsBank().length >= HWQ.mirrorMax) { MIRROR.passes = Math.max(MIRROR.passes, 1); espera = HWQ.syncIntervalHours * 3600 * 1000; MIRROR.erro = 'limite do espelho atingido'; }
+    if (readQuestionsBank().length >= HWQ.mirrorMax) { MIRROR.passes = Math.max(MIRROR.passes, 1); publicarBancoGitHub(); espera = HWQ.syncIntervalHours * 3600 * 1000; MIRROR.erro = 'limite do espelho atingido'; }
     else {
-      if (MIRROR.idx >= doencas.length) { MIRROR.idx = 0; MIRROR.passes++; espera = HWQ.syncIntervalHours * 3600 * 1000; }
+      if (MIRROR.idx >= doencas.length) { MIRROR.idx = 0; MIRROR.passes++; espera = HWQ.syncIntervalHours * 3600 * 1000; flushQuestionsBank(); publicarBancoGitHub(); }
       else {
         const d = doencas[MIRROR.idx];
         const busca = await hwqFetchAll({ ids_doencas: [d.id], qtd_maxima: 400 });
@@ -1947,7 +1978,7 @@ async function mirrorTick() {
 }
 setTimeout(mirrorTick, 45000);
 app.get('/api/questions/mirror', (req, res) => {
-  res.json({ success: true, ...MIRROR, ativo: HWQ.mirror && !!(HWQ.email && HWQ.senha), bankCount: readQuestionsBank().length, limite: HWQ.mirrorMax });
+  res.json({ success: true, ...MIRROR, publicacao: !!(process.env.GITHUB_TOKEN || process.env.GH_TOKEN), baseRepo: _bankBase, ativo: HWQ.mirror && !!(HWQ.email && HWQ.senha), bankCount: readQuestionsBank().length, limite: HWQ.mirrorMax });
 });
 
 // Login no boot apenas se não houver token reutilizável — credenciais certas entram em segundos
