@@ -329,14 +329,70 @@ export function sanePerfil(atual, patch) {
   return p;
 }
 
+/* Leitor de cronograma com VÁRIAS disciplinas ("1. Emergências Médicas" … "2. Terapia Intensiva" …), cada uma com linhas
+   "dd/mm[, dd/mm…] (hh:mm às hh:mm): conteúdo". Provas PR1/PR2/Final viram avaliações; o resto vira aulas com data. */
+export function parseCronograma(texto, hoje) {
+  const txt = String(texto || '');
+  const ano = String(hoje || new Date().toISOString()).slice(0, 4);
+  const secoes = [];
+  let atual = null;
+  for (const bruto of txt.split(/\r?\n/)) {
+    const l = bruto.trim();
+    if (!l) continue;
+    const h = l.match(/^(\d{1,2})[.)]\s+([A-Za-zÀ-ú][^\n]{2,100})$/);
+    if (h && !/^\d{1,2}\/\d{1,2}/.test(l)) {
+      atual = { nome: h[2].replace(/\s*\([^)]*\)\s*$/, '').replace(/[:.\s]+$/, '').trim(), linhas: [] };
+      secoes.push(atual); continue;
+    }
+    if (/^\(nota/i.test(l)) { atual = null; continue; }
+    if (atual && /^[*•\-–]\s+/.test(l)) atual.linhas.push(l.replace(/^[*•\-–]\s+/, ''));
+  }
+  if (!secoes.length) return parseCronogramaDisciplina(txt, hoje);
+  const iso = (d, m, a) => `${a ? (a.length === 2 ? '20' + a : a) : ano}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const provas = [], aulas = [], nomes = [];
+  for (const sec of secoes) {
+    const pr = [], au = [];
+    for (const l of sec.linhas) {
+      const m = l.match(/^((?:\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*,?\s*)+)\s*(?:\(([^)]*)\))?\s*[:\-–]\s*(.+)$/s);
+      if (!m) continue;
+      const datas = [...m[1].matchAll(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/g)].map(x => iso(x[1], x[2], x[3] || (m[1].match(/\/(\d{2,4})/) || [])[1]));
+      const resto = m[3].trim(), nr = norm(resto);
+      if (/\bprova\b|\bpr ?\d\b/.test(nr)) {
+        if (/2. ?chamada|segunda chamada|vista/.test(nr)) continue;
+        const tp = /final/.test(nr) ? 'Prova Final' : ((nr.match(/\bpr ?(\d)\b/) || [])[1] ? 'PR' + nr.match(/\bpr ?(\d)\b/)[1] : 'Prova');
+        pr.push({ data: datas[0], tipo: tp });
+        continue;
+      }
+      if (/campos? de pratica|atendimento, revisao e discussao|^revisao dos assuntos|^apresentacao da disciplina|feriado|recesso/.test(nr)) continue;
+      const segs = []; { let dep = 0, cur = ''; for (const ch of resto) { if (ch === '(') dep++; if (ch === ')') dep = Math.max(0, dep - 1); if (ch === ';' && !dep) { segs.push(cur); cur = ''; } else cur += ch; } segs.push(cur); }
+      const partes = segs.map(sg => { const sem = sg.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').replace(/\s+,/g, ',').replace(/[.\s]+$/, '').trim(); return (sem.length < 16 && /\(/.test(sg)) ? sg.replace(/\s+/g, ' ').replace(/[.\s]+$/, '').trim() : sem; }).filter(x => x.length > 3);
+      if (!partes.length) continue;
+      for (const d of datas) au.push({ data: d, tema: partes.join('; ').slice(0, 140), partes });
+    }
+    if (!pr.length && !au.length) continue;
+    nomes.push(sec.nome);
+    pr.sort((a, b) => a.data.localeCompare(b.data));
+    au.sort((a, b) => a.data.localeCompare(b.data));
+    // PRn cobre as aulas desde a prova anterior; a final cobre tudo
+    pr.forEach((x, i) => {
+      const final = /final/i.test(x.tipo);
+      const ini = final || i === 0 ? '0000-00-00' : pr[i - 1].data;
+      const ass = au.filter(a => a.data <= x.data && (final || a.data > ini)).flatMap(a => a.partes);
+      provas.push({ disciplina: sec.nome, data: x.data, tipo: x.tipo, assuntos: [...new Set(ass)] });
+    });
+    au.forEach(a => aulas.push({ disciplina: sec.nome, data: a.data, tema: a.tema }));
+  }
+  if (!nomes.length) return parseCronogramaDisciplina(txt, hoje);
+  return { disciplina: nomes.join(', '), disciplinas: nomes, provas, aulas };
+}
+
 /* Aplica um cronograma lido (parseCronogramaDisciplina) ao perfil: substitui o que já existia da mesma disciplina ou nas mesmas datas */
 export function mesclarCronograma(perfil, det) {
-  const dn = norm(det.disciplina);
-  const datas = new Set(det.provas.map(x => x.data));
-  const manter = (perfil.provasFaculdade || []).filter(x => norm(x.disciplina) !== dn && !datas.has(x.data));
-  const aulasMant = (perfil.aulasFaculdade || []).filter(x => norm(x.disciplina) !== dn);
+  const dns = new Set((det.disciplinas || [det.disciplina]).map(norm));
+  const manter = (perfil.provasFaculdade || []).filter(x => !dns.has(norm(x.disciplina)));
+  const aulasMant = (perfil.aulasFaculdade || []).filter(x => !dns.has(norm(x.disciplina)));
   const p = { ...perfil, provasFaculdade: [], aulasFaculdade: [] };
-  return sanePerfil(p, { provasFaculdade: [...manter, ...det.provas], aulasFaculdade: [...aulasMant, ...det.aulas], semProvas: false, semConteudo: false, manualNome: 'Cronograma ' + det.disciplina });
+  return sanePerfil(p, { provasFaculdade: [...manter, ...det.provas], aulasFaculdade: [...aulasMant, ...det.aulas], semProvas: false, semConteudo: false, manualNome: 'Cronograma da faculdade' });
 }
 
 export function faltando(p) {
@@ -588,7 +644,7 @@ function montarPool(p, inicio, fim) {
     for (const e of porDisc.values()) {
       // ordem de estudo = ordem em que as aulas foram/serão dadas (aulas já dadas primeiro), depois a data da prova
       const aulasD = (p.aulasFaculdade || []).filter(a => norm(a.disciplina) === norm(e.exibir) || detectDisc(a.disciplina) === detectDisc(e.exibir));
-      const dataAula = assunto => { const a = aulasD.find(x => norm(x.tema) === norm(assunto)); return a ? a.data : '9999-99-99'; };
+      const dataAula = assunto => { const a = aulasD.find(x => norm(x.tema).includes(norm(assunto))); return a ? a.data : '9999-99-99'; };
       if (aulasD.length) e.fila.sort((a, b) => dataAula(a.assunto).localeCompare(dataAula(b.assunto)) || a.prova.data.localeCompare(b.prova.data) || a.ordem - b.ordem);
       e.peso = 2; pool.set(e.nome, e);
     }
@@ -933,7 +989,11 @@ function montarBloco(escolha, minutos, data, p, usados, temaAtual, assuntoIdx, p
   if (escolha.fila && escolha.proxima) {
     const prox = escolha.proxima; const dd = diffDias(data, prox.data);
     const doProx = escolha.fila.filter(it => it.prova === prox);
-    let it = escolha._podeNovo === false ? null : doProx.find(x => !x.coberto);
+    // conteúdo novo só depois que a aula foi dada (a véspera é a "Prévia da aula"); sem aula com data, vale a ordem do manual
+    const aulaDe = x => { const dn = norm(escolha.exibir || nome); const a = (p.aulasFaculdade || []).filter(y => norm(y.disciplina) === dn && norm(y.tema).includes(norm(x.assunto))).map(y => y.data).sort()[0]; return a || ''; };
+    const liberado = x => { const a = aulaDe(x); return !a || a <= addDias(data, 1); };
+    let it = escolha._podeNovo === false ? null : doProx.find(x => !x.coberto && liberado(x));
+    if (!it && escolha._podeNovo !== false && !doProx.some(x => x.coberto)) it = doProx.find(x => !x.coberto);
     let revisao = false;
     if (!it) { // todo o conteúdo já foi visto: revisão ativa (questões + erros) em rodízio
       const cob = doProx.filter(x => x.coberto);
