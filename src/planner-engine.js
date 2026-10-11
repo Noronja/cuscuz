@@ -207,7 +207,7 @@ export const PERFIL_VAZIO = () => ({
   objetivo: '', alvo: '', dataProva: '', semData: false,
   provasFaculdade: [], semProvas: false, aulasFaculdade: [], manualNome: '', semConteudo: false,
   horas: null, dificuldades: [], fortes: [], semDificuldades: false,
-  metodo: '', cursos: [], anseios: '', materiais: []
+  metodo: '', cursos: [], anseios: '', materiais: [], conteudoConfirmado: false
 });
 
 
@@ -322,6 +322,7 @@ export function sanePerfil(atual, patch) {
     if (au.length) p.aulasFaculdade = au;
   }
   if (typeof x.semConteudo === 'boolean') p.semConteudo = x.semConteudo;
+  if (typeof x.conteudoConfirmado === 'boolean') p.conteudoConfirmado = x.conteudoConfirmado;
   if (typeof x.manualNome === 'string' && x.manualNome.trim()) p.manualNome = str(x.manualNome, 120);
   if (typeof x.semProvas === 'boolean') { p.semProvas = x.semProvas; if (x.semProvas) p.provasFaculdade = []; }
   if (Array.isArray(x.horas) && x.horas.length === 7) {
@@ -458,20 +459,32 @@ export function mesclarCronograma(perfil, det) {
   return sanePerfil(p, { provasFaculdade: [...manter, ...det.provas], aulasFaculdade: [...aulasMant, ...det.aulas], semProvas: false, semConteudo: false, manualNome: 'Cronograma da faculdade' });
 }
 
-export function faltando(p) {
+export function faltando(p, hoje) {
+  const h = hoje || new Date().toISOString().slice(0, 10);
   const f = [];
   if (!p.objetivo) return ['objetivo'];
   if (p.objetivo !== 'graduacao' && !p.dataProva && !p.semData) f.push('prova');
   if (p.objetivo !== 'residencia' && !(p.provasFaculdade || []).length && !p.semProvas) f.push('faculdade');
-  if (p.objetivo !== 'residencia' && (p.provasFaculdade || []).some(x => !(x.assuntos || []).length) && !p.semConteudo) f.push('conteudo');
+  const futuras = (p.provasFaculdade || []).filter(x => x.data >= h);
+  if (p.objetivo !== 'residencia' && futuras.some(x => !(x.assuntos || []).length) && !p.semConteudo) f.push('conteudo');
+  // conferência do conteúdo: antes de gerar, o mentor mostra o que vai cair em cada disciplina e pergunta se falta/sobra algo
+  if (p.objetivo !== 'residencia' && futuras.some(x => (x.assuntos || []).length) && !p.conteudoConfirmado && !p.semConteudo) f.push('conteudoOk');
   if (!p.horas) f.push('horas');
   if (!(p.dificuldades || []).length && !p.semDificuldades) f.push('dificuldades');
   if (!p.metodo) f.push('metodo');
   return f;
 }
 
-/* ───────────────────────── Parsers (modo sem IA) ───────────────────────── */
-const MESES = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+/* Resumo legível do conteúdo por disciplina (próxima prova e assuntos), usado nas perguntas de conferência */
+export function resumoConteudo(p, hoje) {
+  const h = hoje || new Date().toISOString().slice(0, 10);
+  const por = new Map();
+  for (const pr of (p.provasFaculdade || []).slice().sort((a, b) => a.data.localeCompare(b.data))) {
+    if (pr.data < h || !(pr.assuntos || []).length) continue;
+    if (!por.has(pr.disciplina)) por.set(pr.disciplina, pr);
+  }
+  return [...por.values()].map(pr => `• ${pr.disciplina} — ${pr.tipo || 'prova'} em ${pr.data.slice(8)}/${pr.data.slice(5, 7)}: ${pr.assuntos.slice(0, 5).join('; ')}${pr.assuntos.length > 5 ? ` (+${pr.assuntos.length - 5})` : ''}`).join('\n');
+}
 
 export function parseData(txt, hoje) {
   const n = norm(txt);
@@ -604,6 +617,23 @@ export function interpretarResposta(campo, texto, hoje, provasAtuais) {
       }
       if (mudou) patch.provasFaculdade = provas;
     }
+  } else if (campo === 'conteudoOk') {
+    patch.conteudoConfirmado = true;
+    if (!NEGA.test(n) && !/^(esta certo|tudo certo|ok|pode gerar|certo|sim|perfeito)/.test(n) && n.length > 3) {
+      // "Disciplina: tema, tema" acrescenta assuntos; o resto vai para as anotações do mentor
+      const provas = (provasAtuais || []).map(x => ({ ...x }));
+      let mudou = false;
+      for (const sg of String(texto).split(/;\s*(?=[^;:]{3,60}:)|\n/)) {
+        const m = sg.match(/^\s*([^:\-–]{3,60})\s*[:\-–]\s*(.+)$/);
+        if (!m) continue;
+        const alvo = provas.filter(pr => norm(pr.disciplina).includes(norm(m[1]).trim()) || norm(m[1]).includes(norm(pr.disciplina)));
+        const ex = /\b(tirar|remover|nao cai)\b/.test(norm(sg));
+        const lista = m[2].split(/[,;]|\s+e\s+/).map(x => x.trim()).filter(x => x.length > 2);
+        if (!ex) for (const pr of alvo) { pr.assuntos = [...new Set([...(pr.assuntos || []), ...lista])]; mudou = true; }
+      }
+      if (mudou) patch.provasFaculdade = provas;
+      patch.anseios = 'Sobre o conteúdo: ' + String(texto).slice(0, 500);
+    }
   } else if (campo === 'horas') {
     const h = parseHoras(texto); if (h) patch.horas = h;
   } else if (campo === 'dificuldades') {
@@ -637,13 +667,14 @@ export function interpretarResposta(campo, texto, hoje, provasAtuais) {
 const NOMES = (p) => (p.objetivo === 'graduacao' ? 'graduação' : p.objetivo === 'ambos' ? 'graduação + residência' : 'residência');
 
 // Próxima pergunta do roteiro (modo sem IA e também reserva quando a IA falha)
-export function proximaPergunta(p, jaPerguntouExtras) {
-  const f = faltando(p);
+export function proximaPergunta(p, jaPerguntouExtras, hoje) {
+  const f = faltando(p, hoje);
   const c = f[0];
   if (c === 'objetivo') return { campo: 'objetivo', reply: 'Oi! Vou montar seu cronograma conversando com você — sem receita pronta. Primeiro: qual é o seu foco agora?', quick: ['Só graduação (provas da faculdade)', 'Só residência', 'Os dois ao mesmo tempo'] };
   if (c === 'prova') return { campo: 'prova', reply: 'Qual prova de residência você vai fazer e quando é? (ex.: "ENARE, 15/11/2026" ou "USP em março de 2027"). Se ainda não tem data, diga "não sei" que eu trabalho com um ciclo contínuo.', quick: ['Ainda não sei a data'] };
   if (c === 'faculdade') return { campo: 'faculdade', reply: 'Quais provas da faculdade você tem pela frente? Mande disciplina e data, como: "Farmacologia 20/10, Patologia 05/11". Vou proteger a semana de cada uma.', quick: ['Não tenho provas agora'] };
-  if (c === 'conteudo') { const sem = (p.provasFaculdade || []).filter(x => !(x.assuntos || []).length).map(x => x.disciplina); return { campo: 'conteudo', reply: `Para o cronograma ficar alinhado ao manual, preciso do conteúdo de cada prova (${sem.join(', ')}). Digite assim: «Farmacologia: antibióticos, anti-inflamatórios; Patologia: inflamação, neoplasias» — ou envie o PDF do manual do aluno/ementa pelo botão de clipe 📎 ao lado.`, quick: ['Não tenho o conteúdo ainda'] }; }
+  if (c === 'conteudoOk') return { campo: 'conteudoOk', reply: `Antes de montar, confira o conteúdo que vou usar em cada disciplina:\n${resumoConteudo(p, hoje)}\n\nFalta algum assunto? Tem tema que o professor reforçou, que não cai ou que você já domina? Responda do seu jeito (ex.: "Saúde Mental: luto; Imagenologia: mama não cai").`, quick: ['Está certo, pode gerar', 'Falta conteúdo', 'Tem tema que não cai'] };
+  if (c === 'conteudo') { const sem = [...new Set((p.provasFaculdade || []).filter(x => !(x.assuntos || []).length && x.data >= (hoje || new Date().toISOString().slice(0, 10))).map(x => x.disciplina))]; return { campo: 'conteudo', reply: `Para o cronograma ficar alinhado ao manual, preciso do conteúdo de cada prova (${sem.join(', ')}). Digite assim: «Farmacologia: antibióticos, anti-inflamatórios; Patologia: inflamação, neoplasias» — ou envie o PDF do manual do aluno/ementa pelo botão de clipe 📎 ao lado.`, quick: ['Não tenho o conteúdo ainda'] }; }
   if (c === 'horas') return { campo: 'horas', reply: 'Quanto tempo real você consegue estudar? Pode detalhar por dia, por exemplo: "3h de segunda a sexta, 5h no sábado e domingo livre".', quick: ['2h por dia, todos os dias', '3h seg-sex e 4h sáb/dom', '4h seg-sex, domingo livre'] };
   if (c === 'dificuldades') return { campo: 'dificuldades', reply: 'Em quais matérias você tem mais dificuldade? Elas ganham mais peso. Se tiver pontos fortes, diga também ("forte em Cardiologia").', quick: ['Pediatria e Cirurgia', 'Ginecologia e Obstetrícia', 'Clínica Médica', 'Sem dificuldade específica'] };
   if (c === 'metodo') return { campo: 'metodo', reply: 'Como você aprende melhor? Isso define a proporção entre aula, resumo e questões em cada tarefa.', quick: ['Mais aulas', 'Mais resumos/leitura', 'Mais questões', 'Equilibrado'] };

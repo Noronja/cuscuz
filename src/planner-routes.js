@@ -19,7 +19,7 @@ const PERFIL_SCHEMA = {
     dificuldades: { type: Type.ARRAY, items: { type: Type.STRING } }, fortes: { type: Type.ARRAY, items: { type: Type.STRING } }, semDificuldades: { type: Type.BOOLEAN },
     metodo: { type: Type.STRING, description: 'aulas | resumos | questoes | equilibrado' },
     cursos: { type: Type.ARRAY, items: { type: Type.STRING } },
-    semConteudo: { type: Type.BOOLEAN },
+    semConteudo: { type: Type.BOOLEAN }, conteudoConfirmado: { type: Type.BOOLEAN },
     anseios: { type: Type.STRING, description: 'restrições, rotina, preferências ou desejos livres ditos agora' }
   }
 };
@@ -63,20 +63,21 @@ export function registerPlanner(app, { generateWithGemini, getGeminiClient, getB
           msgs[msgs.lastIndexOf(ultima)] = { role: 'user', content: '(Enviei o cronograma da minha faculdade.)' };
           notaDet = resumoDet;
         } else {
-          const q = PE.proximaPergunta(perfil, extrasPerguntado);
-          return res.json({ success: true, ia: false, perfil, asking: q ? q.campo : '', jaExtras: extrasPerguntado, reply: resumoDet + (q ? '\n\n' + q.reply : '\n\nTudo certo — confira o resumo e gere o cronograma.'), quickReplies: q ? q.quick : ['Gerar meu cronograma'], pronto: PE.faltando(perfil).length === 0, resumo: PE.resumoPerfil(perfil) });
+          const q = PE.proximaPergunta(perfil, extrasPerguntado, hoje);
+          return res.json({ success: true, ia: false, perfil, asking: q ? q.campo : '', jaExtras: extrasPerguntado, reply: resumoDet + (q ? '\n\n' + q.reply : '\n\nTudo certo — confira o resumo e gere o cronograma.'), quickReplies: q ? q.quick : ['Gerar meu cronograma'], pronto: PE.faltando(perfil, hoje).length === 0, resumo: PE.resumoPerfil(perfil) });
         }
       }
       if (ultima && getGeminiClient()) {
         try {
-          const falta = PE.faltando(perfil);
+          const falta = PE.faltando(perfil, hoje);
           const sistema = `Você é o mentor de estudos de um estudante de medicina brasileiro, dentro do app Cuscuz-MED. Hoje é ${hoje}. Conduza uma CONVERSA curta e natural (português do Brasil, tom próximo, sem enrolação) para montar um cronograma 100% personalizado.
 Regras:
 - Faça UMA pergunta por vez. Reconheça brevemente o que o aluno disse e adapte a próxima pergunta às respostas e anseios dele (cansaço, plantão, estágio, medo de uma matéria, etc.).
 - Extraia tudo que ele disse para o campo "perfil" (apenas o que mudou). Datas em YYYY-MM-DD (ano atual ${hoje.slice(0, 4)} salvo indicação). horas = 7 inteiros em minutos [domingo, segunda, ..., sábado]. Se disser "não sei a data" use semData=true; "sem provas" semProvas=true; "sem dificuldade" semDificuldades=true.
 - Matérias válidas do acervo: ${PE.DISCS.filter(d => d.peso > 0).map(d => d.nome).join(', ')}. Cursos: MEDCURSO, Estratégia, APOSTILAS.
 - Quando o aluno informar provas da faculdade, o conteúdo de cada prova (assuntos) é ESSENCIAL: registre em provasFaculdade[].assuntos exatamente como ele escreveu, na ordem. Se faltar, peça e diga que ele pode anexar o PDF do manual do aluno com o botão de clipe. Se disser que não tem, semConteudo=true.
-- Campos essenciais ainda faltando: ${falta.length ? falta.join(', ') : 'nenhum'} (prova=prova de residência e data; faculdade=provas da graduação com datas; conteudo=assuntos de cada prova da faculdade; horas; dificuldades; metodo=aulas/resumos/questoes/equilibrado).
+- Campos essenciais ainda faltando: ${falta.length ? falta.join(', ') : 'nenhum'} (prova=prova de residência e data; faculdade=provas da graduação com datas; conteudo=assuntos de cada prova da faculdade que ainda não vieram; conteudoOk=conferência do conteúdo com o aluno; horas; dificuldades; metodo=aulas/resumos/questoes/equilibrado).
+- CONTEÚDO É PRIORIDADE: se alguma prova futura estiver sem assuntos (conteudo), pergunte ESPECIFICAMENTE por ela, uma disciplina por vez, citando o nome real e a data ("Qual o conteúdo da PR2 de Imagenologia, 18/11?") e lembre que ele pode colar o cronograma/ementa. Quando o conteúdo já estiver completo e ainda faltar conteudoOk, faça a CONFERÊNCIA: liste por disciplina a próxima prova e os próximos assuntos (use só o que está no perfil/material) e pergunte se falta algum assunto, se algum tema foi reforçado pelo professor, se algo NÃO cai ou se ele já domina algum tema; ao receber a resposta, acrescente em provasFaculdade só o que ele ditou, ponha o resto em anseios e marque conteudoConfirmado=true. Só proponha gerar o cronograma depois dessa conferência.
 - Se faltar algo essencial, pergunte o primeiro que falta (a menos que o aluno tenha levantado algo urgente). Se nada falta, faça um resumo de 2 linhas do que entendeu e pergunte se quer ajustar algo antes de gerar; quickReplies = ["Gerar meu cronograma", "Quero ajustar algo"].
 - O perfil traz provasFaculdade (cada prova com seus assuntos na ordem das aulas) e aulasFaculdade (data + tema de cada aula). Use isso: cite a próxima prova e as próximas aulas pelo nome real, aponte conflitos (várias provas na mesma semana), diga o que já passou e precisa de reforço e o que vem a seguir. NUNCA renomeie disciplinas nem mude provas/aulas já lidas; não devolva provasFaculdade/aulasFaculdade no perfil.
 - Nunca invente aulas, links ou datas. Não prometa resultados. quickReplies: no máximo 4 respostas curtas e úteis para a sua pergunta.
@@ -95,7 +96,15 @@ Perfil atual (JSON, sem o material): ${JSON.stringify({ ...perfil, materiais: un
           const j = JSON.parse(r.text.trim());
           if (j && typeof j.reply === 'string' && j.reply.trim()) {
             const patchIA = Object.assign({}, j.perfil || {});
-            if ((perfil.provasFaculdade || []).length) { delete patchIA.provasFaculdade; delete patchIA.aulasFaculdade; } // não deixa a IA renomear disciplinas já lidas
+            if ((perfil.provasFaculdade || []).length) {
+              // a IA só pode ACRESCENTAR assuntos a provas já lidas (mesma disciplina e data); não renomeia nem cria provas
+              const ex = perfil.provasFaculdade.map(x => ({ ...x }));
+              for (const ip of Array.isArray(patchIA.provasFaculdade) ? patchIA.provasFaculdade : []) {
+                const alvo = ex.find(x => PE.norm(x.disciplina) === PE.norm(ip && ip.disciplina) && x.data === (ip && ip.data));
+                if (alvo && Array.isArray(ip.assuntos)) alvo.assuntos = [...new Set([...(alvo.assuntos || []), ...PE.limparAssuntos(ip.assuntos, alvo.disciplina)])];
+              }
+              patchIA.provasFaculdade = ex; delete patchIA.aulasFaculdade;
+            }
             perfil = PE.sanePerfil(perfil, patchIA);
             reply = j.reply.trim().slice(0, 1200);
             quick = (Array.isArray(j.quickReplies) ? j.quickReplies : []).map(q => String(q).slice(0, 60)).slice(0, 4);
@@ -110,17 +119,17 @@ Perfil atual (JSON, sem o material): ${JSON.stringify({ ...perfil, materiais: un
           if (asking === 'extras') extrasPerguntado = true;
           perfil = PE.sanePerfil(perfil, patch);
           if (!Object.keys(patch).length && asking !== 'extras') {
-            const q = PE.proximaPergunta(perfil, extrasPerguntado);
+            const q = PE.proximaPergunta(perfil, extrasPerguntado, hoje);
             return res.json({ success: true, ia: false, perfil, asking: q ? q.campo : '', jaExtras: extrasPerguntado, reply: 'Não consegui entender essa resposta. ' + (q ? q.reply : ''), quickReplies: q ? q.quick : [], pronto: false, resumo: PE.resumoPerfil(perfil) });
           }
         }
-        const q = PE.proximaPergunta(perfil, extrasPerguntado);
+        const q = PE.proximaPergunta(perfil, extrasPerguntado, hoje);
         if (q) { reply = q.reply; quick = q.quick; extrasPerguntado = extrasPerguntado || q.campo === 'extras'; return res.json({ success: true, ia: false, perfil, asking: q.campo, jaExtras: extrasPerguntado, reply: (nota ? nota + ' ' : ultima ? 'Anotado. ' : '') + reply, quickReplies: quick, pronto: false, resumo: PE.resumoPerfil(perfil) }); }
         reply = 'Perfeito, já tenho o que preciso. Confira o resumo abaixo e, se estiver certo, gere o cronograma.';
         quick = ['Gerar meu cronograma', 'Quero ajustar algo'];
       }
-      const pronto = PE.faltando(perfil).length === 0 && (usouIA ? /gerar|ajust|resum|confer|certo/.test(reply.toLowerCase()) || msgs.length >= 8 : true);
-      res.json({ success: true, ia: usouIA, perfil, asking: '', jaExtras: true, reply, quickReplies: quick, pronto: PE.faltando(perfil).length === 0 && pronto, resumo: PE.resumoPerfil(perfil) });
+      const pronto = PE.faltando(perfil, hoje).length === 0 && (usouIA ? /gerar|ajust|resum|confer|certo/.test(reply.toLowerCase()) || msgs.length >= 8 : true);
+      res.json({ success: true, ia: usouIA, perfil, asking: '', jaExtras: true, reply, quickReplies: quick, pronto: PE.faltando(perfil, hoje).length === 0 && pronto, resumo: PE.resumoPerfil(perfil) });
     } catch (err) {
       res.status(500).json({ success: false, msg: err.message });
     }
@@ -172,7 +181,7 @@ Para cada disciplina/módulo informe: provas/avaliações (data, tipo como P1/P2
         const d0 = PE.parseCronograma(txt, hoje);
         perfil = PE.mesclarCronograma(perfil, d0);
         const reply0 = `Li o "${nome}" (${d0.disciplina}): ${d0.provas.length} avaliação(ões) e ${d0.aulas.length} aula(s) com data. Cada prova ficou com os assuntos das aulas dadas até ela, em ordem.`;
-        return res.json({ success: true, ia: false, perfil, reply: reply0, resumo: PE.resumoPerfil(perfil), faltando: PE.faltando(perfil) });
+        return res.json({ success: true, ia: false, perfil, reply: reply0, resumo: PE.resumoPerfil(perfil), faltando: PE.faltando(perfil, hoje) });
       }
       const provas = (perfil.provasFaculdade || []).map(x => ({ ...x }));
       const aulas = [];
@@ -189,7 +198,7 @@ Para cada disciplina/módulo informe: provas/avaliações (data, tipo como P1/P2
       perfil = PE.sanePerfil(perfil, { provasFaculdade: provas, aulasFaculdade: aulas.length ? aulas : undefined, manualNome: nome, semProvas: false });
       const nAss = provas.reduce((a, x) => a + (x.assuntos || []).length, 0);
       const reply = (usouIA ? `Li o "${nome}". Encontrei ${provas.length} avaliação(ões), ${nAss} assuntos de prova e ${aulas.length} aula(s)/TBL(s) com data.` : `Recebi o "${nome}". Sem a chave do Gemini no servidor a leitura é simples: achei ${provas.length} prova(s) com data e ${nAss} assunto(s).${provas.some(x => !(x.assuntos || []).length) ? ' Diga aqui no chat o conteúdo das provas que ficaram sem assuntos.' : ''}`) + (provas.length ? ' Confira o resumo abaixo — se algo estiver errado, me diga que eu corrijo.' : ' Não achei provas com data; me diga as datas e o conteúdo aqui no chat.');
-      res.json({ success: true, ia: usouIA, perfil, reply, resumo: PE.resumoPerfil(perfil), faltando: PE.faltando(perfil) });
+      res.json({ success: true, ia: usouIA, perfil, reply, resumo: PE.resumoPerfil(perfil), faltando: PE.faltando(perfil, hoje) });
     } catch (err) {
       console.error('[Planner manual]', err);
       res.status(500).json({ success: false, msg: err.message });
