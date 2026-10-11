@@ -19,7 +19,7 @@ const PERFIL_SCHEMA = {
     dificuldades: { type: Type.ARRAY, items: { type: Type.STRING } }, fortes: { type: Type.ARRAY, items: { type: Type.STRING } }, semDificuldades: { type: Type.BOOLEAN },
     metodo: { type: Type.STRING, description: 'aulas | resumos | questoes | equilibrado' },
     cursos: { type: Type.ARRAY, items: { type: Type.STRING } },
-    semConteudo: { type: Type.BOOLEAN }, conteudoConfirmado: { type: Type.BOOLEAN },
+    semConteudo: { type: Type.BOOLEAN }, conteudoConfirmado: { type: Type.BOOLEAN }, disciplinasConfirmadas: { type: Type.ARRAY, items: { type: Type.STRING } },
     anseios: { type: Type.STRING, description: 'restrições, rotina, preferências ou desejos livres ditos agora' }
   }
 };
@@ -77,11 +77,13 @@ Regras:
 - Matérias válidas do acervo: ${PE.DISCS.filter(d => d.peso > 0).map(d => d.nome).join(', ')}. Cursos: MEDCURSO, Estratégia, APOSTILAS.
 - Quando o aluno informar provas da faculdade, o conteúdo de cada prova (assuntos) é ESSENCIAL: registre em provasFaculdade[].assuntos exatamente como ele escreveu, na ordem. Se faltar, peça e diga que ele pode anexar o PDF do manual do aluno com o botão de clipe. Se disser que não tem, semConteudo=true.
 - Campos essenciais ainda faltando: ${falta.length ? falta.join(', ') : 'nenhum'} (prova=prova de residência e data; faculdade=provas da graduação com datas; conteudo=assuntos de cada prova da faculdade que ainda não vieram; conteudoOk=conferência do conteúdo com o aluno; horas; dificuldades; metodo=aulas/resumos/questoes/equilibrado).
-- CONTEÚDO É PRIORIDADE: se alguma prova futura estiver sem assuntos (conteudo), pergunte ESPECIFICAMENTE por ela, uma disciplina por vez, citando o nome real e a data ("Qual o conteúdo da PR2 de Imagenologia, 18/11?") e lembre que ele pode colar o cronograma/ementa. Quando o conteúdo já estiver completo e ainda faltar conteudoOk, faça a CONFERÊNCIA: liste por disciplina a próxima prova e os próximos assuntos (use só o que está no perfil/material) e pergunte se falta algum assunto, se algum tema foi reforçado pelo professor, se algo NÃO cai ou se ele já domina algum tema; ao receber a resposta, acrescente em provasFaculdade só o que ele ditou, ponha o resto em anseios e marque conteudoConfirmado=true. Só proponha gerar o cronograma depois dessa conferência.
+- CONTEÚDO É PRIORIDADE: se alguma prova futura estiver sem assuntos (conteudo), pergunte ESPECIFICAMENTE por ela, uma disciplina por vez, citando o nome real e a data ("Qual o conteúdo da PR2 de Imagenologia, 18/11?") e lembre que ele pode colar o cronograma/ementa. Quando o conteúdo já estiver completo e ainda faltar conteudoOk, faça a CONFERÊNCIA POR DISCIPLINA, UMA DE CADA VEZ, sempre a indicada em "PRÓXIMA CONFERÊNCIA" abaixo: mostre ao aluno exatamente o que você leu daquela disciplina (provas com data, assuntos de cada uma e as aulas com datas) e pergunte "é isso mesmo?", convidando a incluir, tirar ou corrigir temas (professor reforçou? não cai? já domina?). Só quando ele confirmar ou corrigir, devolva disciplinasConfirmadas com o nome dessa disciplina (nunca mais de uma por resposta) e passe para a próxima. Acréscimos que ele ditou entram em provasFaculdade[].assuntos da prova certa; o resto vai em anseios. Só proponha gerar o cronograma quando todas estiverem confirmadas.
 - Se faltar algo essencial, pergunte o primeiro que falta (a menos que o aluno tenha levantado algo urgente). Se nada falta, faça um resumo de 2 linhas do que entendeu e pergunte se quer ajustar algo antes de gerar; quickReplies = ["Gerar meu cronograma", "Quero ajustar algo"].
 - O perfil traz provasFaculdade (cada prova com seus assuntos na ordem das aulas) e aulasFaculdade (data + tema de cada aula). Use isso: cite a próxima prova e as próximas aulas pelo nome real, aponte conflitos (várias provas na mesma semana), diga o que já passou e precisa de reforço e o que vem a seguir. NUNCA renomeie disciplinas nem mude provas/aulas já lidas; não devolva provasFaculdade/aulasFaculdade no perfil.
 - Nunca invente aulas, links ou datas. Não prometa resultados. quickReplies: no máximo 4 respostas curtas e úteis para a sua pergunta.
 ${(req.body.nota || notaDet) ? 'Acabou de acontecer: ' + String(notaDet || req.body.nota).slice(0, 900) + ' (comente isso brevemente e siga para o que falta).' : ''}
+PRÓXIMA CONFERÊNCIA: ${(() => { const d = PE.proximaConferencia(perfil, hoje); return d ? d + '\n' + PE.textoConferencia(perfil, d, hoje) : '(nenhuma pendente)'; })()}
+
 MATERIAL ENVIADO PELO ALUNO (é a fonte de verdade: cronogramas, ementas, conteúdos de prova, pedidos — LEIA TUDO antes de responder; no começo da resposta confirme em 1 linha o que você leu dele, com nomes reais de disciplinas, provas e aulas; nunca generalize nem troque disciplinas):
 ${(perfil.materiais || []).map(m => '### ' + m.nome + '\n' + m.texto).join('\n\n').slice(0, 90000) || '(nenhum material enviado ainda)'}
 
@@ -105,6 +107,7 @@ Perfil atual (JSON, sem o material): ${JSON.stringify({ ...perfil, materiais: un
               }
               patchIA.provasFaculdade = ex; delete patchIA.aulasFaculdade;
             }
+            { const pend = PE.proximaConferencia(perfil, hoje); const dc = Array.isArray(patchIA.disciplinasConfirmadas) ? patchIA.disciplinasConfirmadas : []; patchIA.disciplinasConfirmadas = (pend && ultima && dc.some(x => PE.norm(x) === PE.norm(pend))) ? [pend] : []; }
             perfil = PE.sanePerfil(perfil, patchIA);
             reply = j.reply.trim().slice(0, 1200);
             quick = (Array.isArray(j.quickReplies) ? j.quickReplies : []).map(q => String(q).slice(0, 60)).slice(0, 4);
@@ -115,7 +118,7 @@ Perfil atual (JSON, sem o material): ${JSON.stringify({ ...perfil, materiais: un
       if (!usouIA) {
         const nota = String(req.body.nota || '').slice(0, 600);
         if (ultima && asking && !req.body.anexo) {
-          const patch = PE.interpretarResposta(asking, ultima.content, hoje, perfil.provasFaculdade);
+          const patch = PE.interpretarResposta(asking, ultima.content, hoje, perfil.provasFaculdade, perfil.disciplinasConfirmadas);
           if (asking === 'extras') extrasPerguntado = true;
           perfil = PE.sanePerfil(perfil, patch);
           if (!Object.keys(patch).length && asking !== 'extras') {

@@ -207,7 +207,7 @@ export const PERFIL_VAZIO = () => ({
   objetivo: '', alvo: '', dataProva: '', semData: false,
   provasFaculdade: [], semProvas: false, aulasFaculdade: [], manualNome: '', semConteudo: false,
   horas: null, dificuldades: [], fortes: [], semDificuldades: false,
-  metodo: '', cursos: [], anseios: '', materiais: [], conteudoConfirmado: false
+  metodo: '', cursos: [], anseios: '', materiais: [], conteudoConfirmado: false, disciplinasConfirmadas: []
 });
 
 
@@ -323,6 +323,8 @@ export function sanePerfil(atual, patch) {
   }
   if (typeof x.semConteudo === 'boolean') p.semConteudo = x.semConteudo;
   if (typeof x.conteudoConfirmado === 'boolean') p.conteudoConfirmado = x.conteudoConfirmado;
+  if (Array.isArray(x.disciplinasConfirmadas)) p.disciplinasConfirmadas = [...new Set([...(p.disciplinasConfirmadas || []), ...x.disciplinasConfirmadas.map(d => str(d, 60)).filter(Boolean)])].slice(0, 40);
+  if (x.limparConfirmadas === true) p.disciplinasConfirmadas = [];
   if (typeof x.manualNome === 'string' && x.manualNome.trim()) p.manualNome = str(x.manualNome, 120);
   if (typeof x.semProvas === 'boolean') { p.semProvas = x.semProvas; if (x.semProvas) p.provasFaculdade = []; }
   if (Array.isArray(x.horas) && x.horas.length === 7) {
@@ -455,7 +457,7 @@ export function mesclarCronograma(perfil, det) {
   const dns = new Set((det.disciplinas || [det.disciplina]).map(norm));
   const manter = (perfil.provasFaculdade || []).filter(x => !dns.has(norm(x.disciplina)) && !/^prova da faculdade$|^disciplina$/.test(norm(x.disciplina).trim()));
   const aulasMant = (perfil.aulasFaculdade || []).filter(x => !dns.has(norm(x.disciplina)));
-  const p = { ...perfil, provasFaculdade: [], aulasFaculdade: [] };
+  const p = { ...perfil, provasFaculdade: [], aulasFaculdade: [], disciplinasConfirmadas: (perfil.disciplinasConfirmadas || []).filter(d => !dns.has(norm(d))) };
   return sanePerfil(p, { provasFaculdade: [...manter, ...det.provas], aulasFaculdade: [...aulasMant, ...det.aulas], semProvas: false, semConteudo: false, manualNome: 'Cronograma da faculdade' });
 }
 
@@ -468,11 +470,30 @@ export function faltando(p, hoje) {
   const futuras = (p.provasFaculdade || []).filter(x => x.data >= h);
   if (p.objetivo !== 'residencia' && futuras.some(x => !(x.assuntos || []).length) && !p.semConteudo) f.push('conteudo');
   // conferência do conteúdo: antes de gerar, o mentor mostra o que vai cair em cada disciplina e pergunta se falta/sobra algo
-  if (p.objetivo !== 'residencia' && futuras.some(x => (x.assuntos || []).length) && !p.conteudoConfirmado && !p.semConteudo) f.push('conteudoOk');
+  if (p.objetivo !== 'residencia' && !p.conteudoConfirmado && !p.semConteudo && proximaConferencia(p, h)) f.push('conteudoOk');
   if (!p.horas) f.push('horas');
   if (!(p.dificuldades || []).length && !p.semDificuldades) f.push('dificuldades');
   if (!p.metodo) f.push('metodo');
   return f;
+}
+
+/* Próxima disciplina cujo conteúdo ainda não foi confirmado pelo aluno (uma por vez) */
+export function proximaConferencia(p, hoje) {
+  const h = hoje || new Date().toISOString().slice(0, 10);
+  const conf = new Set((p.disciplinasConfirmadas || []).map(norm));
+  const ord = (p.provasFaculdade || []).filter(x => x.data >= h && (x.assuntos || []).length).sort((a, b) => a.data.localeCompare(b.data));
+  const nomes = [...new Set(ord.map(x => x.disciplina))].filter(n => !conf.has(norm(n)));
+  return nomes[0] || '';
+}
+export function textoConferencia(p, disc, hoje) {
+  const h = hoje || new Date().toISOString().slice(0, 10);
+  const provas = (p.provasFaculdade || []).filter(x => norm(x.disciplina) === norm(disc) && x.data >= h).sort((a, b) => a.data.localeCompare(b.data));
+  const aulas = (p.aulasFaculdade || []).filter(a => norm(a.disciplina) === norm(disc)).sort((a, b) => a.data.localeCompare(b.data));
+  const br = d => d.slice(8) + '/' + d.slice(5, 7);
+  const l = [`**${disc}**`];
+  for (const pr of provas) l.push(`${pr.tipo || 'Prova'} em ${br(pr.data)} — cai: ${pr.assuntos.join('; ') || '(sem conteúdo)'}`);
+  if (aulas.length) l.push('Aulas: ' + aulas.map(a => `${br(a.data)} ${a.tema}`).join(' | '));
+  return l.join('\n');
 }
 
 /* Resumo legível do conteúdo por disciplina (próxima prova e assuntos), usado nas perguntas de conferência */
@@ -618,22 +639,23 @@ export function interpretarResposta(campo, texto, hoje, provasAtuais) {
       if (mudou) patch.provasFaculdade = provas;
     }
   } else if (campo === 'conteudoOk') {
-    patch.conteudoConfirmado = true;
-    if (!NEGA.test(n) && !/^(esta certo|tudo certo|ok|pode gerar|certo|sim|perfeito)/.test(n) && n.length > 3) {
-      // "Disciplina: tema, tema" acrescenta assuntos; o resto vai para as anotações do mentor
-      const provas = (provasAtuais || []).map(x => ({ ...x }));
-      let mudou = false;
-      for (const sg of String(texto).split(/;\s*(?=[^;:]{3,60}:)|\n/)) {
-        const m = sg.match(/^\s*([^:\-–]{3,60})\s*[:\-–]\s*(.+)$/);
-        if (!m) continue;
-        const alvo = provas.filter(pr => norm(pr.disciplina).includes(norm(m[1]).trim()) || norm(m[1]).includes(norm(pr.disciplina)));
-        const ex = /\b(tirar|remover|nao cai)\b/.test(norm(sg));
-        const lista = m[2].split(/[,;]|\s+e\s+/).map(x => x.trim()).filter(x => x.length > 2);
-        if (!ex) for (const pr of alvo) { pr.assuntos = [...new Set([...(pr.assuntos || []), ...lista])]; mudou = true; }
+    const d = proximaConferencia({ provasFaculdade: provasAtuais || [], disciplinasConfirmadas: arguments[4] || [] }, hoje);
+    const ok = /^(esta certo|tudo certo|ok\b|pode (gerar|seguir|continuar)|certo|sim\b|perfeito|isso( mesmo)?|confirmo|correto)/.test(n);
+    const provas = (provasAtuais || []).map(x => ({ ...x }));
+    const alvo = provas.filter(pr => d && norm(pr.disciplina) === norm(d));
+    let mudou = false;
+    for (const ln of String(texto).split(/\n|;\s*(?=(?:incluir|tirar|remover|adicionar|falta)\b)/i)) {
+      const m = ln.match(/^\s*(incluir|adicionar|falta(?:m)?|tirar|remover|nao cai|não cai)\s*[:\-–]?\s*(.+)$/i);
+      if (!m) continue;
+      const lista = m[2].split(/[,;]|\s+e\s+/).map(x => x.trim()).filter(x => x.length > 2);
+      const tirar = /^(tirar|remover|nao cai|não cai)/i.test(m[1]);
+      for (const pr of alvo) {
+        if (tirar) { const antes = (pr.assuntos || []).length; pr.assuntos = (pr.assuntos || []).filter(a => !lista.some(x => norm(a).includes(norm(x)))); if (pr.assuntos.length !== antes) mudou = true; }
+        else { pr.assuntos = [...new Set([...(pr.assuntos || []), ...lista])]; mudou = true; }
       }
-      if (mudou) patch.provasFaculdade = provas;
-      patch.anseios = 'Sobre o conteúdo: ' + String(texto).slice(0, 500);
     }
+    if (mudou) patch.provasFaculdade = provas;
+    if (ok || mudou) { if (d) patch.disciplinasConfirmadas = [d]; if (mudou) patch.anseios = `Conteúdo de ${d} ajustado pelo aluno: ` + String(texto).slice(0, 300); }
   } else if (campo === 'horas') {
     const h = parseHoras(texto); if (h) patch.horas = h;
   } else if (campo === 'dificuldades') {
@@ -673,7 +695,7 @@ export function proximaPergunta(p, jaPerguntouExtras, hoje) {
   if (c === 'objetivo') return { campo: 'objetivo', reply: 'Oi! Vou montar seu cronograma conversando com você — sem receita pronta. Primeiro: qual é o seu foco agora?', quick: ['Só graduação (provas da faculdade)', 'Só residência', 'Os dois ao mesmo tempo'] };
   if (c === 'prova') return { campo: 'prova', reply: 'Qual prova de residência você vai fazer e quando é? (ex.: "ENARE, 15/11/2026" ou "USP em março de 2027"). Se ainda não tem data, diga "não sei" que eu trabalho com um ciclo contínuo.', quick: ['Ainda não sei a data'] };
   if (c === 'faculdade') return { campo: 'faculdade', reply: 'Quais provas da faculdade você tem pela frente? Mande disciplina e data, como: "Farmacologia 20/10, Patologia 05/11". Vou proteger a semana de cada uma.', quick: ['Não tenho provas agora'] };
-  if (c === 'conteudoOk') return { campo: 'conteudoOk', reply: `Antes de montar, confira o conteúdo que vou usar em cada disciplina:\n${resumoConteudo(p, hoje)}\n\nFalta algum assunto? Tem tema que o professor reforçou, que não cai ou que você já domina? Responda do seu jeito (ex.: "Saúde Mental: luto; Imagenologia: mama não cai").`, quick: ['Está certo, pode gerar', 'Falta conteúdo', 'Tem tema que não cai'] };
+  if (c === 'conteudoOk') { const d = proximaConferencia(p, hoje); const rest = (p.provasFaculdade || []).filter(x => x.data >= (hoje || new Date().toISOString().slice(0, 10)) && (x.assuntos || []).length).map(x => x.disciplina).filter((v, i, a) => a.indexOf(v) === i && !(p.disciplinasConfirmadas || []).map(norm).includes(norm(v))).length; return { campo: 'conteudoOk', reply: `Vamos conferir o conteúdo, uma disciplina por vez (faltam ${rest}). Li assim:\n${textoConferencia(p, d, hoje)}\n\nÉ isso mesmo? Se faltar algo, diga "incluir: tema, tema"; se algum tema não cai, "tirar: tema". Se estiver certo, é só confirmar.`, quick: ['Está certo', 'Falta conteúdo', 'Tem tema que não cai'] }; }
   if (c === 'conteudo') { const sem = [...new Set((p.provasFaculdade || []).filter(x => !(x.assuntos || []).length && x.data >= (hoje || new Date().toISOString().slice(0, 10))).map(x => x.disciplina))]; return { campo: 'conteudo', reply: `Para o cronograma ficar alinhado ao manual, preciso do conteúdo de cada prova (${sem.join(', ')}). Digite assim: «Farmacologia: antibióticos, anti-inflamatórios; Patologia: inflamação, neoplasias» — ou envie o PDF do manual do aluno/ementa pelo botão de clipe 📎 ao lado.`, quick: ['Não tenho o conteúdo ainda'] }; }
   if (c === 'horas') return { campo: 'horas', reply: 'Quanto tempo real você consegue estudar? Pode detalhar por dia, por exemplo: "3h de segunda a sexta, 5h no sábado e domingo livre".', quick: ['2h por dia, todos os dias', '3h seg-sex e 4h sáb/dom', '4h seg-sex, domingo livre'] };
   if (c === 'dificuldades') return { campo: 'dificuldades', reply: 'Em quais matérias você tem mais dificuldade? Elas ganham mais peso. Se tiver pontos fortes, diga também ("forte em Cardiologia").', quick: ['Pediatria e Cirurgia', 'Ginecologia e Obstetrícia', 'Clínica Médica', 'Sem dificuldade específica'] };
