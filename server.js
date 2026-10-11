@@ -414,6 +414,7 @@ function initSnapshotIndex() {
     }
 
     const filesByFolderId = new Map();
+    const videoIds = new Set((acervo.videos || []).map(v => v.id));
     const allItems = [...(acervo.videos || []), ...(acervo.materials || [])];
     for (const it of allItems) {
       if (!it || !it.path || !it.id) continue;
@@ -423,8 +424,8 @@ function initSnapshotIndex() {
       const folderId = pathToFolderId.get(folderPath);
       if (folderId) {
         if (!filesByFolderId.has(folderId)) filesByFolderId.set(folderId, []);
-        const isVid = /\.(mp4|webm|mkv|mov|avi)$/i.test(it.d || '') || (it.d && it.d.includes('.mp4'));
-        const isPdf = /\.(pdf|doc|docx)$/i.test(it.d || '') || (it.d && it.d.includes('.pdf'));
+        const isVid = videoIds.has(it.id) || /\.(mp4|webm|mkv|mov|avi)$/i.test(it.d || '') || (it.d && it.d.includes('.mp4'));
+        const isPdf = !isVid;
         filesByFolderId.get(folderId).push({
           id: it.id,
           name: it.t || (it.d ? it.d.replace(/\.[^.]+$/, '') : 'Arquivo'),

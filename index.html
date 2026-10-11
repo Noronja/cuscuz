@@ -3898,6 +3898,7 @@ async function loadDriveFolder(folderId, folderName, addToHistory = true, forceR
       throw new Error('Não foi possível carregar os itens desta pasta e não há cópia local salva.');
     }
 
+    if (currentDriveFolderId !== folderId && !forceRefresh) return; // outra pasta foi aberta enquanto esta carregava
     currentFolderItems = items;
 
     if (folderId === DRIVE_ROOT_ID && items.folders && items.folders.length > 0) {
@@ -4134,6 +4135,36 @@ function enterDriveCourse(folderId, folderName) {
   go('view-acervo');
   loadDriveFolder(folderId, folderName, true);
 }
+
+/* Abre a PASTA do Drive onde a videoaula está (ex.: "…/Video aula"), mantendo a estrutura original de pastas, e destaca a aula.
+   Usado pelo cronograma: não abre o player pequeno. Se não achar a pasta, cai no player LMS (nunca no modal pequeno). */
+async function abrirPastaDoVideo(fileId) {
+  go('view-acervo');
+  const fallback = () => { ac2Init().then(() => { if (AC2.indice.has(fileId)) ac2Abrir(fileId); else toast('Aula não encontrada no acervo.', 'warning'); }); };
+  try {
+    await ac2Init();
+    const it = AC2.indice.get(fileId);
+    const partes = String((it && it.path) || '').split(' / ').map(x => x.trim()).filter(Boolean);
+    partes.pop(); // tira o nome do arquivo
+    if (!partes.length) return fallback();
+    const igual = (f, nome) => { const n = normAcc(nome); return normAcc(f.name || '') === n || normAcc(f.rawName || '') === n; };
+    let id = DRIVE_ROOT_ID;
+    const trilha = [{ id: DRIVE_ROOT_ID, name: 'Cursos' }];
+    for (const nome of partes) {
+      const g = await fetchDriveFolderItems(id);
+      const f = (g.folders || []).find(x => igual(x, nome));
+      if (!f) return fallback();
+      id = f.id; trilha.push({ id: f.id, name: f.name });
+    }
+    currentDrivePath = trilha;
+    await loadDriveFolder(id, trilha[trilha.length - 1].name, false);
+    const caixa = $('drive-breadcrumbs');
+    const alvo = [...document.querySelectorAll('#drive-videos-grid .content-item')].find(el => (el.getAttribute('onclick') || '').includes(fileId));
+    if (alvo) { alvo.classList.add('drive-destaque'); setTimeout(() => alvo.scrollIntoView({ block: 'center', behavior: 'smooth' }), 120); }
+    else if (caixa) setTimeout(() => caixa.scrollIntoView({ block: 'start', behavior: 'smooth' }), 120);
+  } catch (e) { console.warn('abrirPastaDoVideo', e); fallback(); }
+}
+window.abrirPastaDoVideo = abrirPastaDoVideo;
 
 function openDriveItemById(fileId) {
   // Se o arquivo faz parte do acervo catalogado, abre na visão LMS (player + menu)
@@ -8086,12 +8117,7 @@ function plAcharNoAcervo(materia, tema) {
 
 window.plIrParaAula = function (aulaId) {
   closeModals();
-  go('view-acervo');
-  if (window.ac2Init) {
-    ac2Init().then(() => {
-      if (window.ac2Abrir) ac2Abrir(aulaId);
-    });
-  }
+  abrirPastaDoVideo(aulaId);
 };
 
 /* ── 4. Card Interativo de Estudo com Integração de Acervo ── */
@@ -10063,6 +10089,8 @@ function enterDriveCourse(id, name) {
 
 .ac2-player-wrap.ac2-buffering::after{content:"";position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:#00E1D9;animation:ac2spin .8s linear infinite;pointer-events:none;z-index:6}
 @keyframes ac2spin{to{transform:rotate(360deg)}}
+.content-item.drive-destaque{outline:2px solid var(--teal);box-shadow:0 0 0 4px rgba(0,225,217,.18);animation:drivePulse 1.6s ease-in-out 3}
+@keyframes drivePulse{50%{box-shadow:0 0 0 9px rgba(0,225,217,.05)}}
 </style>
 <script src="/planner-v2.js"></script>
 <script src="/jarvis.js"></script>

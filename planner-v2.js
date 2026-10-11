@@ -223,9 +223,7 @@
     if (!rec) return;
     try {
       if (rec.tipo === 'video') {
-        go('view-acervo');
-        const abre = () => { if (window.AC2 && AC2.indice && AC2.indice.has(rec.id)) ac2Abrir(rec.id); else if (typeof openDriveItemById === 'function') openDriveItemById(rec.id); else toast('Aula não encontrada no acervo.', 'warning'); };
-        if (typeof ac2Init === 'function') ac2Init().then(abre).catch(abre); else abre();
+        abrirPastaDoVideo(rec.id);
       } else if (rec.tipo === 'pdf') {
         window.cuscuzAbrirPdf(rec.id);
       } else if (rec.tipo === 'questoes') {
