@@ -607,8 +607,38 @@ async function driveOpen(fileId, start, end, method, client) {
   return null;
 }
 
+
+// ── Links opacos de mídia: o navegador nunca vê o ID do Google Drive nem uma URL do Drive ──
+// O app pede um "ticket" (criptografado, vale 12 h) e usa /m/<ticket> como endereço do vídeo/PDF.
+function ticketSeal(id, kind) {
+  const iv = crypto.randomBytes(12);
+  const c = crypto.createCipheriv('aes-256-gcm', AUTH_SECRET, iv);
+  const ct = Buffer.concat([c.update(JSON.stringify({ i: id, k: kind, e: Date.now() + 12 * 3600 * 1000 }), 'utf8'), c.final()]);
+  return Buffer.concat([iv, ct, c.getAuthTag()]).toString('base64url');
+}
+function ticketOpen(t) {
+  try {
+    const b = Buffer.from(String(t), 'base64url'); if (b.length < 30) return null;
+    const d = crypto.createDecipheriv('aes-256-gcm', AUTH_SECRET, b.subarray(0, 12)); d.setAuthTag(b.subarray(b.length - 16));
+    const j = JSON.parse(Buffer.concat([d.update(b.subarray(12, b.length - 16)), d.final()]).toString('utf8'));
+    return j && j.e > Date.now() && /^[A-Za-z0-9_-]{10,}$/.test(j.i) ? j : null;
+  } catch (_) { return null; }
+}
+app.post('/api/media/ticket', (req, res) => {
+  const id = cleanDriveId((req.body || {}).id), kind = (req.body || {}).kind === 'p' ? 'p' : 'v';
+  if (!id) return res.status(400).json({ success: false, msg: 'ID inválido' });
+  res.json({ success: true, url: '/m/' + ticketSeal(id, kind) });
+});
+app.all('/m/:ticket', (req, res) => {
+  const t = ticketOpen(req.params.ticket);
+  if (!t) return res.status(404).send('Link expirado');
+  req.params.id = t.i;
+  res.setHeader('Cache-Control', 'private, no-store');
+  return (t.k === 'p' ? drivePdfHandler : driveStreamHandler)(req, res);
+});
+
 // Streaming de vídeo com HTTP Range. Se a conexão com o Drive cair no meio, retoma sozinho do byte onde parou.
-app.all('/api/drive/stream/:id', async (req, res) => {
+async function driveStreamHandler(req, res) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
@@ -728,11 +758,12 @@ app.all('/api/drive/stream/:id', async (req, res) => {
     client.abort(); acorda();
     try { up && up.ac.abort(); } catch (_) {}
   }
-});
+}
+app.all('/api/drive/stream/:id', driveStreamHandler);
 const clamp0 = n => Math.max(0, n);
 
 // Download direto de PDFs do Google Drive para caching offline no IndexedDB
-app.get('/api/drive/pdf/:id', async (req, res) => {
+async function drivePdfHandler(req, res) {
   const fileId = cleanDriveId(req.params.id);
   if (!fileId) return res.status(400).send('ID de arquivo inválido');
   const client = new AbortController();
@@ -753,7 +784,8 @@ app.get('/api/drive/pdf/:id', async (req, res) => {
     console.error('Erro ao baixar PDF:', err);
     if (!res.headersSent) res.status(500).send(err.message);
   }
-});
+}
+app.get('/api/drive/pdf/:id', drivePdfHandler);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -3179,6 +3211,22 @@ registerPlanner(app, { generateWithGemini, getGeminiClient, getBank: () => readQ
 registerJarvis(app, { generateWithGemini, getGeminiClient });
 registerAula(app, { generateWithGemini, getGeminiClient });
 
+// Arquivos internos nunca saem pelo site (código, dados, catálogo bruto, segredos)
+app.use((req, res, next) => {
+  const p = decodeURIComponent(req.path || '/').toLowerCase();
+  if (/^\/(server\.js|smart_scheduler\.js|package(-lock)?\.json|bun\.lock|render\.yaml|supabase-schema\.sql|metadata\.json|drive-tree-snapshot\.json|radar-medico\.json|deploy\.md|readme\.md)$/.test(p) || /^\/(src|data|scripts|node_modules|\.github)(\/|$)/.test(p)) return res.status(404).send('Not found');
+  next();
+});
+// Catálogo de aulas (traz os IDs do Drive): só com login
+app.get('/acervo-manifest.json', (req, res, next) => {
+  if (APP_PASSWORD) {
+    const h = req.headers.authorization || '';
+    const tk = h.startsWith('Bearer ') ? h.slice(7) : String(req.query.t || '');
+    if (!verifyToken(tk)) return res.status(401).json({ error: 'Faça login.' });
+  }
+  res.setHeader('Cache-Control', 'private, no-cache');
+  next();
+});
 // Serve static assets from root directory
 app.use(express.static(__dirname, {
   dotfiles: 'deny',

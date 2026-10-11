@@ -19,6 +19,17 @@
 /* Auth da API: anexa o token em /api/* e volta ao login se o servidor responder 401 */
 (function(){
   window.cuscuzMediaUrl = function (u) { try { var t = localStorage.getItem('cuscuz_token'); return t ? u + (u.indexOf('?') >= 0 ? '&' : '?') + 't=' + encodeURIComponent(t) : u; } catch (e) { return u; } };
+  var _tk = {};
+  window.cuscuzTicket = function (id, kind) {
+    kind = kind === 'p' ? 'p' : 'v';
+    var k = kind + id, c = _tk[k];
+    if (c && c.e > Date.now()) return Promise.resolve(c.u);
+    var t = ''; try { t = localStorage.getItem('cuscuz_token') || ''; } catch (e) {}
+    return fetch('/api/media/ticket', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t }, body: JSON.stringify({ id: id, kind: kind }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (!d.url) throw new Error('ticket'); _tk[k] = { u: d.url, e: Date.now() + 6 * 3600 * 1000 }; return d.url; });
+  };
+  window.cuscuzAbrirPdf = function (id) { var w = window.open('about:blank', '_blank'); cuscuzTicket(id, 'p').then(function (u) { if (w) w.location = u; else location.href = u; }).catch(function () { if (w) w.close(); }); };
   window.cuscuzPauseAll = function () {
     try { document.querySelectorAll('video,audio').forEach(function (v) { try { v.pause(); } catch (e) {} }); } catch (e) {}
     try { document.querySelectorAll('#ac2-player iframe').forEach(function (f) { f.src = 'about:blank'; }); } catch (e) {}
@@ -28,7 +39,7 @@
   var _f = window.fetch.bind(window);
   window.fetch = function(u, o){
     var s = typeof u === 'string' ? u : (u && u.url) || '';
-    var isApi = s.indexOf('/api/') === 0 && s.indexOf('/api/auth/') !== 0;
+    var isApi = (s.indexOf('/api/') === 0 && s.indexOf('/api/auth/') !== 0) || /^\.?\/acervo-manifest\.json/.test(s);
     if (isApi) {
       try {
         var t = localStorage.getItem('cuscuz_token');
@@ -267,6 +278,20 @@
 .ac2-ctrl-sync{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px;background:rgba(13,148,136,0.12);border:1px solid rgba(13,148,136,0.3);font-size:11px;font-weight:600;color:var(--teal);font-family:'JetBrains Mono',monospace}
 .ac2-sync-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);animation:pulseDot 1.6s infinite}
 @keyframes pulseDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+
+/* Player compacto no celular */
+@media (max-width:820px){
+  .ac2-ctrl-pulse{width:46px;height:46px}
+  .ac2-ctrl-pulse svg{width:20px;height:20px}
+  .ac2-ctrl-bottom{padding:6px 10px 8px;gap:2px}
+  .ac2-timeline-wrap{height:16px}
+  .ac2-ctrl-row{flex-wrap:nowrap;gap:6px}
+  .ac2-ctrl-left,.ac2-ctrl-right{gap:4px}
+  .ac2-cbtn{width:30px;height:30px;border-radius:8px;font-size:15px}
+  .ac2-vol-wrap,.ac2-ctrl-sync{display:none!important}
+  .ac2-time-display{font-size:10.5px;margin-left:2px;gap:3px;white-space:nowrap}
+  .ac2-cbadge{font-size:7px;bottom:2px}
+}
 
 .ac2-speed-btn{width:auto;padding:0 10px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--teal)}
 
@@ -2184,10 +2209,6 @@ mark.exam-highlight {
               </button>
 
               <!-- Link Direto no Google Drive -->
-              <a class="ac2-act-btn" id="ac2-drive" href="#" target="_blank" rel="noopener" title="Abrir arquivo original no Google Drive">
-                <i class="ph ph-arrow-square-out"></i>
-                <span>Drive</span>
-              </a>
 
               <!-- Botão Próxima Aula -->
               <button class="ac2-act-btn ac2-act-next" id="ac2-next" title="Ir para a próxima aula">
@@ -2347,9 +2368,6 @@ mark.exam-highlight {
           4. Volte aqui e clique em <b>Atualizar Drive</b>!
         </div>
         <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
-          <a id="drive-open-folder-link" href="#" target="_blank" rel="noopener noreferrer" class="btn-primary btn-sm glass-shimmer" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
-            <i class="ph ph-arrow-square-out"></i> Abrir pasta no Google Drive
-          </a>
           <button class="btn-outline btn-sm" onclick="refreshCurrentDriveFolder()">
             <i class="ph ph-arrows-clockwise"></i> Atualizar Drive
           </button>
@@ -3801,10 +3819,6 @@ async function fetchDriveFolderItems(folderId, forceRefresh = false) {
 
 async function loadDriveFolder(folderId, folderName, addToHistory = true, forceRefresh = false) {
   currentDriveFolderId = folderId;
-  const openLink = $('drive-open-folder-link');
-  if (openLink) {
-    openLink.href = 'https://drive.google.com/drive/folders/' + encodeURIComponent(folderId);
-  }
   if (addToHistory) {
     if (folderId === DRIVE_ROOT_ID) {
       currentDrivePath = [{ id: DRIVE_ROOT_ID, name: 'Cursos' }];
@@ -4138,12 +4152,12 @@ function openDriveItemById(fileId) {
 
   if (!item) {
     // Direct preview fallback
-    item = { id: fileId, name: 'Arquivo do Drive', isVideo: true, previewUrl: `https://drive.google.com/file/d/${fileId}/preview` };
+    item = { id: fileId, name: 'Arquivo', isVideo: true };
   }
 
   const isVideo = item.isVideo || /video|mp4|webm|mkv|mov/i.test(item.mimeType || '');
   const type = isVideo ? 'v' : 'a';
-  const u = item.previewUrl || `https://drive.google.com/file/d/${item.id}/preview`;
+  const u = '';
   const k = 'drive:' + item.id;
 
   const currentFolderName = currentDrivePath.length ? currentDrivePath[currentDrivePath.length - 1].name : 'Google Drive';
@@ -4155,13 +4169,13 @@ function openDriveItemById(fileId) {
   const fr = $('player-frame'), vd = $('player-video');
   vd.oncanplay = vd.onerror = null; vd.pause(); vd.removeAttribute('src'); vd.load();
 
-  $('player-meta').textContent = currentFolderName + (isVideo ? ' · Videoaula' : ' · Material') + ' ↗';
-  $('player-meta').onclick = () => window.open(u, '_blank');
+  $('player-meta').textContent = currentFolderName + (isVideo ? ' · Videoaula' : ' · Material');
+  $('player-meta').onclick = null;
 
   if (isVideo) {
     fr.style.display = 'none';
     vd.style.display = '';
-    vd.src = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(item.id));
+    cuscuzTicket(item.id, 'v').then(tu => { vd.src = tu; }).catch(() => { showPLoading(false); toast('⚠️ Falha ao abrir o vídeo.', 'warning'); });
     vd.oncanplay = () => showPLoading(false);
     vd.onerror = () => {
       console.warn('Native video error in modal');
@@ -4225,15 +4239,15 @@ function openDriveItemById(fileId) {
           $('player-meta').innerHTML = `<span style="color:var(--teal)"><i class="ph ph-check-circle"></i> Visualizador Offline (IndexedDB) · ${esc(item.name)}</span>`;
         } else {
           fr.onload = () => showPLoading(false);
-          fr.src = `/api/drive/pdf/${encodeURIComponent(item.id)}`;
+          cuscuzTicket(item.id, 'p').then(tu => { fr.src = tu; }).catch(() => showPLoading(false));
         }
       }).catch(() => {
         fr.onload = () => showPLoading(false);
-        fr.src = `/api/drive/pdf/${encodeURIComponent(item.id)}`;
+        cuscuzTicket(item.id, 'p').then(tu => { fr.src = tu; }).catch(() => showPLoading(false));
       });
     } else {
       fr.onload = () => showPLoading(false);
-      fr.src = `/api/drive/pdf/${encodeURIComponent(item.id)}`;
+      cuscuzTicket(item.id, 'p').then(tu => { fr.src = tu; }).catch(() => showPLoading(false));
     }
   }
 
@@ -4463,10 +4477,10 @@ function openItem(mid,type,idx){const m=MOD(mid);if(!m)return;const it=type==='v
   vd.onerror=()=>{showPLoading(false);toast('Não foi possível carregar o vídeo','error')};
   vd.src=it.u;vd.play().catch(()=>{});
  }else{
-  let u=String(it.u||'');const gd=u.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-  if(gd)u='https://drive.google.com/file/d/'+gd[1]+'/preview';
-  else if(/drive\.google\.com/.test(u))u=u.replace(/\/view.*/,'/preview');
-  showPLoading(true);fr.src=u;
+  let u=String(it.u||'');const gd=u.match(/drive\.google\.com\/file\/d\/([^/?]+)/)||(it.id&&/^[A-Za-z0-9_-]{20,}$/.test(it.id)?[0,it.id]:null);
+  showPLoading(true);
+  if(gd)cuscuzTicket(gd[1],'p').then(tu=>{fr.src=tu}).catch(()=>showPLoading(false));
+  else fr.src=u;
  }
  $('mark-btn').innerHTML='<i class="ph ph-check-circle"></i> Marcar como concluído';
  $('mark-btn').onclick=()=>{const k=itemKey(it);
@@ -8272,18 +8286,6 @@ function plOpenDashboardRico(data, b) {
         '</div>' +
       '</div>' +
 
-      '<!-- Materiais e Apostilas em PDF -->' +
-      '<div class="pl-study-card">' +
-        '<h4><i class="ph ph-file-pdf" style="color:var(--rose)"></i> Apostilas & Materiais em PDF</h4>' +
-        '<div style="display:flex;flex-direction:column;gap:6px">' +
-          '<a class="material-chip" href="https://drive.google.com" target="_blank" rel="noopener">' +
-            '<span class="pdf-icon"><i class="ph ph-file-pdf"></i></span>' +
-            '<div class="mat-info"><span class="mat-title">Apostila Completa — ' + esc(tema) + '.pdf</span><span class="mat-sub">Manual do Aluno & Diretrizes</span></div>' +
-            '<i class="ph ph-download-simple mat-dl"></i>' +
-          '</a>' +
-        '</div>' +
-      '</div>' +
-
       '<div style="padding-top:6px;display:flex;gap:10px">' +
         '<button class="pl-cta" onclick="plConcluirBloco(\'' + data + '\',\'' + b.id + '\')"><i class="ph ph-check-circle"></i> Concluir Bloco de Estudo (+20 XP)</button>' +
       '</div>' +
@@ -8914,7 +8916,7 @@ function ac2Info(ids) {
 
 function ac2CriarIframe(v, ativo) {
   const f = document.createElement('iframe');
-  f.src = 'https://drive.google.com/file/d/' + v.id + '/preview';
+  f.src = 'about:blank';
   f.title = v.titulo;
   f.allow = 'autoplay; encrypted-media; fullscreen';
   f.setAttribute('data-vid', v.id);
@@ -9151,9 +9153,9 @@ function ac2InitNativeVideoListeners() {
       if (++stallN > 5) return;
       const t = nv.currentTime || 0, id = nv.getAttribute('data-vid');
       const tocava = !nv.paused;
-      nv.src = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(id));
+      cuscuzTicket(id, 'v').then(tu => { nv.src = tu;
       nv.addEventListener('loadedmetadata', function once() { nv.removeEventListener('loadedmetadata', once); try { if (t > 0.5) nv.currentTime = t; } catch (_) {} if (tocava) nv.play().catch(() => {}); }, { once: true });
-      nv.load();
+      nv.load(); });
       armStall();
     }, 9000);
   };
@@ -9464,16 +9466,17 @@ function ac2Ativar(id, autoPlay = false) {
     nv.style.display = 'block';
     nv.classList.add('ativo');
     ac2InitNativeVideoListeners();
-    const streamUrl = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(id));
-    nv.preload = autoPlay ? 'auto' : 'metadata'; // só baixa o vídeo inteiro quando o aluno der play
+        nv.preload = autoPlay ? 'auto' : 'metadata'; // só baixa o vídeo inteiro quando o aluno der play
     if (nv.getAttribute('data-vid') !== id) {
       nv.setAttribute('data-vid', id);
       nv._retries = 0; nv._played = !!autoPlay; nv._failed = false;
       // O servidor já retoma sozinho se o Drive cair; o navegador cuida do buffer com HTTP Range.
-      nv.src = streamUrl;
-      nv.load();
-      if (autoPlay) nv.play().catch(() => {});
-      else { nv.pause(); ac2SetPlayingState(false); }
+      nv.pause(); if (!autoPlay) ac2SetPlayingState(false);
+      cuscuzTicket(id, 'v').then(tu => {
+        if (nv.getAttribute('data-vid') !== id) return;
+        nv.src = tu; nv.load();
+        if (autoPlay) nv.play().catch(() => {});
+      }).catch(() => { nv._failed = true; });
     } else if (autoPlay) {
       nv.play().catch(() => {});
     } else {
@@ -9486,21 +9489,20 @@ function ac2Ativar(id, autoPlay = false) {
       nv._retries = (nv._retries || 0) + 1;
       const t = nv.currentTime || 0, tocava = !nv.paused;
       if (nv._retries > 4) {
-        toast('Não consegui carregar esta aula agora. Toque em ↻ para tentar de novo ou abra pelo botão Drive.', 'error');
+        toast('Não consegui carregar esta aula agora. Toque em ↻ para tentar de novo', 'error');
         return;
       }
       if (nv._retries === 1) toast('Reconectando a aula…', 'info');
       setTimeout(() => {
         if (!nv || nv.getAttribute('data-vid') !== id) return;
-        nv.src = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(id));
-        nv.load();
-        nv.addEventListener('loadedmetadata', function once() { nv.removeEventListener('loadedmetadata', once); try { if (t > 1) nv.currentTime = t; } catch (_) {} if (tocava) nv.play().catch(() => {}); }, { once: true });
+        cuscuzTicket(id, 'v').then(tu => { nv.src = tu; nv.load();
+        nv.addEventListener('loadedmetadata', function once() { nv.removeEventListener('loadedmetadata', once); try { if (t > 1) nv.currentTime = t; } catch (_) {} if (tocava) nv.play().catch(() => {}); }, { once: true }); });
       }, 1200 * nv._retries);
     };
     nv.onplaying = () => { nv._retries = 0; };
     nv.onplay = () => {
       nv._played = true; nv.preload = 'auto';
-      if (nv._failed || nv.error) { nv._failed = false; nv._retries = 0; nv.src = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(id)); nv.load(); nv.play().catch(() => {}); }
+      if (nv._failed || nv.error) { nv._failed = false; nv._retries = 0; cuscuzTicket(id, 'v').then(tu => { nv.src = tu; nv.load(); nv.play().catch(() => {}); }); }
     };
   }
 }
@@ -9657,10 +9659,9 @@ window.ac2Recarregar = function () {
     const nv = $('ac2-native-video');
     if (nv && AC2.atualId) {
       const cur = nv.currentTime;
-      nv.src = cuscuzMediaUrl('/api/drive/stream/' + encodeURIComponent(AC2.atualId));
-      nv.load();
+      cuscuzTicket(AC2.atualId, 'v').then(tu => { nv.src = tu; nv.load();
       if (cur > 0) nv.currentTime = cur;
-      nv.play().catch(() => {});
+      nv.play().catch(() => {}); });
       toast('↻ Vídeo recarregado no player nativo', 'info');
       return;
     }
@@ -9697,7 +9698,6 @@ window.ac2Abrir = function (id, silencioso = false, autoPlay = false) {
   const dur = $('ac2-dur'); if (dur) dur.textContent = '38 min';
   const bmeta = $('ac2-bmeta'); if (bmeta) bmeta.classList.remove('carregando');
   const bufTxt = $('ac2-buffer-txt'); if (bufTxt) bufTxt.textContent = 'HD 1080p';
-  const drv = $('ac2-drive'); if (drv) drv.href = 'https://drive.google.com/file/d/' + v.id + '/view';
 
   // 3. Ações, Materiais e Buffer
   ac2Acoes();
@@ -9827,27 +9827,7 @@ function ac2Materiais(v) {
   let origem = v.disc;
   if (!mats.length) { mats = AC2.MAT.get(v.curso + '||Geral') || []; origem = 'Geral'; }
 
-  const baseDriveLink = 'https://drive.google.com/file/d/' + v.id + '/view';
-  const defaultMats = [
-    {
-      id: v.id,
-      nome: 'Apostila Teórica Completa — ' + v.disc + '.pdf',
-      sub: 'Apostila Oficial · ' + v.curso,
-      url: baseDriveLink
-    },
-    {
-      id: v.id,
-      nome: 'Resumo Esquematizado & Mapas Mentais — ' + v.titulo + '.pdf',
-      sub: 'Resumo Direcionado para Provas · PDF',
-      url: baseDriveLink
-    },
-    {
-      id: v.id,
-      nome: 'Caderno de Questões com Gabarito — ' + v.disc + '.pdf',
-      sub: 'Treino e Fixação com Questões Comentadas',
-      url: baseDriveLink
-    }
-  ];
+  const defaultMats = [];
 
   let displayMats = [];
   if (mats.length) {
@@ -9855,7 +9835,7 @@ function ac2Materiais(v) {
       id: m.id,
       nome: m.nome.endsWith('.pdf') ? m.nome : m.nome + '.pdf',
       sub: 'PDF Oficial · ' + v.curso,
-      url: 'https://drive.google.com/file/d/' + m.id + '/view'
+      url: ''
     }));
   } else {
     displayMats = defaultMats;
@@ -9864,7 +9844,7 @@ function ac2Materiais(v) {
   if (badge) badge.textContent = displayMats.length + (displayMats.length === 1 ? ' arquivo disponível' : ' arquivos disponíveis');
 
   box.innerHTML = displayMats.map(m =>
-    '<a class="material-chip" href="' + m.url + '" target="_blank" rel="noopener" title="Visualizar / Baixar ' + esc(m.nome) + '">' +
+    '<a class="material-chip" href="#" onclick="cuscuzAbrirPdf(\'' + esc(m.id) + '\');return false" title="Abrir ' + esc(m.nome) + '">' +
       '<span class="pdf-icon"><i class="ph ph-file-pdf"></i></span>' +
       '<div class="mat-info">' +
         '<span class="mat-title">' + esc(m.nome) + '</span>' +

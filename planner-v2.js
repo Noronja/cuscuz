@@ -207,7 +207,7 @@
         const abre = () => { if (window.AC2 && AC2.indice && AC2.indice.has(rec.id)) ac2Abrir(rec.id); else if (typeof openDriveItemById === 'function') openDriveItemById(rec.id); else toast('Aula não encontrada no acervo.', 'warning'); };
         if (typeof ac2Init === 'function') ac2Init().then(abre).catch(abre); else abre();
       } else if (rec.tipo === 'pdf') {
-        window.open(window.cuscuzMediaUrl ? cuscuzMediaUrl('/api/drive/pdf/' + encodeURIComponent(rec.id)) : '/api/drive/pdf/' + encodeURIComponent(rec.id), '_blank');
+        window.cuscuzAbrirPdf(rec.id);
       } else if (rec.tipo === 'questoes') {
         iniciarSimuladoDoTema(rec.tema || t.tema, rec.disc || t.materia, [], rec.modulo || '');
       } else if (rec.tipo === 'flashcards') {
