@@ -7002,54 +7002,6 @@ window.addEventListener('load',()=>{if(window.pdfjsLib)pdfjsLib.GlobalWorkerOpti
 .ai-chat-send:disabled{opacity:.5;cursor:not-allowed;transform:none}
 </style>
 
-<!-- Floating Launcher Button -->
-<div class="ai-chat-launcher iridescent-border glass-shimmer" id="ai-chat-launcher" onclick="toggleAiChat()">
-  <div class="ai-chat-launcher-badge"><i class="ph ph-chat-teardrop-dots"></i></div>
-  <span>Suporte IA</span>
-  <span class="ai-chat-status-dot"></span>
-</div>
-
-<!-- Floating Chat Window -->
-<div class="ai-chat-window iridescent-border" id="ai-chat-window">
-  <div class="ai-chat-header">
-    <div class="ai-chat-header-title">
-      <div class="ai-chat-avatar"><i class="ph ph-robot"></i></div>
-      <div>
-        <div class="ai-chat-name">Suporte Cuscuz-MED</div>
-        <div class="ai-chat-sub"><span></span> OpenAI GPT-4o · Supabase</div>
-      </div>
-    </div>
-    <div class="ai-chat-header-actions">
-      <button class="ai-chat-btn-icon" onclick="resetAiChat()" title="Nova conversa"><i class="ph ph-arrow-counter-clockwise"></i></button>
-      <button class="ai-chat-btn-icon" onclick="toggleAiChat()" title="Fechar"><i class="ph ph-x"></i></button>
-    </div>
-  </div>
-
-  <div class="ai-chat-messages" id="ai-chat-messages">
-    <!-- Mensagem de Boas-Vindas -->
-    <div class="ai-chat-msg assistant">
-      Olá! Sou o assistente de suporte inteligente. Como posso ajudar com seus estudos, cronograma, videoaulas ou questões hoje?
-    </div>
-    <!-- Indicador de Digitação -->
-    <div class="ai-chat-typing" id="ai-chat-typing">
-      <span class="ai-typing-dot"></span>
-      <span class="ai-typing-dot"></span>
-      <span class="ai-typing-dot"></span>
-    </div>
-  </div>
-
-  <div class="ai-chat-quick">
-    <button class="ai-chat-chip" onclick="quickAiAsk('Como gero um plano de estudos?')">⚡ Gerar plano</button>
-    <button class="ai-chat-chip" onclick="quickAiAsk('Como funciona a repetição espaçada (SRS)?')">🧠 Flashcards SRS</button>
-    <button class="ai-chat-chip" onclick="quickAiAsk('Quais matérias estão no acervo?')">📚 Conteúdos do acervo</button>
-  </div>
-
-  <form class="ai-chat-footer" id="ai-chat-form" onsubmit="handleAiChatSubmit(event)">
-    <input type="text" id="ai-chat-input" class="ai-chat-input" placeholder="Digite sua mensagem..." autocomplete="off">
-    <button type="submit" id="ai-chat-send" class="ai-chat-send" title="Enviar"><i class="ph ph-paper-plane-right"></i></button>
-  </form>
-</div>
-
 <script>
 let aiConversationId = localStorage.getItem('ai_chat_conv_id') || ('conv_' + Math.random().toString(36).substring(2, 10));
 localStorage.setItem('ai_chat_conv_id', aiConversationId);
