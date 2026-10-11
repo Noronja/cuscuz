@@ -130,19 +130,34 @@
     } catch (e) { busy = false; if (window.toast) toast('Erro ao gerar: ' + e.message, 'error'); }
   }
 
+  let enriquecendo = false;
   async function enriquecer(silencioso) {
-    const plano = get(K_PLAN, null); if (!plano) return;
-    const alvo = plano.tarefas.filter(t => t.tipo === 'estudo' && t.status !== 'feito' && !t.ia && t.data >= hoje()).slice(0, 10);
-    if (!alvo.length) { if (!silencioso && window.toast) toast('Tudo já está detalhado.', 'success'); return; }
+    if (enriquecendo) return; enriquecendo = true;
+    let total = 0, ia = true;
     try {
-      const j = await api('/api/planner/enrich', { perfil: plano.perfil, tarefas: alvo });
-      const n = Object.keys(j.itens || {}).length;
-      if (!n) { if (!silencioso && window.toast) toast(j.ia ? 'A IA não devolveu melhorias agora.' : 'IA indisponível: mantive o passo a passo padrão.', 'warning'); return; }
-      const p2 = get(K_PLAN, null);
-      p2.tarefas.forEach(t => { const it = j.itens[t.id]; if (!it) return; t.passos.forEach((s, i) => (s.texto = it.passos[i])); if (it.observacoes) t.observacoes = it.observacoes + (t.observacoes ? ' ' + (t.observacoes.match(/Revisões automáticas[^]*$/) || [''])[0] : ''); t.ia = true; });
-      set(K_PLAN, p2); sync(); if (document.getElementById('plv2-lista')) renderPlano();
-      if (!silencioso && window.toast) toast(n + ' tarefas detalhadas pela IA ✨', 'success');
-    } catch (_) {}
+      // lotes de 8 tarefas de estudo, das mais próximas para as mais distantes (até ~40 tarefas por vez)
+      for (let volta = 0; volta < 5; volta++) {
+        const plano = get(K_PLAN, null); if (!plano) break;
+        const alvo = plano.tarefas.filter(t => t.tipo === 'estudo' && t.status !== 'feito' && !t.ia && !t._iaTentou && t.data >= hoje()).sort((x, y) => x.data.localeCompare(y.data)).slice(0, 8);
+        if (!alvo.length) break;
+        let j = null;
+        try { j = await api('/api/planner/enrich', { perfil: plano.perfil, tarefas: alvo }); } catch (_) { break; }
+        ia = !!j.ia;
+        const p2 = get(K_PLAN, null); if (!p2) break;
+        const ids = new Set(alvo.map(t => t.id));
+        p2.tarefas.forEach(t => {
+          if (!ids.has(t.id)) return;
+          const it = (j.itens || {})[t.id];
+          if (!it) { t._iaTentou = true; return; }
+          t.passos.forEach((s, i) => (s.texto = it.passos[i]));
+          if (it.observacoes) t.observacoes = it.observacoes + (t.observacoes ? ' ' + (t.observacoes.match(/Revisões automáticas[^]*$/) || [''])[0] : '');
+          t.ia = true; total++;
+        });
+        set(K_PLAN, p2); sync(); if (document.getElementById('plv2-lista')) renderPlano();
+        if (!j.ia) break;
+      }
+    } finally { enriquecendo = false; }
+    if (!silencioso && window.toast) toast(total ? total + ' tarefas detalhadas pela IA ✨' : (ia ? 'Tudo já está detalhado.' : 'IA indisponível: mantive o passo a passo padrão.'), total ? 'success' : 'warning');
   }
 
   // Liga a tarefa às aulas que você mesmo gravou (Aula do dia): resumo, flashcards e transcrição daquele conteúdo
@@ -173,7 +188,9 @@
       <td data-l="Passo a passo">${passos}</td><td data-l="Materiais">${recs || '<span class="plv2-obs">—</span>'}</td><td data-l="Observações"><div class="plv2-obs">${E(t.observacoes || '')}</div></td></tr>`;
   }
 
+  let _enrAuto = false;
   function renderPlano() {
+    if (!_enrAuto) { _enrAuto = true; setTimeout(() => enriquecer(true), 1500); } // completa o detalhamento das tarefas que ainda estão no texto padrão
     const r = root(); if (!r) return; css();
     const plano = get(K_PLAN, null);
     if (!plano) return renderChat();

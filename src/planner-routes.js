@@ -202,17 +202,21 @@ Para cada disciplina/módulo informe: provas/avaliações (data, tipo como P1/P2
   app.post('/api/planner/enrich', async (req, res) => {
     try {
       if (!getGeminiClient()) return res.json({ success: true, ia: false, itens: {} });
-      const tarefas = (Array.isArray(req.body.tarefas) ? req.body.tarefas : []).filter(t => t && t.tipo === 'estudo').slice(0, 10);
+      const tarefas = (Array.isArray(req.body.tarefas) ? req.body.tarefas : []).filter(t => t && t.tipo === 'estudo').slice(0, 8);
       const p = PE.sanePerfil(null, req.body.perfil || {});
       if (!tarefas.length) return res.json({ success: true, ia: true, itens: {} });
-      const entrada = tarefas.map(t => ({ id: t.id, materia: t.materia, tema: t.tema, titulo: t.titulo, passos: (t.passos || []).map(s => ({ acao: s.acao, minutos: s.minutos })) }));
+      const entrada = tarefas.map(t => ({ id: t.id, disciplina: t.materia, tema: t.tema, titulo: t.titulo, contexto_da_faculdade: String(t.contexto || '').slice(0, 900), passos: (t.passos || []).map(s => ({ acao: s.acao, minutos: s.minutos })) }));
       const r = await generateWithGemini({
-        contents: `Aluno de medicina. Preferências/anseios: ${JSON.stringify({ objetivo: p.objetivo, metodo: p.metodo, dificuldades: p.dificuldades, anseios: p.anseios })}.
-Para cada tarefa, reescreva o texto de cada passo (mesma ordem e mesmo "acao") de forma ESPECÍFICA para o tema: o que prestar atenção na aula, o que resumir, que tipo de questão treinar e quais cartões criar. Seja concreto e conciso (1–2 frases por passo), sem inventar doses, números ou links. Em "observacoes" explique em 1–2 frases o que costuma ser cobrado em prova sobre o tema e uma dica de estratégia.
+        contents: `Você é o mentor de estudos de um aluno de medicina (${p.objetivo === 'graduacao' ? 'prova da faculdade' : 'residência'}). Preferências/anseios: ${JSON.stringify({ metodo: p.metodo, dificuldades: p.dificuldades, anseios: p.anseios })}.
+Reescreva o texto de cada passo (mesma ordem e mesmo "acao") de forma ESPECÍFICA e ACIONÁVEL para o tema, usando o "contexto_da_faculdade" (roteiro real da aula e assuntos da prova):
+- aula/resumo: liste os 3–5 pontos CONCRETOS do tema que precisam sair dominados (nomes de doenças, classificações, critérios, condutas de 1ª linha, sinais de alarme — só o que você tem certeza que é padrão), em ordem de cobrança provável; diga o que comparar com o quê.
+- questoes: diga que tipo de questão treinar neste tema (ex.: caso clínico → próxima conduta; critério diagnóstico; diagnóstico diferencial) e como corrigir os erros.
+- flashcards: dê 2–3 exemplos de cartões (pergunta curta → resposta curta) já sobre este tema.
+Proibido: frases genéricas ("estude no seu material principal", "anote o essencial"), repetir o título, inventar doses/números/links ou citar aula que não esteja no contexto. 2–3 frases por passo, português do Brasil. Em "observacoes" (1 frase) diga como esta aula se liga à prova.
 Tarefas: ${JSON.stringify(entrada)}`,
         config: {
-          temperature: 0.5, responseMimeType: 'application/json',
-          responseSchema: { type: Type.OBJECT, properties: { itens: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { id: { type: Type.STRING }, passos: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { acao: { type: Type.STRING }, texto: { type: Type.STRING } }, required: ['acao', 'texto'] } }, observacoes: { type: Type.STRING } }, required: ['id', 'passos', 'observacoes'] } } }, required: ['itens'] }
+          temperature: 0.4, responseMimeType: 'application/json',
+          responseSchema: { type: Type.OBJECT, properties: { itens: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { id: { type: Type.STRING }, passos: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { acao: { type: Type.STRING }, texto: { type: Type.STRING } }, required: ['acao', 'texto'] } }, observacoes: { type: Type.STRING } }, required: ['id', 'passos'] } } }, required: ['itens'] }
         }
       });
       const j = JSON.parse(r.text.trim());
@@ -221,7 +225,7 @@ Tarefas: ${JSON.stringify(entrada)}`,
         const orig = tarefas.find(t => t.id === it.id);
         if (!orig || !Array.isArray(it.passos) || it.passos.length !== orig.passos.length) continue;
         if (!it.passos.every((s, i) => s.acao === orig.passos[i].acao && String(s.texto || '').length > 15)) continue;
-        itens[it.id] = { passos: it.passos.map(s => String(s.texto).slice(0, 500)), observacoes: String(it.observacoes || '').slice(0, 500) };
+        itens[it.id] = { passos: it.passos.map(s => String(s.texto).slice(0, 700)), observacoes: String(it.observacoes || '').slice(0, 400) };
       }
       res.json({ success: true, ia: true, itens });
     } catch (err) {
