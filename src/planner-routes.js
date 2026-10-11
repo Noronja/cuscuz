@@ -115,6 +115,11 @@ Perfil atual (JSON, sem o material): ${JSON.stringify({ ...perfil, materiais: un
           }
         } catch (e) { console.warn('[Planner chat] IA indisponível, usando roteiro:', e.message); }
       }
+      if (!usouIA && brutoUlt && String(brutoUlt.content || '').length > 500 && !(det && det.provas.length)) {
+        // texto longo que não consegui entender com segurança: guardo como material, mas não invento provas a partir dele
+        const q0 = PE.proximaPergunta(perfil, extrasPerguntado, hoje);
+        return res.json({ success: true, ia: false, perfil, asking: q0 ? q0.campo : '', jaExtras: extrasPerguntado, reply: `Guardei o seu texto (${String(brutoUlt.content).length} caracteres), mas não consegui identificar com segurança as disciplinas, datas e aulas nesse formato — e prefiro não chutar. Formatos que eu leio: "1. Disciplina" com itens "* 04/08/26 (hora): conteúdo", ou calendário por data ("* **16/09**" com "* **07:50 às 10:30:** Disciplina - Tema"). Se puder, reenvie num deles.`, quickReplies: q0 ? q0.quick : [], pronto: false, resumo: PE.resumoPerfil(perfil) });
+      }
       if (!usouIA) {
         const nota = String(req.body.nota || '').slice(0, 600);
         if (ultima && asking && !req.body.anexo) {

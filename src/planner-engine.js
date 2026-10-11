@@ -360,10 +360,33 @@ export function sanePerfil(atual, patch) {
   return p;
 }
 
+/* Formato "calendário por data" (### Mês / * **16/09** / * **07:50 às 10:30:** Disciplina - Tema): converte para "N. Disciplina + itens com data" */
+function converterPorData(texto, hoje) {
+  const ano = String(hoje || new Date().toISOString()).slice(0, 4);
+  const linhas = String(texto || '').replace(/\*\*/g, '').split(/\r?\n/).map(x => x.trim());
+  const soData = linhas.filter(l => /^[*•\-–]?\s*\d{1,2}\/\d{1,2}(\/\d{2,4})?\s*$/.test(l)).length;
+  if (soData < 3) return '';
+  const por = new Map(); let data = '';
+  for (const l of linhas) {
+    const d = l.match(/^[*•\-–]?\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s*$/);
+    if (d) { data = `${d[1]}/${d[2]}/${d[3] || ano}`; continue; }
+    if (!data) continue;
+    const it = l.match(/^[*•\-–]\s*(?:\d{1,2}[:h]\d{2}\s*(?:às|as|-|–)\s*\d{1,2}[:h]\d{2}|hor[aá]rio a definir|per[ií]odo todo|[^:\-–]{2,30})\s*:\s*(.+)$/i);
+    if (!it) continue;
+    const m = it[1].match(/^(.{3,70}?)\s+[-–—]\s+(.+)$/);
+    if (!m) continue;
+    const disc = m[1].trim().replace(/[.:]+$/, '');
+    if (!por.has(disc)) por.set(disc, []);
+    por.get(disc).push(`* ${data}: ${m[2].trim()}`);
+  }
+  if (!por.size) return '';
+  return [...por.entries()].map(([d, ls], i) => `${i + 1}. ${d}\n${ls.join('\n')}`).join('\n');
+}
+
 /* Leitor de cronograma com VÁRIAS disciplinas ("1. Emergências Médicas" … "2. Terapia Intensiva" …), cada uma com linhas
    "dd/mm[, dd/mm…] (hh:mm às hh:mm): conteúdo". Provas PR1/PR2/Final viram avaliações; o resto vira aulas com data. */
 export function parseCronograma(texto, hoje) {
-  const txt = reparaTextoCronograma(texto);
+  const txt = reparaTextoCronograma(converterPorData(texto, hoje) || texto);
   const ano = String(hoje || new Date().toISOString()).slice(0, 4);
   const secoes = [];
   let atual = null;
@@ -401,7 +424,7 @@ export function parseCronograma(texto, hoje) {
       }
       if (/campos? de pratica|atendimento, revisao e discussao|^revisao dos assuntos|^apresentacao da disciplina|feriado|recesso/.test(nr)) continue;
       const segs = []; { let dep = 0, cur = ''; for (const ch of resto) { if (ch === '(') dep++; if (ch === ')') dep = Math.max(0, dep - 1); if (ch === ';' && !dep) { segs.push(cur); cur = ''; } else cur += ch; } segs.push(cur); }
-      const partes = segs.map(sg => { const sem = sg.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').replace(/\s+,/g, ',').replace(/[.\s]+$/, '').trim(); return (sem.length < 16 && /\(/.test(sg)) ? sg.replace(/\s+/g, ' ').replace(/[.\s]+$/, '').trim() : sem; }).filter(x => x.length > 3);
+      const partes = segs.map(sg => { const sem = sg.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').replace(/\s+,/g, ',').replace(/[.\s]+$/, '').trim(); return (sem.length < 16 && /\(/.test(sg)) ? sg.replace(/\s+/g, ' ').replace(/[.\s]+$/, '').trim() : sem; }).filter(x => x.length > 3 && !/^atendimento ?[,\/] ?revisao e discussao|campos? de pratica/.test(norm(x)));
       if (!partes.length) continue;
       for (const d of datas) au.push({ data: d, tema: partes.join('; ').slice(0, 140), partes, detalhe: resto.replace(/\s+/g, ' ').slice(0, 600) });
     }
@@ -452,13 +475,39 @@ export function trechosDoMaterial(perfil, consulta, maxChars = 1800) {
   return out.join('\n');
 }
 
+/* "Imagenologia" e "Imagenologia Aplicada à Prática Clínica" são a mesma disciplina */
+export function mesmaDisc(a, b) {
+  const x = norm(a).trim(), y = norm(b).trim();
+  if (!x || !y) return false;
+  if (x === y || x.includes(y) || y.includes(x)) return true;
+  const fx = x.split(/\s+/)[0], fy = y.split(/\s+/)[0];
+  return fx === fy && fx.length >= 8;
+}
+
 /* Aplica um cronograma lido (parseCronogramaDisciplina) ao perfil: substitui o que já existia da mesma disciplina ou nas mesmas datas */
-export function mesclarCronograma(perfil, det) {
+export function mesclarCronograma(perfil, det0) {
+  // unifica nomes: "Imagenologia" passa a usar o nome que já existe ("Imagenologia Aplicada à Prática Clínica")
+  const existentes = [...new Set([...(perfil.provasFaculdade || []).map(x => x.disciplina), ...(perfil.aulasFaculdade || []).map(x => x.disciplina)])];
+  const canon = n => { const e = existentes.find(x => mesmaDisc(x, n)); return e && e.length >= String(n).length ? e : (e ? (n.length > e.length ? n : e) : n); };
+  const mapa = new Map((det0.disciplinas || [det0.disciplina]).map(n => [n, canon(n)]));
+  const ren = n => mapa.get(n) || n;
+  const det = { ...det0, disciplina: ren(det0.disciplina), disciplinas: (det0.disciplinas || [det0.disciplina]).map(ren), provas: det0.provas.map(x => ({ ...x, disciplina: ren(x.disciplina) })), aulas: det0.aulas.map(x => ({ ...x, disciplina: ren(x.disciplina) })) };
   const dns = new Set((det.disciplinas || [det.disciplina]).map(norm));
-  const manter = (perfil.provasFaculdade || []).filter(x => !dns.has(norm(x.disciplina)) && !/^prova da faculdade$|^disciplina$/.test(norm(x.disciplina).trim()));
-  const aulasMant = (perfil.aulasFaculdade || []).filter(x => !dns.has(norm(x.disciplina)));
-  const p = { ...perfil, provasFaculdade: [], aulasFaculdade: [], disciplinasConfirmadas: (perfil.disciplinasConfirmadas || []).filter(d => !dns.has(norm(d))) };
-  return sanePerfil(p, { provasFaculdade: [...manter, ...det.provas], aulasFaculdade: [...aulasMant, ...det.aulas], semProvas: false, semConteudo: false, manualNome: 'Cronograma da faculdade' });
+  const nomesNovos = det.disciplinas || [det.disciplina];
+  const mesma = d => dns.has(norm(d)) || nomesNovos.some(n => mesmaDisc(n, d));
+  const generica = d => /^prova da faculdade$|^disciplina$/.test(norm(d).trim());
+  // o que já existia da MESMA disciplina e não veio nesta leitura (ex.: prova final de outro arquivo) é mantido; datas repetidas valem as novas
+  const velhasProvas = (perfil.provasFaculdade || []).filter(x => !generica(x.disciplina));
+  const provas = [...velhasProvas.filter(x => !det.provas.some(n => mesmaDisc(n.disciplina, x.disciplina) && n.data === x.data)), ...det.provas];
+  const aulas = [...(perfil.aulasFaculdade || []).filter(x => !det.aulas.some(n => mesmaDisc(n.disciplina, x.disciplina) && n.data === x.data)), ...det.aulas];
+  // a prova final cobre tudo o que já foi dado na disciplina
+  for (const pr of provas) {
+    if (!/final/i.test(pr.tipo || '')) continue;
+    const todos = aulas.filter(a => mesmaDisc(a.disciplina, pr.disciplina)).sort((x, y) => x.data.localeCompare(y.data)).flatMap(a => String(a.tema).split(/\s*;\s*/));
+    pr.assuntos = [...new Set([...(pr.assuntos || []), ...todos])];
+  }
+  const p = { ...perfil, provasFaculdade: [], aulasFaculdade: [], disciplinasConfirmadas: (perfil.disciplinasConfirmadas || []).filter(d => !mesma(d)) };
+  return sanePerfil(p, { provasFaculdade: provas, aulasFaculdade: aulas, semProvas: false, semConteudo: false, manualNome: 'Cronograma da faculdade' });
 }
 
 export function faltando(p, hoje) {
