@@ -210,6 +210,30 @@ export const PERFIL_VAZIO = () => ({
   metodo: '', cursos: [], anseios: ''
 });
 
+
+/* Limpa a lista de assuntos de uma prova: tira calendário (datas/horários/"Prova PR1"), resposta da IA, nome de arquivo e repetições */
+const RUIDO_ASSUNTO = /(prova (teorica|pratica|oral)|\bpr ?\d\b|\bp ?[1-4]\b *(,|em sala)|em sala de aula|sala de aula com|cronograma de avaliac|aqui estao|informacoes (atualizadas|detalhadas)|extraid|\.pdf|arquivo|documento|segue|conforme|observac|avaliacao (teorica|pratica)|prof(essor)?a? [a-z]+ *$|^\(?ciclo \d+\)?$|recuperacao|2a chamada|segunda chamada)/;
+export function limparAssuntos(lista, disciplina) {
+  const dn = norm(disciplina || '').trim();
+  const visto = new Set();
+  const out = [];
+  for (const bruto of Array.isArray(lista) ? lista : []) {
+    let t = String(bruto ?? '').replace(/\s+/g, ' ').trim();
+    t = t.replace(/^[-–—•*·\d.)\s]+(?=[A-Za-zÀ-ú])/, '').trim();           // marcadores e numeração
+    const n = norm(t);
+    if (!n || n.length < 4 || !/[a-z]{3}/.test(n)) continue;
+    if (/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/.test(n) || /\b\d{1,2}[:h]\d{2}\b/.test(n)) continue; // linha de calendário
+    if (RUIDO_ASSUNTO.test(n)) continue;
+    if (n === dn || n.replace(/\(.*?\)/g, '').trim() === dn) continue;
+    t = t.replace(/\s*\((ciclo|modulo|parte)\s*\d+\)\s*$/i, '').trim();
+    const k = norm(t);
+    if (visto.has(k)) continue;
+    visto.add(k);
+    out.push(t.slice(0, 120));
+  }
+  return out;
+}
+
 export function sanePerfil(atual, patch) {
   const p = { ...PERFIL_VAZIO(), ...(atual || {}) };
   const x = patch || {};
@@ -223,8 +247,8 @@ export function sanePerfil(atual, patch) {
       disciplina: str(o && o.disciplina, 60),
       data: /^\d{4}-\d{2}-\d{2}$/.test(o && o.data) ? o.data : '',
       tipo: str(o && o.tipo, 40),
-      assuntos: Array.isArray(o && o.assuntos) ? o.assuntos.map(a => str(a, 120)).filter(Boolean).slice(0, 60) : []
-    })).filter(o => o.disciplina && o.data).slice(0, 40);
+      assuntos: Array.isArray(o && o.assuntos) ? limparAssuntos(o.assuntos.map(a => str(a, 160)), o && o.disciplina).slice(0, 60) : []
+    })).filter(o => o.disciplina && o.data).sort((a, b) => a.data.localeCompare(b.data)).slice(0, 40);
     if (novas.length) { p.provasFaculdade = novas; p.semProvas = false; }
   }
   if (Array.isArray(x.aulasFaculdade)) {
@@ -693,6 +717,7 @@ export function gerarTarefas({ perfil, hoje, inicio, dias, retidas = [], banco =
       const venc = fila.filter(r => r.due <= d).sort((a, b) => a.due.localeCompare(b.due));
       const itens = []; let minRev = 0;
       for (const r of venc) {
+        if (itens.some(i => i.materia === r.materia && norm(i.tema) === norm(r.tema) && i.kind === r.kind)) continue; // mesmo tema não entra duas vezes no dia
         const mn = r.kind === 'rapida' ? 10 : 15;
         if (minRev + mn > orcRev) break;
         itens.push(r); minRev += mn;

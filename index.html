@@ -7897,26 +7897,27 @@ function plRenderSemanas(plan) {
   const hoje = plHoje();
   const cal = $('pl-cal-view-container');
   if (!cal) return;
-  let html = '', semana = [], nSem = 1, inicioSem = null;
-
-  const fecharSemana = () => {
-    if (!semana.length) return;
+  let html = '';
+  const fmt = iso => iso.slice(8) + '/' + iso.slice(5, 7);
+  // semanas de calendário (domingo → sábado), em ordem cronológica
+  const dias = plan.dias.slice().sort((x, y) => x.data.localeCompare(y.data));
+  const grupos = [];
+  dias.forEach(d => {
+    const dow = new Date(d.data + 'T00:00:00Z').getUTCDay();
+    const ini = new Date(new Date(d.data + 'T00:00:00Z').getTime() - dow * 86400000).toISOString().slice(0, 10);
+    let g = grupos[grupos.length - 1];
+    if (!g || g.ini !== ini) { g = { ini, dias: [] }; grupos.push(g); }
+    g.dias.push(d);
+  });
+  grupos.forEach((g, i) => {
+    const fim = new Date(new Date(g.ini + 'T00:00:00Z').getTime() + 6 * 86400000).toISOString().slice(0, 10);
     html += '<div class="pl-card">' +
       '<div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;display:flex;justify-content:space-between">' +
-        '<span>SEMANA ' + nSem + (inicioSem ? ' · a partir de ' + inicioSem : '') + '</span>' +
+        '<span>SEMANA ' + (i + 1) + ' · ' + fmt(g.ini) + ' a ' + fmt(fim) + '</span>' +
       '</div>' +
-      '<div class="pl-semana">' + semana.join('') + '</div>' +
+      '<div class="pl-semana">' + g.dias.map(d => plDiaCard(d, hoje)).join('') + '</div>' +
     '</div>';
-    semana = [];
-    nSem++;
-  };
-
-  plan.dias.forEach(d => {
-    if (!inicioSem) inicioSem = d.data.slice(8) + '/' + d.data.slice(5, 7);
-    semana.push(plDiaCard(d, hoje));
-    if (semana.length === 7) fecharSemana();
   });
-  fecharSemana();
   cal.innerHTML = html || '<div class="pl-card">Cronograma vazio.</div>';
 }
 

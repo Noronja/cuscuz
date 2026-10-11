@@ -103,6 +103,7 @@ Perfil atual (JSON): ${JSON.stringify(perfil)}`;
       if (base64) { bytes = Buffer.from(base64, 'base64'); if (bytes.length > 18 * 1024 * 1024) return res.status(413).json({ success: false, msg: 'PDF muito grande (máx. 18 MB). Envie só as páginas de ementa/avaliações.' }); }
       if (bytes && !ehPdf) txt = bytes.toString('utf8');
       const prompt = `Este é o manual do aluno / plano de ensino de um curso de Medicina. Extraia SOMENTE o que está escrito no documento, sem inventar. Hoje é ${hoje}; datas sem ano são do ano letivo corrente (${hoje.slice(0, 4)}), formato YYYY-MM-DD.
+REGRAS: (1) "nome" da disciplina = o nome MAIS ESPECÍFICO do módulo/área como aparece no documento (ex.: "Saúde Mental", "Cardiologia", "Pediatria"), nunca só o curso/ciclo genérico quando houver módulo. (2) "assuntos" = SOMENTE os temas de conteúdo cobrados (ex.: "Transtornos de ansiedade", "Esquizofrenia"), um por item, em ordem. NUNCA coloque neles datas, horários, nomes de prova (P1/PR1/Prova Teórica), professor, sala, nome de arquivo, o próprio nome da disciplina ou frases explicativas suas. Se o documento é só um calendário de avaliações sem conteúdo, deixe "assuntos" vazio. (3) Devolva as provas em ordem cronológica. Não repita a mesma prova.
 Para cada disciplina/módulo informe: provas/avaliações (data, tipo como P1/P2/TBL/prática/recuperação, e a lista de ASSUNTOS/conteúdo programático cobrados naquela avaliação, na ordem em que aparecem, com nomes quase literais do documento) e, se o documento tiver cronograma por data, as aulas/TBLs/atividades (data + tema). Ignore regras administrativas.${req.body.conteudoProva ? '\nInformação extra do aluno (prioridade): ' + String(req.body.conteudoProva).slice(0, 3000) : ''}`;
       let ext = null, usouIA = false;
       if (getGeminiClient() && (bytes || txt)) {
@@ -127,7 +128,7 @@ Para cada disciplina/módulo informe: provas/avaliações (data, tipo como P1/P2
       for (const d of ext.disciplinas || []) {
         for (const pr of d.provas || []) {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(pr.data || '')) continue;
-          const ass = (pr.assuntos || []).map(a => String(a).trim()).filter(Boolean);
+          const ass = PE.limparAssuntos(pr.assuntos || [], d.nome);
           const ex = provas.find(x => PE.norm(x.disciplina) === PE.norm(d.nome) && x.data === pr.data);
           if (ex) ex.assuntos = [...new Set([...ass, ...(ex.assuntos || [])])];
           else provas.push({ disciplina: d.nome, data: pr.data, tipo: pr.tipo || '', assuntos: ass });
