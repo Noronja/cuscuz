@@ -234,10 +234,23 @@ export function limparAssuntos(lista, disciplina) {
   return out;
 }
 
+/* Conserta texto colado "achatado" (celular/PDF): devolve quebras de linha antes de cada marcador "* dd/mm" e de cada "N. Disciplina" */
+function reparaTextoCronograma(t) {
+  let x = String(t || '').replace(/\r/g, '');
+  if ((x.match(/\n/g) || []).length < 4 && x.length > 300) {
+    x = x.replace(/\s+[*•]\s+(?=\S)/g, '\n* ')
+         .replace(/([.:)])\s+(?=\d{1,2}\.\s+[A-ZÀ-Ú][a-zà-ú])/g, '$1\n')
+         .replace(/\s+(?=\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*(?:\([^)]*\))?\s*:)/g, '\n* ');
+  }
+  // linhas que começam direto pela data (sem marcador) viram itens
+  x = x.replace(/^(\s*)(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?(?:\s*,\s*\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)*\s*(?:\([^)]*\))?\s*:)/gm, '$1* $2');
+  return x;
+}
+
 /* Leitor determinístico de "cronograma de disciplina" colado/anexado:
    seção de avaliações (data + PR1/PR2/Final) e seção de aulas (data + conteúdo). Não depende de IA e preserva o nome da disciplina. */
 export function parseCronogramaDisciplina(texto, hoje) {
-  const txt = String(texto || '');
+  const txt = reparaTextoCronograma(texto);
   const ano = String(hoje || new Date().toISOString()).slice(0, 4);
   const linhas = txt.split(/\r?\n/);
   let disc = '';
@@ -347,14 +360,19 @@ export function sanePerfil(atual, patch) {
 /* Leitor de cronograma com VÁRIAS disciplinas ("1. Emergências Médicas" … "2. Terapia Intensiva" …), cada uma com linhas
    "dd/mm[, dd/mm…] (hh:mm às hh:mm): conteúdo". Provas PR1/PR2/Final viram avaliações; o resto vira aulas com data. */
 export function parseCronograma(texto, hoje) {
-  const txt = String(texto || '');
+  const txt = reparaTextoCronograma(texto);
   const ano = String(hoje || new Date().toISOString()).slice(0, 4);
   const secoes = [];
   let atual = null;
-  for (const bruto of txt.split(/\r?\n/)) {
-    const l = bruto.trim();
+  const todas = txt.split(/\r?\n/).map(x => x.trim());
+  for (let li = 0; li < todas.length; li++) {
+    const l = todas[li];
     if (!l) continue;
-    const h = l.match(/^(\d{1,2})[.)]\s+([A-Za-zÀ-ú][^\n]{2,100})$/);
+    let h = l.match(/^(\d{1,2})[.)]\s+([A-Za-zÀ-ú][^\n]{2,100})$/);
+    if (!h && !/^[*•\-–]/.test(l) && l.length < 90 && !/\d{1,2}\/\d{1,2}/.test(l) && !/cronograma|avalia|^\(|nota:|^(pr ?\d|prova|2.? ?chamada|segunda)|\/20\d\d\)|^(janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)/i.test(l)) {
+      const prox = todas.slice(li + 1).find(y => y);
+      if (prox && /^[*•\-–]\s+\d{1,2}\/\d{1,2}/.test(prox)) h = [l, '', l.replace(/[:\s]+$/, '')]; // título sem número seguido de itens com data
+    }
     if (h && !/^\d{1,2}\/\d{1,2}/.test(l)) {
       atual = { nome: h[2].replace(/\s*\([^)]*\)\s*$/, '').replace(/[:.\s]+$/, '').trim(), linhas: [] };
       secoes.push(atual); continue;

@@ -200,12 +200,24 @@ Para cada disciplina/módulo informe: provas/avaliações (data, tipo como P1/P2
   app.post('/api/planner/generate-tasks', (req, res) => {
     try {
       const hoje = okHoje(req.body.hoje);
-      const perfil = PE.sanePerfil(null, req.body.perfil || {});
+      let perfil = PE.sanePerfil(null, req.body.perfil || {});
+      // O cronograma que o aluno enviou é a fonte de verdade: relê todo material guardado e as mensagens longas do chat antes de gerar
+      const fontes = [...(perfil.materiais || []).map(m => m.texto), ...(Array.isArray(req.body.textos) ? req.body.textos : []).map(x => String(x).slice(0, 80000))];
+      const avisos = [];
+      for (const tx of fontes) {
+        const det0 = tx && tx.length > 150 ? PE.parseCronograma(tx, hoje) : null;
+        if (det0 && det0.provas && det0.provas.length) perfil = PE.mesclarCronograma(PE.sanePerfil(perfil, { materiais: [{ nome: 'Cronograma enviado', texto: tx }] }), det0);
+      }
+      const semNome = (perfil.provasFaculdade || []).filter(x => /^prova da faculdade$|^disciplina$/.test(PE.norm(x.disciplina).trim()));
+      if (semNome.length) avisos.push('Algumas provas estão sem o nome da disciplina (vieram de uma leitura antiga). Cole de novo o cronograma da faculdade no chat do planner.');
+      const semConteudo = (perfil.provasFaculdade || []).filter(x => !(x.assuntos || []).length && x.data >= hoje);
+      if (semConteudo.length) avisos.push('Sem conteúdo informado para: ' + [...new Set(semConteudo.map(x => x.disciplina))].slice(0, 6).join(', ') + '. Envie o cronograma de aulas dessas disciplinas.');
       if (!perfil.objetivo) return res.status(400).json({ success: false, msg: 'Perfil incompleto: falta o objetivo.' });
       const retidas = Array.isArray(req.body.retidas) ? req.body.retidas.filter(t => t && t.data && t.data < hoje && t.status === 'feito').slice(0, 2000) : [];
       const dias = req.body.dias ? Math.max(7, Math.min(120, +req.body.dias)) : undefined;
       const plan = PE.gerarTarefas({ perfil: { ...perfil, horas: perfil.horas || null }, hoje, inicio: hoje, dias, retidas, banco: typeof getBank === 'function' ? getBank() : null });
       plan.tarefas.forEach(t => delete t._vids);
+      plan.avisos = avisos;
       res.json({ success: true, plan });
     } catch (err) {
       console.error('[Planner generate-tasks]', err);

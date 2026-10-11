@@ -123,9 +123,11 @@
     const st = chatState(); const antigo = get(K_PLAN, null);
     if (window.toast) toast('Montando seu cronograma com as aulas do acervo…', 'info');
     try {
-      const j = await api('/api/planner/generate-tasks', { perfil: (opts && opts.perfil) || st.perfil || (antigo && antigo.perfil), hoje: hoje(), dias: opts && opts.dias, retidas: antigo ? antigo.tarefas.filter(t => t.status === 'feito') : [] });
+      const textos = (st.msgs || []).filter(m => m.role === 'user' && String(m.content).length > 300).map(m => m.content).slice(-6);
+      const j = await api('/api/planner/generate-tasks', { perfil: (opts && opts.perfil) || st.perfil || (antigo && antigo.perfil), textos, hoje: hoje(), dias: opts && opts.dias, retidas: antigo ? antigo.tarefas.filter(t => t.status === 'feito') : [] });
       set(K_PLAN, j.plan); sync();
       tab = 'hoje'; busy = false; renderPlano();
+      (j.plan.avisos || []).forEach(a => { if (window.toast) toast('⚠️ ' + a, 'warning'); });
       enriquecer(true);
     } catch (e) { busy = false; if (window.toast) toast('Erro ao gerar: ' + e.message, 'error'); }
   }
