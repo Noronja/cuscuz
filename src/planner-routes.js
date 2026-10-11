@@ -39,6 +39,15 @@ export function registerPlanner(app, { generateWithGemini, getGeminiClient, getB
       const jaExtras = !!req.body.jaExtras;
       let usouIA = false, reply = '', quick = [], extrasPerguntado = jaExtras;
 
+      // Cronograma colado (avaliações + aulas com data): leitura exata, sem IA, preservando o nome da disciplina
+      const det = ultima ? PE.parseCronogramaDisciplina(ultima.content, hoje) : null;
+      if (det && det.provas.length) {
+        perfil = PE.mesclarCronograma(perfil, det);
+        const q = PE.proximaPergunta(perfil, extrasPerguntado);
+        const nAss = det.provas.reduce((a, x) => a + x.assuntos.length, 0);
+        const resumoDet = `Li o cronograma de ${det.disciplina}: ${det.provas.length} avaliação(ões) (${det.provas.map(x => x.tipo + ' ' + x.data.slice(8) + '/' + x.data.slice(5, 7)).join(', ')}) e ${det.aulas.length} aula(s) com data. Os assuntos de cada prova ficaram na ordem das aulas.`;
+        return res.json({ success: true, ia: false, perfil, asking: q ? q.campo : '', jaExtras: extrasPerguntado, reply: resumoDet + (q ? '\n\n' + q.reply : '\n\nTudo certo — confira o resumo e gere o cronograma.'), quickReplies: q ? q.quick : ['Gerar meu cronograma'], pronto: PE.faltando(perfil).length === 0, resumo: PE.resumoPerfil(perfil) });
+      }
       if (ultima && getGeminiClient()) {
         try {
           const falta = PE.faltando(perfil);
@@ -62,7 +71,9 @@ Perfil atual (JSON): ${JSON.stringify(perfil)}`;
           });
           const j = JSON.parse(r.text.trim());
           if (j && typeof j.reply === 'string' && j.reply.trim()) {
-            perfil = PE.sanePerfil(perfil, j.perfil || {});
+            const patchIA = Object.assign({}, j.perfil || {});
+            if ((perfil.provasFaculdade || []).length) { delete patchIA.provasFaculdade; delete patchIA.aulasFaculdade; } // não deixa a IA renomear disciplinas já lidas
+            perfil = PE.sanePerfil(perfil, patchIA);
             reply = j.reply.trim().slice(0, 1200);
             quick = (Array.isArray(j.quickReplies) ? j.quickReplies : []).map(q => String(q).slice(0, 60)).slice(0, 4);
             usouIA = true;
@@ -105,8 +116,18 @@ Perfil atual (JSON): ${JSON.stringify(perfil)}`;
       const prompt = `Este é o manual do aluno / plano de ensino de um curso de Medicina. Extraia SOMENTE o que está escrito no documento, sem inventar. Hoje é ${hoje}; datas sem ano são do ano letivo corrente (${hoje.slice(0, 4)}), formato YYYY-MM-DD.
 REGRAS: (1) "nome" da disciplina = o nome MAIS ESPECÍFICO do módulo/área como aparece no documento (ex.: "Saúde Mental", "Cardiologia", "Pediatria"), nunca só o curso/ciclo genérico quando houver módulo. (2) "assuntos" = SOMENTE os temas de conteúdo cobrados (ex.: "Transtornos de ansiedade", "Esquizofrenia"), um por item, em ordem. NUNCA coloque neles datas, horários, nomes de prova (P1/PR1/Prova Teórica), professor, sala, nome de arquivo, o próprio nome da disciplina ou frases explicativas suas. Se o documento é só um calendário de avaliações sem conteúdo, deixe "assuntos" vazio. (3) Devolva as provas em ordem cronológica. Não repita a mesma prova.
 Para cada disciplina/módulo informe: provas/avaliações (data, tipo como P1/P2/TBL/prática/recuperação, e a lista de ASSUNTOS/conteúdo programático cobrados naquela avaliação, na ordem em que aparecem, com nomes quase literais do documento) e, se o documento tiver cronograma por data, as aulas/TBLs/atividades (data + tema). Ignore regras administrativas.${req.body.conteudoProva ? '\nInformação extra do aluno (prioridade): ' + String(req.body.conteudoProva).slice(0, 3000) : ''}`;
-      let ext = null, usouIA = false;
-      if (getGeminiClient() && (bytes || txt)) {
+      let ext = null, usouIA = false, lidoExato = false;
+      if (bytes && ehPdf && !txt) {
+        const tmp0 = path.join(os.tmpdir(), 'man0-' + Date.now() + '.pdf');
+        fs.writeFileSync(tmp0, bytes);
+        txt = await new Promise(ok => execFile('pdftotext', ['-layout', tmp0, '-'], { maxBuffer: 30 * 1024 * 1024 }, (err, out) => { try { fs.unlinkSync(tmp0); } catch (_) {} ok(err ? '' : out); }));
+      }
+      const det = txt ? PE.parseCronogramaDisciplina(txt, hoje) : null;
+      if (det && det.provas.length) {
+        ext = { disciplinas: [{ nome: det.disciplina, provas: det.provas.map(x => ({ data: x.data, tipo: x.tipo, assuntos: x.assuntos })), aulas: det.aulas }] };
+        lidoExato = true;
+      }
+      if (!ext && getGeminiClient() && (bytes || txt)) {
         try {
           const partes = (bytes && ehPdf) ? [{ inlineData: { mimeType: 'application/pdf', data: base64 } }, { text: prompt }] : [{ text: prompt + '\n\nDOCUMENTO:\n' + txt.slice(0, 180000) }];
           const r = await generateWithGemini({ contents: [{ role: 'user', parts: partes }], config: { temperature: 0.1, responseMimeType: 'application/json', responseSchema: { type: Type.OBJECT, properties: { disciplinas: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { nome: { type: Type.STRING }, provas: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { data: { type: Type.STRING }, tipo: { type: Type.STRING }, assuntos: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ['data'] } }, aulas: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { data: { type: Type.STRING }, tema: { type: Type.STRING } }, required: ['data', 'tema'] } } }, required: ['nome'] } } }, required: ['disciplinas'] } } });
@@ -122,6 +143,12 @@ Para cada disciplina/módulo informe: provas/avaliações (data, tipo como P1/P2
         const achadas = [];
         for (const l of txt.split(/\n/)) if (/prova|avalia|p1|p2|p3|tbl/i.test(l)) achadas.push(...PE.parseFaculdade(l, hoje));
         ext = { disciplinas: achadas.map(pr => ({ nome: pr.disciplina, provas: [{ data: pr.data, assuntos: pr.assuntos }] })) };
+      }
+      if (lidoExato) {
+        const d0 = PE.parseCronogramaDisciplina(txt, hoje);
+        perfil = PE.mesclarCronograma(perfil, d0);
+        const reply0 = `Li o "${nome}" (${d0.disciplina}): ${d0.provas.length} avaliação(ões) e ${d0.aulas.length} aula(s) com data. Cada prova ficou com os assuntos das aulas dadas até ela, em ordem.`;
+        return res.json({ success: true, ia: false, perfil, reply: reply0, resumo: PE.resumoPerfil(perfil), faltando: PE.faltando(perfil) });
       }
       const provas = (perfil.provasFaculdade || []).map(x => ({ ...x }));
       const aulas = [];
