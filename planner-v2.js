@@ -141,7 +141,8 @@
         const alvo = plano.tarefas.filter(t => t.tipo === 'estudo' && t.status !== 'feito' && !t.ia && !t._iaTentou && t.data >= hoje()).sort((x, y) => x.data.localeCompare(y.data)).slice(0, 8);
         if (!alvo.length) break;
         let j = null;
-        try { j = await api('/api/planner/enrich', { perfil: plano.perfil, tarefas: alvo }); } catch (_) { break; }
+        const pedidos = (chatState().msgs || []).filter(m => m.role === 'user').map(m => String(m.content).slice(0, 400)).slice(-6);
+        try { j = await api('/api/planner/enrich', { perfil: plano.perfil, tarefas: alvo, pedidos }); } catch (_) { break; }
         ia = !!j.ia;
         const p2 = get(K_PLAN, null); if (!p2) break;
         const ids = new Set(alvo.map(t => t.id));

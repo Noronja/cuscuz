@@ -32,8 +32,19 @@ export function registerPlanner(app, { generateWithGemini, getGeminiClient, getB
   app.post('/api/planner/chat', async (req, res) => {
     const hoje = okHoje(req.body && req.body.hoje);
     try {
-      const msgs = Array.isArray(req.body.messages) ? req.body.messages.slice(-14).map(m => ({ role: m.role === 'user' ? 'user' : 'model', content: String(m.content || '').slice(0, 1500) })) : [];
+      const bruto = Array.isArray(req.body.messages) ? req.body.messages.slice(-14) : [];
       let perfil = PE.sanePerfil(req.body.perfil || null, {});
+      // tudo que o aluno cola/escreve de longo vira "material" guardado (o mentor lê inteiro, sempre); no histórico fica só um aviso curto
+      const novosMats = [];
+      const msgs = bruto.map((m, i) => {
+        const c = String(m.content || '');
+        if (m.role === 'user' && c.length > 700) {
+          novosMats.push({ nome: 'Enviado no chat em ' + hoje, texto: c.slice(0, 60000) });
+          return { role: 'user', content: `(Enviei este material: "${c.slice(0, 120).replace(/\s+/g, ' ')}…" — ${c.length} caracteres, veja em MATERIAL ENVIADO PELO ALUNO.)` };
+        }
+        return { role: m.role === 'user' ? 'user' : 'model', content: c.slice(0, 3000) };
+      });
+      if (novosMats.length) perfil = PE.sanePerfil(perfil, { materiais: novosMats });
       const asking = req.body.asking || '';
       const ultima = [...msgs].reverse().find(m => m.role === 'user');
       const jaExtras = !!req.body.jaExtras;
@@ -70,7 +81,10 @@ Regras:
 - O perfil traz provasFaculdade (cada prova com seus assuntos na ordem das aulas) e aulasFaculdade (data + tema de cada aula). Use isso: cite a próxima prova e as próximas aulas pelo nome real, aponte conflitos (várias provas na mesma semana), diga o que já passou e precisa de reforço e o que vem a seguir. NUNCA renomeie disciplinas nem mude provas/aulas já lidas; não devolva provasFaculdade/aulasFaculdade no perfil.
 - Nunca invente aulas, links ou datas. Não prometa resultados. quickReplies: no máximo 4 respostas curtas e úteis para a sua pergunta.
 ${(req.body.nota || notaDet) ? 'Acabou de acontecer: ' + String(notaDet || req.body.nota).slice(0, 900) + ' (comente isso brevemente e siga para o que falta).' : ''}
-Perfil atual (JSON): ${JSON.stringify(perfil)}`;
+MATERIAL ENVIADO PELO ALUNO (é a fonte de verdade: cronogramas, ementas, conteúdos de prova, pedidos — LEIA TUDO antes de responder; no começo da resposta confirme em 1 linha o que você leu dele, com nomes reais de disciplinas, provas e aulas; nunca generalize nem troque disciplinas):
+${(perfil.materiais || []).map(m => '### ' + m.nome + '\n' + m.texto).join('\n\n').slice(0, 90000) || '(nenhum material enviado ainda)'}
+
+Perfil atual (JSON, sem o material): ${JSON.stringify({ ...perfil, materiais: undefined })}`;
           const r = await generateWithGemini({
             contents: msgs.map(m => ({ role: m.role, parts: [{ text: m.content }] })),
             config: {
@@ -131,6 +145,7 @@ Para cada disciplina/módulo informe: provas/avaliações (data, tipo como P1/P2
         fs.writeFileSync(tmp0, bytes);
         txt = await new Promise(ok => execFile('pdftotext', ['-layout', tmp0, '-'], { maxBuffer: 30 * 1024 * 1024 }, (err, out) => { try { fs.unlinkSync(tmp0); } catch (_) {} ok(err ? '' : out); }));
       }
+      if (txt && txt.trim().length > 40) perfil = PE.sanePerfil(perfil, { materiais: [{ nome, texto: txt }] });
       const det = txt ? PE.parseCronograma(txt, hoje) : null;
       if (det && det.provas.length) {
         ext = { disciplinas: [{ nome: det.disciplina, provas: det.provas.map(x => ({ data: x.data, tipo: x.tipo, assuntos: x.assuntos })), aulas: det.aulas }] };
@@ -205,10 +220,10 @@ Para cada disciplina/módulo informe: provas/avaliações (data, tipo como P1/P2
       const tarefas = (Array.isArray(req.body.tarefas) ? req.body.tarefas : []).filter(t => t && t.tipo === 'estudo').slice(0, 8);
       const p = PE.sanePerfil(null, req.body.perfil || {});
       if (!tarefas.length) return res.json({ success: true, ia: true, itens: {} });
-      const entrada = tarefas.map(t => ({ id: t.id, disciplina: t.materia, tema: t.tema, titulo: t.titulo, contexto_da_faculdade: String(t.contexto || '').slice(0, 900), passos: (t.passos || []).map(s => ({ acao: s.acao, minutos: s.minutos })) }));
+      const entrada = tarefas.map(t => ({ id: t.id, disciplina: t.materia, tema: t.tema, titulo: t.titulo, contexto_da_faculdade: String(t.contexto || '').slice(0, 900), trechos_do_material_do_aluno: PE.trechosDoMaterial(p, String(t.tema || '').replace(/\([^)]*\)/g, ' '), 1800), passos: (t.passos || []).map(s => ({ acao: s.acao, minutos: s.minutos })) }));
       const r = await generateWithGemini({
-        contents: `Você é o mentor de estudos de um aluno de medicina (${p.objetivo === 'graduacao' ? 'prova da faculdade' : 'residência'}). Preferências/anseios: ${JSON.stringify({ metodo: p.metodo, dificuldades: p.dificuldades, anseios: p.anseios })}.
-Reescreva o texto de cada passo (mesma ordem e mesmo "acao") de forma ESPECÍFICA e ACIONÁVEL para o tema, usando o "contexto_da_faculdade" (roteiro real da aula e assuntos da prova):
+        contents: `Você é o mentor de estudos de um aluno de medicina (${p.objetivo === 'graduacao' ? 'prova da faculdade' : 'residência'}). Preferências/anseios do aluno: ${JSON.stringify({ metodo: p.metodo, dificuldades: p.dificuldades, fortes: p.fortes, anseios: p.anseios })}. Pedidos recentes dele no chat (respeite-os): ${JSON.stringify((Array.isArray(req.body.pedidos) ? req.body.pedidos : []).slice(-6).map(x => String(x).slice(0, 400)))}.
+Reescreva o texto de cada passo (mesma ordem e mesmo "acao") de forma ESPECÍFICA e ACIONÁVEL para o tema, usando o "contexto_da_faculdade" (roteiro real da aula e assuntos da prova) e os "trechos_do_material_do_aluno" (o que ele mesmo enviou — cite os itens que aparecem lá, com as palavras dele):
 - aula/resumo: liste os 3–5 pontos CONCRETOS do tema que precisam sair dominados (nomes de doenças, classificações, critérios, condutas de 1ª linha, sinais de alarme — só o que você tem certeza que é padrão), em ordem de cobrança provável; diga o que comparar com o quê.
 - questoes: diga que tipo de questão treinar neste tema (ex.: caso clínico → próxima conduta; critério diagnóstico; diagnóstico diferencial) e como corrigir os erros.
 - flashcards: dê 2–3 exemplos de cartões (pergunta curta → resposta curta) já sobre este tema.

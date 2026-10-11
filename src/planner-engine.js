@@ -207,7 +207,7 @@ export const PERFIL_VAZIO = () => ({
   objetivo: '', alvo: '', dataProva: '', semData: false,
   provasFaculdade: [], semProvas: false, aulasFaculdade: [], manualNome: '', semConteudo: false,
   horas: null, dificuldades: [], fortes: [], semDificuldades: false,
-  metodo: '', cursos: [], anseios: ''
+  metodo: '', cursos: [], anseios: '', materiais: []
 });
 
 
@@ -321,10 +321,25 @@ export function sanePerfil(atual, patch) {
   if (typeof x.semDificuldades === 'boolean') { p.semDificuldades = x.semDificuldades; if (x.semDificuldades) p.dificuldades = []; }
   if (['aulas', 'resumos', 'questoes', 'equilibrado'].includes(x.metodo)) p.metodo = x.metodo;
   const cursos = lista(x.cursos); if (cursos && cursos.length) p.cursos = cursos.filter(c => ['MEDCURSO', 'Estratégia', 'APOSTILAS'].includes(c));
+  if (Array.isArray(x.materiais)) {
+    // tudo o que o aluno envia (cronograma, ementa, PDF, textos longos) fica guardado para o mentor consultar depois
+    const lista = Array.isArray(p.materiais) ? p.materiais.slice() : [];
+    for (const m of x.materiais) {
+      const texto = String((m && m.texto) || '').trim().slice(0, 60000);
+      if (texto.length < 40) continue;
+      const nome = str(m && m.nome, 120) || 'Material';
+      const chave = norm(texto.slice(0, 200)) + texto.length;
+      const i = lista.findIndex(y => y.k === chave);
+      const novo = { nome, texto, k: chave, em: new Date().toISOString().slice(0, 10) };
+      if (i >= 0) lista[i] = novo; else lista.push(novo);
+    }
+    while (lista.reduce((a, y) => a + y.texto.length, 0) > 150000 && lista.length > 1) lista.shift();
+    p.materiais = lista;
+  }
   if (typeof x.anseios === 'string') {
-    const a = str(x.anseios, 600);
+    const a = str(x.anseios, 1200);
     if (a && !norm(p.anseios).includes(norm(a))) p.anseios = (p.anseios ? p.anseios + ' | ' : '') + a;
-    p.anseios = p.anseios.slice(-900);
+    p.anseios = p.anseios.slice(-3000);
   }
   return p;
 }
@@ -384,6 +399,36 @@ export function parseCronograma(texto, hoje) {
   }
   if (!nomes.length) return parseCronogramaDisciplina(txt, hoje);
   return { disciplina: nomes.join(', '), disciplinas: nomes, provas, aulas };
+}
+
+/* Procura nos materiais enviados pelo aluno os trechos que falam do tema (para o mentor IA não inventar nem generalizar) */
+export function trechosDoMaterial(perfil, consulta, maxChars = 1800) {
+  const mats = (perfil && perfil.materiais) || [];
+  if (!mats.length) return '';
+  const qt = [...new Set(tokens(consulta))];
+  if (!qt.length) return '';
+  const pedacos = [];
+  for (const m of mats) {
+    let cab = '';
+    for (const l of String(m.texto).split(/\r?\n/)) {
+      const lin = l.replace(/\s+/g, ' ').trim();
+      if (/^\d{1,2}[.)]\s+[A-Za-zÀ-ú]/.test(lin)) { cab = lin.replace(/^\d{1,2}[.)]\s+/, ''); continue; }
+      if (lin.length < 20) continue;
+      const n = norm(lin);
+      let sc = 0;
+      for (const t of qt) if (n.includes(t.length > 6 ? t.slice(0, t.length - 2) : t)) sc += 1 + Math.min(2, t.length / 8);
+      if (sc >= Math.max(1.5, qt.length * 0.5)) pedacos.push({ sc, txt: (cab ? cab + ' — ' : '') + lin.replace(/^[*•\-–]\s*/, '').slice(0, 700), nome: m.nome });
+    }
+  }
+  pedacos.sort((a, b) => b.sc - a.sc);
+  const out = []; const vistos = new Set(); let tot = 0;
+  for (const c of pedacos) {
+    const k = norm(c.txt).slice(0, 60);
+    if (vistos.has(k)) continue;
+    if (tot + c.txt.length > maxChars) break;
+    vistos.add(k); out.push(`[${c.nome}] ${c.txt}`); tot += c.txt.length;
+  }
+  return out.join('\n');
 }
 
 /* Aplica um cronograma lido (parseCronogramaDisciplina) ao perfil: substitui o que já existia da mesma disciplina ou nas mesmas datas */
@@ -591,6 +636,7 @@ export function proximaPergunta(p, jaPerguntouExtras) {
 export function resumoPerfil(p) {
   const l = [];
   l.push(`Foco: ${NOMES(p)}`);
+  if ((p.materiais || []).length) l.push(`Material lido e guardado: ${p.materiais.map(m => m.nome).join('; ').slice(0, 160)} (${Math.round(p.materiais.reduce((a, m) => a + m.texto.length, 0) / 1000)} mil caracteres)`);
   if (p.alvo || p.dataProva) l.push(`Residência: ${p.alvo || 'prova'}${p.dataProva ? ' em ' + p.dataProva.split('-').reverse().join('/') : ''}`);
   if ((p.provasFaculdade || []).length) l.push('Provas da faculdade: ' + p.provasFaculdade.map(x => `${x.disciplina} (${x.data.split('-').reverse().slice(0, 2).join('/')}${x.assuntos && x.assuntos.length ? ', ' + x.assuntos.length + ' assuntos' : ', sem conteúdo informado'})`).join(', '));
   if (p.manualNome) l.push('Manual/ementa usado: ' + p.manualNome);
