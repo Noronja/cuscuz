@@ -209,7 +209,7 @@
     const done = plano.tarefas.filter(t => t.status === 'feito' && t.tipo !== 'prova').length, tot = plano.tarefas.filter(t => t.tipo !== 'prova').length;
     const tabs = [['hoje', 'Hoje'], ['semana', 'Próximos 7 dias'], ['tudo', 'Tudo'], ['atrasadas', 'Atrasadas' + (atrasadas.length ? ' (' + atrasadas.length + ')' : '')]];
     r.innerHTML = `<div class="plv2"><div class="plv2-bar"><div><h2>Seu cronograma</h2><div class="plv2-sub">${done}/${tot} tarefas concluídas · de ${plano.inicio.split('-').reverse().slice(0, 2).join('/')} a ${plano.fim.split('-').reverse().slice(0, 2).join('/')}${plano.perfil && plano.perfil.dataProva ? ' · prova ' + plano.perfil.dataProva.split('-').reverse().join('/') : ''}</div></div>
-      <div class="plv2-btns"><button class="b pri" onclick="plv2.conversar()"><i class="ph ph-chats-circle"></i> Conversar / ajustar</button><button class="b" onclick="plv2.maisSemanas()"><i class="ph ph-calendar-plus"></i> +4 semanas</button><button class="b" onclick="plv2.ia()"><i class="ph ph-sparkle"></i> Detalhar com IA</button>${atrasadas.length ? '<button class="b" onclick="plv2.reagendar()"><i class="ph ph-arrows-clockwise"></i> Reagendar atrasadas</button>' : ''}${legacyRender ? '<button class="b" onclick="plv2.antigo()"><i class="ph ph-clock-counter-clockwise"></i> Planner antigo</button>' : ''}</div></div>
+      <div class="plv2-btns"><button class="b pri" onclick="plv2.conversar()"><i class="ph ph-chats-circle"></i> Conversar / ajustar</button><button class="b" onclick="plv2.colar()"><i class="ph ph-clipboard-text"></i> Colar cronograma da faculdade</button><button class="b" onclick="plv2.maisSemanas()"><i class="ph ph-calendar-plus"></i> +4 semanas</button><button class="b" onclick="plv2.ia()"><i class="ph ph-sparkle"></i> Detalhar com IA</button>${atrasadas.length ? '<button class="b" onclick="plv2.reagendar()"><i class="ph ph-arrows-clockwise"></i> Reagendar atrasadas</button>' : ''}${legacyRender ? '<button class="b" onclick="plv2.antigo()"><i class="ph ph-clock-counter-clockwise"></i> Planner antigo</button>' : ''}</div></div>
       <div class="plv2-tabs">${tabs.map(([k, n]) => `<button class="b ${tab === k ? 'on' : ''}" onclick="plv2.aba('${k}')">${n}</button>`).join('')}</div>
       <div id="plv2-lista">${dias.length ? dias.map(d => { const lst = porDia[d]; const m = lst.reduce((a, t) => a + (t.minutos || 0), 0); return `<div class="plv2-day"><div class="plv2-dh ${d === h ? 'hoje' : ''}">${fmtDia(d)}${d === h ? ' · hoje' : ''}<span>${m ? fmtMin(m) + ' planejados' : ''}</span></div><table class="plv2-t"><thead><tr><th style="width:21%">Tarefa</th><th style="width:36%">Passo a passo</th><th style="width:23%">Materiais</th><th>Observações</th></tr></thead><tbody>${lst.map(tarefaRow).join('')}</tbody></table></div>`; }).join('') : `<div class="plv2-empty">${tab === 'hoje' ? 'Nada agendado para hoje — dia livre no seu cronograma. 🎉' : tab === 'atrasadas' ? 'Nenhuma tarefa atrasada.' : 'Nada por aqui.'}</div>`}</div></div>`;
   }
@@ -275,6 +275,28 @@
     maisSemanas() { const p = get(K_PLAN, null); if (!p) return; const dias = Math.round((new Date(p.fim) - new Date(hoje())) / 864e5) + 1 + 28; gerar({ dias: Math.min(120, Math.max(28, dias)) }); },
     reagendar() { gerar({}); },
     ia() { enriquecer(false); },
+    // Caminho direto: cola o cronograma da faculdade, o app lê (disciplinas, provas, aulas com data) e refaz o plano na hora
+    colar() {
+      if (document.getElementById('plv2-colar')) return;
+      const d = document.createElement('div'); d.id = 'plv2-colar';
+      d.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+      d.innerHTML = '<div style="background:var(--bg-surface,#111);border:1px solid var(--border-muted,#333);border-radius:14px;padding:16px;max-width:640px;width:100%;max-height:90vh;display:flex;flex-direction:column;gap:10px"><b>Cole aqui o cronograma da faculdade</b><div style="font-size:12px;opacity:.75">Com as disciplinas, as datas das provas e das aulas e o conteúdo de cada aula. Eu leio tudo e refaço o plano.</div><textarea id="plv2-colar-txt" style="flex:1;min-height:240px;background:var(--bg-base,#000);color:inherit;border:1px solid var(--border-muted,#333);border-radius:10px;padding:10px;font-size:13px" placeholder="1. Emergências Médicas\n * 04/08/26: Atendimento inicial…\n2. Terapia Intensiva\n…"></textarea><div style="display:flex;gap:8px;justify-content:flex-end"><button class="b" onclick="document.getElementById(\'plv2-colar\').remove()">Cancelar</button><button class="b pri" id="plv2-colar-ok" onclick="plv2.colarOk()">Ler e refazer o plano</button></div></div>';
+      document.body.appendChild(d);
+    },
+    async colarOk() {
+      const el = document.getElementById('plv2-colar-txt'); const tx = el ? el.value.trim() : '';
+      if (tx.length < 80) { if (window.toast) toast('Cole o cronograma completo (texto).', 'warning'); return; }
+      const ok = document.getElementById('plv2-colar-ok'); if (ok) { ok.disabled = true; ok.textContent = 'Lendo…'; }
+      try {
+        const antigo = get(K_PLAN, null); const st = chatState();
+        const base = (antigo && antigo.perfil) || st.perfil || { objetivo: 'graduacao' };
+        const j = await api('/api/planner/chat', { messages: [{ role: 'user', content: tx }], perfil: base, hoje: hoje() });
+        st.perfil = j.perfil; st.resumo = j.resumo || []; st.msgs.push({ role: 'user', content: tx }); st.msgs.push({ role: 'model', content: j.reply }); set(K_CHAT, st);
+        const f = document.getElementById('plv2-colar'); if (f) f.remove();
+        if (window.toast) toast('✅ ' + String(j.reply).split('\n')[0].slice(0, 220), 'success');
+        await gerar({ perfil: j.perfil });
+      } catch (e) { if (ok) { ok.disabled = false; ok.textContent = 'Ler e refazer o plano'; } if (window.toast) toast('Não consegui ler: ' + e.message, 'error'); }
+    },
     antigo() { if (legacyRender) legacyRender(); },
     abrir
   };
