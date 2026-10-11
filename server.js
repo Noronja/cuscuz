@@ -1326,6 +1326,7 @@ Regras: caso clínico objetivo, 4 alternativas ("A) ...", "B) ..."), apenas UMA 
 
 // Sincronização TOTAL e Bidirecional: mescla todas as questões do cliente com as do servidor
 // sem perda, salvando em sua totalidade no arquivo persistente questions-bank.json
+let _syncOrd = null;
 app.post('/api/questions/bank/sync', (req, res) => {
   try {
     const { questions, since, limit } = req.body || {};
@@ -1334,14 +1335,21 @@ app.post('/api/questions/bank/sync', (req, res) => {
       m = mergeQuestionsIntoBank(questions);
     }
     const fullBank = readQuestionsBank();
-    // Incremental: o app só recebe o que chegou depois da última sincronização (em lotes), não o banco inteiro de novo
-    const lim = Math.max(200, Math.min(4000, parseInt(limit, 10) || 3000));
+    // Incremental por cursor (createdAt|id): lotes grandes, sem reordenar 30 mil questões a cada chamada
+    const lim = Math.max(500, Math.min(8000, parseInt(limit, 10) || 6000));
     const desde = since ? String(since) : '';
-    const novas = desde ? fullBank.filter(q => (q.createdAt || '') >= desde) : fullBank.slice();
-    novas.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
-    const lote = novas.slice(0, lim);
-    const more = novas.length > lote.length;
-    const nextSince = lote.length ? (lote[lote.length - 1].createdAt || desde) : desde;
+    if (!_syncOrd || _syncOrd.ref !== fullBank || _syncOrd.n !== fullBank.length) {
+      const k = q => (q.createdAt || '') + '|' + (q.id == null ? '' : q.id);
+      const arr0 = fullBank.map(q => ({ q, k: k(q) })).sort((x, y) => x.k < y.k ? -1 : x.k > y.k ? 1 : 0);
+      _syncOrd = { ref: fullBank, n: fullBank.length, arr: arr0 };
+    }
+    const arr = _syncOrd.arr;
+    let ini = 0;
+    if (desde) { let lo = 0, hi = arr.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid].k <= desde) lo = mid + 1; else hi = mid; } ini = lo; }
+    const fatia = arr.slice(ini, ini + lim);
+    const lote = fatia.map(x => x.q);
+    const more = ini + lim < arr.length;
+    const nextSince = fatia.length ? fatia[fatia.length - 1].k : desde;
     const corpo = JSON.stringify({
       success: true, count: fullBank.length, total: fullBank.length,
       imported: m.imported || 0, updated: m.updated || 0,
@@ -1848,6 +1856,8 @@ app.get('/api/questions/hardworq/status', (req, res) => {
 });
 
 // Sincronização com a API do Hardworq (botão "Sincronizar Hardworq" do app)
+const HWQ_BG = { running: false, startedAt: 0, last: null };
+app.get('/api/questions/hardworq/sync-status', (req, res) => res.json({ success: true, ...HWQ_BG, total: readQuestionsBank().length }));
 app.post('/api/questions/hardworq/sync', async (req, res) => {
   try {
     const { areas, anos, grupos_prova, qtd_maxima, cookie, email, senha, idTurma, ids_doencas, salvar = true } = req.body || {};
@@ -1867,6 +1877,17 @@ app.post('/api/questions/hardworq/sync', async (req, res) => {
       return res.json({ success: true, fetched: search.questions.length, imported: 0, updated: 0, questions: parsed });
     }
 
+    if ((req.body || {}).background) {
+      // Resposta imediata: o banco espelhado já está no servidor; a busca ao vivo no Hardworq roda por trás
+      if (!HWQ_BG.running) {
+        HWQ_BG.running = true; HWQ_BG.startedAt = Date.now();
+        runHardworqSync({ areas, anos, grupos_prova, qtd_maxima, ids_doencas, idTurma })
+          .then(r => { HWQ_BG.last = { ok: !!r.ok, imported: r.imported || 0, updated: r.updated || 0, msg: r.msg || '', at: Date.now() }; })
+          .catch(e => { HWQ_BG.last = { ok: false, msg: e.message, at: Date.now() }; })
+          .finally(() => { HWQ_BG.running = false; });
+      }
+      return res.json({ success: true, background: true, running: HWQ_BG.running, total: readQuestionsBank().length });
+    }
     const result = await runHardworqSync({ areas, anos, grupos_prova, qtd_maxima, ids_doencas, idTurma });
     res.status(result.ok ? 200 : (result.authFailed ? 401 : 502)).json(result);
   } catch (err) {

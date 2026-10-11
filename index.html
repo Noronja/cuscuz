@@ -4921,13 +4921,13 @@ async function loadQuestionsBankFromAPI(silent = true) {
     const chave = q => (q && q.id) ? q.id : (q && q.statement ? q.statement.trim().slice(0, 80).toLowerCase() : null);
     base.forEach(q => { const k = chave(q); if (k) map.set(k, q); });
     let recebidas = 0, ok = false;
-    for (let volta = 0; volta < 25; volta++) {
+    for (let volta = 0; volta < 40; volta++) {
       let res = null;
       try {
         res = await fetch('/api/questions/bank/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ questions: volta === 0 ? proprias : [], since, limit: 3000 })
+          body: JSON.stringify({ questions: volta === 0 ? proprias : [], since, limit: 6000 })
         });
       } catch (_) { break; }
       if (!res || !res.ok) break;
@@ -5092,43 +5092,31 @@ async function runHardworqSync() {
     grupos_prova: activeChips('hwq-grupos'),
     anos: activeChips('hwq-anos').map(Number).filter(n => n > 0),
     ids_doencas: hwqDoencasSelecionadas(),
-    qtd_maxima: +($('hwq-qtd') && $('hwq-qtd').value || 99999)
+    qtd_maxima: +($('hwq-qtd') && $('hwq-qtd').value || 99999),
+    background: true
   };
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph ph-circle-notch"></i> Sincronizando todo o banco…'; }
+  const rotulo = '<i class="ph ph-cloud-arrow-down"></i> Buscar e sincronizar tudo';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph ph-circle-notch"></i> Sincronizando…'; }
   if (out) out.style.display = 'none';
   try {
-    const res = await fetch('/api/questions/hardworq/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const d = await res.json();
-    if (res.ok && d.success) {
-      if (out) {
-        out.style.display = 'block';
-        out.innerHTML = '<div style="padding:12px 14px;border-radius:10px;background:var(--teal-dim);border:1px solid var(--teal-border);color:var(--teal);font-size:13px">'
-          + '<b>✅ ' + d.imported + ' nova(s) questão(ões) importada(s)</b> · ' + d.updated + ' atualizada(s) · ' + d.fetched + ' retornada(s) pela API. Banco agora tem ' + (d.total || '—') + ' questões prontas.</div>';
-      }
-      toast('📚 Sincronização concluída: +' + d.imported + ' questões no banco', 'success');
-      await loadQuestionsBankFromAPI(false);
-      renderTreinoLivre();
-      if (typeof renderSim === 'function') renderSim();
-      if (typeof renderHome === 'function') renderHome();
-      toast(`✅ Todo o banco (${BANK_QUESTIONS.length.toLocaleString('pt-BR')} questões) já está carregado e disponível!`, 'success');
-    } else {
-      const msg = esc(d.msg || d.error || ('Erro ' + res.status));
-      if (out) {
-        out.style.display = 'block';
-        out.innerHTML = '<div style="padding:12px 14px;border-radius:10px;background:rgba(251,113,133,.08);border:1px solid var(--rose-border);color:var(--rose);font-size:13px;line-height:1.6"><b>⚠️ ' + msg + '</b>'
-          + (d.authFailed ? '<br><span style="font-size:11px">O login no Hardworq falhou. Confira <b>HARDWORQ_EMAIL</b> e <b>HARDWORQ_SENHA</b> no .env do servidor (as credenciais da conta Hardworq).</span>' : '')
-          + '</div>';
-      }
-      toast('Falha na sincronização Hardworq', 'error');
+    // 1) Rápido: baixa do servidor tudo o que já está espelhado (segundos)
+    const antes = BANK_QUESTIONS.length;
+    await loadQuestionsBankFromAPI(true);
+    const novas = Math.max(0, BANK_QUESTIONS.length - antes);
+    if (out) {
+      out.style.display = 'block';
+      out.innerHTML = '<div style="padding:12px 14px;border-radius:10px;background:var(--teal-dim);border:1px solid var(--teal-border);color:var(--teal);font-size:13px">'
+        + '<b>✅ Banco sincronizado: ' + BANK_QUESTIONS.length.toLocaleString('pt-BR') + ' questões</b> (' + novas.toLocaleString('pt-BR') + ' novas agora). O servidor continua buscando o que falta no Hardworq em segundo plano.</div>';
     }
+    toast('✅ Banco sincronizado: ' + BANK_QUESTIONS.length.toLocaleString('pt-BR') + ' questões', 'success');
+    renderTreinoLivre(); if (typeof renderSim === 'function') renderSim(); if (typeof renderHome === 'function') renderHome();
+    // 2) A busca ao vivo no Hardworq roda por trás e não bloqueia nada
+    fetch('/api/questions/hardworq/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(r => r.json()).then(d => { if (d && d.authFailed) toast('Login no Hardworq falhou — confira as credenciais no Render', 'error'); }).catch(() => {});
   } catch (err) {
-    toast('Erro de rede: ' + err.message, 'error');
+    toast('Erro: ' + err.message, 'error');
   } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ph ph-cloud-arrow-down"></i> Buscar e sincronizar tudo'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = rotulo; }
     fetchHardworqStatus();
   }
 }
