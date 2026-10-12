@@ -242,6 +242,16 @@ function reparaTextoCronograma(t) {
          .replace(/([.:)])\s+(?=\d{1,2}\.\s+[A-ZÀ-Ú][a-zà-ú])/g, '$1\n')
          .replace(/\s+(?=\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*(?:\([^)]*\))?\s*:)/g, '\n* ');
   }
+  // título de disciplina escrito como item ("* Emergências Médicas") seguido de itens com data → "N. Disciplina"
+  x = x.replace(/^[ \t]*[*•][ \t]*$/gm, '');
+  { const ls = x.split('\n'); let n = 0, mudou = false;
+    for (let i = 0; i < ls.length; i++) {
+      const m = ls[i].match(/^\s*[*•\-–]\s+([A-Za-zÀ-ú][^:\n]{2,90}?)\s*[*•]?\s*$/);
+      if (!m || /\d{1,2}\/\d{1,2}/.test(m[1])) continue;
+      const prox = ls.slice(i + 1).find(y => y.trim());
+      if (prox && /^\s*[*•\-–]\s+\d{1,2}\/\d{1,2}/.test(prox)) { ls[i] = (++n) + '. ' + m[1].trim(); mudou = true; }
+    }
+    if (mudou) x = ls.join('\n'); }
   // linhas que começam direto pela data (sem marcador) viram itens
   x = x.replace(/^(\s*)(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?(?:\s*,\s*\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)*\s*(?:\([^)]*\))?\s*:)/gm, '$1* $2');
   return x;
@@ -693,6 +703,23 @@ export function interpretarResposta(campo, texto, hoje, provasAtuais) {
     const provas = (provasAtuais || []).map(x => ({ ...x }));
     const alvo = provas.filter(pr => d && norm(pr.disciplina) === norm(d));
     let mudou = false;
+    // resposta em bloco: «Disciplina: tema, tema; Outra: tema…» → soma os temas e confirma todas as disciplinas citadas
+    { const conf = []; 
+      for (const seg of String(texto).replace(/[«»"]/g, '').split(/;\s*(?=[^;:]{3,80}:)/)) {
+        const m = seg.match(/^\s*([^:]{3,80}?)\s*:\s*(.+)$/);
+        if (!m) continue;
+        const prs = provas.filter(pr => mesmaDisc(pr.disciplina, m[1]));
+        if (!prs.length) continue;
+        const lista = m[2].split(/[,;]/).map(x => x.trim().replace(/\.$/, '')).filter(x => x.length > 2);
+        for (const pr of prs) {
+          const ja = (pr.assuntos || []).map(norm);
+          const novos = lista.filter(x => !ja.some(y => y.includes(norm(x)) || norm(x).includes(y)));
+          if (novos.length) pr.assuntos = [...(pr.assuntos || []), ...novos];
+        }
+        conf.push(prs[0].disciplina);
+      }
+      if (conf.length >= 2) { patch.provasFaculdade = provas; patch.disciplinasConfirmadas = [...new Set(conf)]; patch.anseios = 'Conteúdo conferido em bloco pelo aluno.'; return patch; }
+    }
     for (const ln of String(texto).split(/\n|;\s*(?=(?:incluir|tirar|remover|adicionar|falta)\b)/i)) {
       const m = ln.match(/^\s*(incluir|adicionar|falta(?:m)?|tirar|remover|nao cai|não cai)\s*[:\-–]?\s*(.+)$/i);
       if (!m) continue;

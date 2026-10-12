@@ -8779,6 +8779,17 @@ function ac2Init() {
       AC2.indice.set(v.id, item);
     });
     (data.materials || []).forEach(m => {
+      { // materiais (apostila, resumo, bônus…) entram na árvore de pastas ao lado das videoaulas
+        const partes = String(m.path || '').split(' / ').map(x => x.trim()).filter(Boolean);
+        if (partes.length > 1) {
+          const cursoM = m.course || partes[0];
+          partes.shift(); partes.pop();
+          let no = ac2RaizDoCurso(cursoM);
+          if (!AC2.ORDEM.includes(cursoM)) AC2.ORDEM.push(cursoM);
+          for (const nome of partes) { let f = no.filhos.get(nome); if (!f) { f = ac2NovoNo(nome, no); no.filhos.set(nome, f); } no = f; }
+          no.docs.push({ id: m.id, titulo: m.t || String(m.d || 'Material').replace(/\.[^.]+$/, '') });
+        }
+      }
       const k = (m.course || 'Geral') + '||' + (String(m.d || '').replace(/\.(mp4|webm|mkv|mov|pdf)$/i, '').trim() || 'Geral');
       if (!AC2.MAT.has(k)) AC2.MAT.set(k, []);
       AC2.MAT.get(k).push({ id: m.id, nome: m.t || 'Material' });
@@ -8814,7 +8825,7 @@ function renderAcervo() {
 /* ── Árvore de pastas (mesma organização do Drive) ── */
 function ac2NovoNo(nome, pai) {
   AC2.NOS = AC2.NOS || [];
-  const no = { id: AC2.NOS.length, nome, pai: pai || null, nivel: pai ? pai.nivel + 1 : 0, filhos: new Map(), aulas: [], total: -1 };
+  const no = { id: AC2.NOS.length, nome, pai: pai || null, nivel: pai ? pai.nivel + 1 : 0, filhos: new Map(), aulas: [], docs: [], total: -1 };
   AC2.NOS.push(no);
   return no;
 }
@@ -8824,7 +8835,7 @@ function ac2RaizDoCurso(curso) {
   return AC2.RAIZ.get(curso);
 }
 function ac2TotalNo(no) {
-  if (no.total < 0) no.total = no.aulas.length + [...no.filhos.values()].reduce((a, f) => a + ac2TotalNo(f), 0);
+  if (no.total < 0) no.total = no.aulas.length + no.docs.length + [...no.filhos.values()].reduce((a, f) => a + ac2TotalNo(f), 0);
   return no.total;
 }
 const ac2Nat = (a, b) => String(a).localeCompare(String(b), 'pt', { numeric: true, sensitivity: 'base' });
@@ -8851,7 +8862,10 @@ function ac2PreencherNo(id) {
       '<span class="aula-dur">35 min</span>' +
     '</div>';
   }).join('');
-  alvo.innerHTML = pastas + aulas;
+  const docs = no.docs.slice().sort((a, b) => ac2Nat(a.titulo, b.titulo)).map(d =>
+    '<div class="ac2-aula" style="padding-left:' + (pad + 12) + 'px" onclick="window.cuscuzAbrirPdf(\'' + d.id + '\')" title="' + esc(d.titulo) + '">' +
+      '<i class="ph ph-file-pdf" style="color:#ef4444"></i><span class="aula-title">' + esc(d.titulo) + '</span><span class="aula-dur">PDF</span></div>').join('');
+  alvo.innerHTML = pastas + aulas + docs;
   alvo.dataset.preenchido = '1';
 }
 
@@ -8880,7 +8894,7 @@ function ac2RenderArvore() {
       '<button class="ac2-mod-btn" onclick="ac2ToggleMod(this)" title="Expandir/recolher módulo ' + esc(curso) + '">' +
         '<i class="ph ph-folder-simple mod-icon"></i>' +
         '<span class="mod-title">' + esc(curso) + '</span>' +
-        '<span class="cont">' + ac2TotalNo(raiz).toLocaleString('pt-BR') + ' aulas</span>' +
+        '<span class="cont">' + (() => { const nv = AC2.LISTA.filter(v => v.curso === curso).length; const tt = ac2TotalNo(raiz); return nv && nv === tt ? nv.toLocaleString('pt-BR') + ' aulas' : tt.toLocaleString('pt-BR') + ' itens'; })() + '</span>' +
         '<i class="ph ph-caret-down caret"></i>' +
       '</button>' +
       '<div class="ac2-mod-lista"><div><div data-no="' + raiz.id + '"></div></div></div></div>';
