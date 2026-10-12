@@ -410,10 +410,11 @@
 .ac2-mod-lista>div,.ac2-sub-lista>div{overflow:hidden}
 
 .ac2-sub{border-top:1px solid var(--border-subtle)}
+.ac2-sub .ac2-sub-btn{white-space:nowrap}
 .ac2-sub-btn{width:100%;display:flex;align-items:center;gap:8px;padding:9px 14px 9px 24px;border:0;background:transparent;color:var(--text-secondary);font-size:12.5px;font-weight:600;text-align:left;cursor:pointer}
 .ac2-sub-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
 .ac2-sub-btn .sub-caret{font-size:11px;color:var(--text-muted);transition:transform .2s;display:inline-block}
-.ac2-sub.aberto .sub-btn .sub-caret{transform:rotate(90deg)}
+.ac2-sub.aberto>.ac2-sub-btn .sub-caret{transform:rotate(90deg)}
 .ac2-sub-btn .cont{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--text-muted);padding:1px 6px}
 
 .ac2-aula{display:flex;align-items:center;gap:9px;padding:8px 14px 8px 32px;font-size:12.5px;color:var(--text-secondary);cursor:pointer;border-top:1px solid var(--border-subtle);transition:all .15s ease;line-height:1.3}
@@ -8764,6 +8765,16 @@ function ac2Init() {
       if (!AC2.ARVORE.get(curso).has(disc)) AC2.ARVORE.get(curso).set(disc, []);
       const item = { id: v.id, titulo: v.t || '(sem título)', disc, curso, path: v.path || '' };
       AC2.ARVORE.get(curso).get(disc).push(item);
+      // árvore real de pastas do Drive (curso › pasta › subpasta › aula)
+      const partes = String(v.path || '').split(' / ').map(x => x.trim()).filter(Boolean);
+      partes.shift(); partes.pop(); // tira o curso e o nome do arquivo
+      let no = ac2RaizDoCurso(curso);
+      for (const nome of partes) {
+        let f = no.filhos.get(nome);
+        if (!f) { f = ac2NovoNo(nome, no); no.filhos.set(nome, f); }
+        no = f;
+      }
+      no.aulas.push(item); item.noId = no.id;
       AC2.LISTA.push(item);
       AC2.indice.set(v.id, item);
     });
@@ -8800,62 +8811,94 @@ function renderAcervo() {
   });
 }
 
+/* ── Árvore de pastas (mesma organização do Drive) ── */
+function ac2NovoNo(nome, pai) {
+  AC2.NOS = AC2.NOS || [];
+  const no = { id: AC2.NOS.length, nome, pai: pai || null, nivel: pai ? pai.nivel + 1 : 0, filhos: new Map(), aulas: [], total: -1 };
+  AC2.NOS.push(no);
+  return no;
+}
+function ac2RaizDoCurso(curso) {
+  AC2.RAIZ = AC2.RAIZ || new Map();
+  if (!AC2.RAIZ.has(curso)) AC2.RAIZ.set(curso, ac2NovoNo(curso, null));
+  return AC2.RAIZ.get(curso);
+}
+function ac2TotalNo(no) {
+  if (no.total < 0) no.total = no.aulas.length + [...no.filhos.values()].reduce((a, f) => a + ac2TotalNo(f), 0);
+  return no.total;
+}
+const ac2Nat = (a, b) => String(a).localeCompare(String(b), 'pt', { numeric: true, sensitivity: 'base' });
+
+function ac2PreencherNo(id) {
+  const alvo = document.querySelector('#ac2-arvore [data-no="' + id + '"]');
+  const no = AC2.NOS[id];
+  if (!alvo || !no || alvo.dataset.preenchido) return;
+  const pad = 14 + no.nivel * 14;
+  const pastas = [...no.filhos.values()].sort((a, b) => ac2Nat(a.nome, b.nome)).map(f =>
+    '<div class="ac2-sub" data-sub="' + f.id + '">' +
+      '<button class="ac2-sub-btn" style="padding-left:' + pad + 'px" onclick="ac2ToggleSub(this)">' +
+        '<i class="ph ph-caret-right sub-caret"></i><i class="ph ph-folder-simple" style="color:var(--teal);font-size:15px"></i>' +
+        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(f.nome) + '">' + esc(f.nome) + '</span>' +
+        '<span class="cont">' + ac2TotalNo(f) + '</span>' +
+      '</button>' +
+      '<div class="ac2-sub-lista"><div data-no="' + f.id + '"></div></div>' +
+    '</div>').join('');
+  const aulas = no.aulas.slice().sort((a, b) => ac2Nat(a.titulo, b.titulo)).map(v => {
+    const feita = DONE.has('drive:' + v.id);
+    return '<div class="ac2-aula' + (AC2.atualId === v.id ? ' ativa' : '') + '" data-id="' + v.id + '" style="padding-left:' + (pad + 12) + 'px" onclick="ac2Abrir(\'' + v.id + '\')" title="' + esc(v.titulo) + '">' +
+      '<i class="ph ' + (feita ? 'ph-check-circle ok-i' : 'ph-play-circle') + '"></i>' +
+      '<span class="aula-title">' + esc(v.titulo) + '</span>' +
+      '<span class="aula-dur">35 min</span>' +
+    '</div>';
+  }).join('');
+  alvo.innerHTML = pastas + aulas;
+  alvo.dataset.preenchido = '1';
+}
+
+/* Abre (e preenche) todas as pastas do caminho até a aula */
+function ac2AbrirCaminho(v) {
+  const cadeia = [];
+  for (let n = AC2.NOS[v.noId]; n && n.pai; n = n.pai) cadeia.unshift(n);
+  const raiz = AC2.NOS[v.noId] && (function r(n) { while (n.pai) n = n.pai; return n; })(AC2.NOS[v.noId]);
+  if (raiz) ac2PreencherNo(raiz.id);
+  for (const n of cadeia) {
+    const sub = document.querySelector('#ac2-arvore .ac2-sub[data-sub="' + n.id + '"]');
+    if (!sub) break;
+    sub.classList.add('aberto');
+    ac2PreencherNo(n.id);
+  }
+}
+
 function ac2RenderArvore() {
   const arvore = $('ac2-arvore');
   if (!arvore || arvore.dataset.pronto) return;
   arvore.dataset.pronto = '1';
   let html = '';
   AC2.ORDEM.forEach(curso => {
-    const discs = AC2.ARVORE.get(curso);
-    let total = 0;
-    discs.forEach(l => total += l.length);
-    html += '<div class="ac2-mod" data-curso="' + esc(curso) + '">' +
+    const raiz = ac2RaizDoCurso(curso);
+    html += '<div class="ac2-mod" data-curso="' + esc(curso) + '" data-raiz="' + raiz.id + '">' +
       '<button class="ac2-mod-btn" onclick="ac2ToggleMod(this)" title="Expandir/recolher módulo ' + esc(curso) + '">' +
         '<i class="ph ph-folder-simple mod-icon"></i>' +
         '<span class="mod-title">' + esc(curso) + '</span>' +
-        '<span class="cont">' + total.toLocaleString('pt-BR') + ' aulas</span>' +
+        '<span class="cont">' + ac2TotalNo(raiz).toLocaleString('pt-BR') + ' aulas</span>' +
         '<i class="ph ph-caret-down caret"></i>' +
       '</button>' +
-      '<div class="ac2-mod-lista"><div>' +
-      [...discs.keys()].map(disc => {
-        const aulasQtd = AC2.ARVORE.get(curso).get(disc).length;
-        return '<div class="ac2-sub" data-disc="' + esc(disc) + '">' +
-          '<button class="ac2-sub-btn" onclick="ac2ToggleSub(this)">' +
-            '<i class="ph ph-caret-right sub-caret"></i>' +
-            '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(disc) + '</span>' +
-            '<span class="cont">' + aulasQtd + '</span>' +
-          '</button>' +
-          '<div class="ac2-sub-lista"><div data-lista="' + esc(curso) + '||' + esc(disc) + '"></div></div>' +
-        '</div>';
-      }).join('') +
-      '</div></div></div>';
+      '<div class="ac2-mod-lista"><div><div data-no="' + raiz.id + '"></div></div></div></div>';
   });
   arvore.innerHTML = html || '<div style="padding:20px;color:var(--text-muted);font-size:13px;text-align:center">Nenhuma videoaula no acervo.</div>';
+  arvore.querySelectorAll('.ac2-mod').forEach(m => ac2PreencherNo(+m.dataset.raiz));
   const primeiro = arvore.querySelector('.ac2-mod');
-  if (primeiro) {
-    primeiro.classList.add('aberto');
-    const primeiroSub = primeiro.querySelector('.ac2-sub');
-    if (primeiroSub) {
-      primeiroSub.classList.add('aberto');
-      ac2Preencher(primeiro.dataset.curso, primeiroSub.dataset.disc);
-    }
-  }
+  if (primeiro) primeiro.classList.add('aberto');
 }
 
 window.ac2ToggleMod = function (btn) {
-  const m = btn.closest('.ac2-mod');
-  m.classList.toggle('aberto');
-  if (m.classList.contains('aberto')) {
-    m.querySelectorAll('.ac2-sub.aberto').forEach(s => ac2Preencher(m.dataset.curso, s.dataset.disc));
-  }
+  btn.closest('.ac2-mod').classList.toggle('aberto');
 };
 
 window.ac2ToggleSub = function (btn) {
   const sub = btn.closest('.ac2-sub');
   sub.classList.toggle('aberto');
-  if (sub.classList.contains('aberto')) {
-    ac2Preencher(sub.closest('.ac2-mod').dataset.curso, sub.dataset.disc);
-  }
+  if (sub.classList.contains('aberto')) ac2PreencherNo(+sub.dataset.sub);
 };
 
 window.ac2ToggleProg = function () {
@@ -9683,11 +9726,7 @@ window.ac2Abrir = function (id, silencioso = false, autoPlay = false) {
   document.querySelectorAll('#ac2-arvore .ac2-aula').forEach(el => el.classList.toggle('ativa', el.dataset.id === id));
   const mod = document.querySelector('#ac2-arvore .ac2-mod[data-curso="' + CSS.escape(v.curso) + '"]');
   if (mod && !mod.classList.contains('aberto')) mod.classList.add('aberto');
-  const sub = mod && mod.querySelector('.ac2-sub[data-disc="' + CSS.escape(v.disc) + '"]');
-  if (sub) {
-    sub.classList.add('aberto');
-    ac2Preencher(v.curso, v.disc);
-  }
+  if (v.noId != null) ac2AbrirCaminho(v);
   // Rola só a lista de aulas até o item (sem arrastar a página junto) e leva o player para a tela
   const item = document.querySelector('#ac2-arvore .ac2-aula[data-id="' + id + '"]');
   if (item) {
