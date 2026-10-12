@@ -252,7 +252,7 @@
 .ac2-ctrl-pulse:hover{transform:scale(1.12);background:rgba(13,148,136,0.85);box-shadow:0 10px 40px rgba(13,148,136,0.55)}
 .ac2-ctrl-pulse i,.ac2-ctrl-pulse svg{margin-left:3px}
 
-.ac2-ctrl-bottom{pointer-events:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(to top, rgba(3,5,8,0.95) 0%, rgba(3,5,8,0.5) 75%, transparent 100%)}
+.ac2-ctrl-bottom{margin-top:auto;pointer-events:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(to top, rgba(3,5,8,0.95) 0%, rgba(3,5,8,0.5) 75%, transparent 100%)}
 .ac2-timeline-wrap{position:relative;width:100%;height:18px;cursor:pointer;display:flex;align-items:center}
 .ac2-timeline{position:relative;width:100%;height:5px;border-radius:999px;background:rgba(255,255,255,0.14);transition:height .15s ease}
 .ac2-timeline-wrap:hover .ac2-timeline{height:8px}
@@ -4998,7 +4998,14 @@ async function bancoAtualizarAuto() {
   try { await loadQuestionsBankFromAPI(true); } catch (_) {}
   _bancoSyncando = false;
 }
-setInterval(bancoAtualizarAuto, 10 * 60 * 1000);
+setInterval(() => { if (!document.hidden) bancoAtualizarAuto(); }, 2 * 60 * 1000); // baixa o que o servidor já juntou, em segundo plano
+/* Pede ao servidor para buscar mais questões no Hardworq por trás (sem limite). Roda sozinho enquanto o app está aberto. */
+async function bancoBuscarMaisAuto() {
+  if (document.hidden || (window.appLocked && appLocked())) return;
+  try { await fetch('/api/questions/hardworq/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ qtd_maxima: 50000, background: true }) }); } catch (_) {}
+}
+setTimeout(bancoBuscarMaisAuto, 60 * 1000);
+setInterval(bancoBuscarMaisAuto, 20 * 60 * 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) bancoAtualizarAuto(); });
 
 async function refreshQuestionsBank() {

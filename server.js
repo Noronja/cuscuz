@@ -1407,7 +1407,7 @@ const HWQ = {
   maxBankSize: Math.max(50, parseInt(process.env.HARDWORQ_MAX_BANK, 10) || 400),
   // Espelho contínuo do banco completo (ligado sozinho quando há login; desligue com HARDWORQ_MIRROR=0)
   mirror: !/^(0|false|off)$/i.test(process.env.HARDWORQ_MIRROR || ''),
-  mirrorMax: Math.max(500, parseInt(process.env.HARDWORQ_MIRROR_MAX, 10) || 25000)
+  mirrorMax: Math.max(500, parseInt(process.env.HARDWORQ_MIRROR_MAX, 10) || 2000000) // sem limite prático
 };
 const HWQ_STATE = { userToken: null, lastLoginAt: null, lastLoginOk: null, lastSyncAt: null, lastSyncOk: null, lastSyncResult: null, doencas: null, doencasAt: 0 };
 
@@ -1541,10 +1541,10 @@ async function hwqSearchQuestions(opts = {}) {
 // Busca em rodadas de 100 até não voltarem questões novas (a API não pagina — repete amostras).
 // qtd_maxima define o teto; "tudo" = 5000 (60 rodadas no máximo, por segurança).
 async function hwqFetchAll(opts = {}) {
-  const target = Math.min(5000, Math.max(1, parseInt(opts.qtd_maxima, 10) || 5000));
+  const target = Math.min(50000, Math.max(1, parseInt(opts.qtd_maxima, 10) || 50000));
   const seen = new Map();
   let rounds = 0;
-  while (seen.size < target && rounds < 60) {
+  while (seen.size < target && rounds < 400) {
     rounds++;
     const search = await hwqSearchQuestions({ ...opts, qtd_maxima: 100 });
     if (search.error || search.authFailed || search.status >= 400) {
@@ -2007,7 +2007,7 @@ async function publicarBancoGitHub() {
 async function mirrorTick() {
   if (!HWQ.mirror || !(HWQ.email && HWQ.senha) || MIRROR.running) return setTimeout(mirrorTick, 5 * 60 * 1000);
   MIRROR.running = true;
-  let espera = Math.max(1, parseFloat(process.env.HARDWORQ_MIRROR_PAUSE_S) || 25) * 1000;
+  let espera = Math.max(1, parseFloat(process.env.HARDWORQ_MIRROR_PAUSE_S) || 10) * 1000;
   try {
     if (!HWQ_STATE.userToken) await hwqLogin();
     const doencas = await hwqListarDoencas();
@@ -2015,10 +2015,10 @@ async function mirrorTick() {
     if (!doencas.length) throw new Error('catálogo de doenças vazio');
     if (readQuestionsBank().length >= HWQ.mirrorMax) { MIRROR.passes = Math.max(MIRROR.passes, 1); publicarBancoGitHub(); espera = HWQ.syncIntervalHours * 3600 * 1000; MIRROR.erro = 'limite do espelho atingido'; }
     else {
-      if (MIRROR.idx >= doencas.length) { MIRROR.idx = 0; MIRROR.passes++; espera = HWQ.syncIntervalHours * 3600 * 1000; flushQuestionsBank(); publicarBancoGitHub(); }
+      if (MIRROR.idx >= doencas.length) { MIRROR.idx = 0; MIRROR.passes++; espera = 30 * 60 * 1000; flushQuestionsBank(); publicarBancoGitHub(); }
       else {
         const d = doencas[MIRROR.idx];
-        const busca = await hwqFetchAll({ ids_doencas: [d.id], qtd_maxima: 400 });
+        const busca = await hwqFetchAll({ ids_doencas: [d.id], qtd_maxima: 3000 });
         if (busca.authFailed) { HWQ_STATE.userToken = null; throw new Error('login recusado'); }
         const lista = !busca.error && busca.status < 400 ? parseHardworqPayload(busca.questions) : [];
         if (lista.length) { const m = mergeQuestionsIntoBank(lista); MIRROR.novas += m.imported; }
