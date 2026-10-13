@@ -8794,6 +8794,7 @@ function ac2Init() {
       if (!AC2.MAT.has(k)) AC2.MAT.set(k, []);
       AC2.MAT.get(k).push({ id: m.id, nome: m.t || 'Material' });
     });
+    AC2.sig = (data.videos || []).length + '/' + (data.materials || []).length;
     AC2.pronto = true;
     const totalHoras = Math.round(AC2.LISTA.length * 0.6);
     $('ac2-stats').innerHTML =
@@ -8807,6 +8808,33 @@ function ac2Init() {
   });
   return AC2.carregando;
 }
+
+/* Atualização automática do acervo: confere o catálogo a cada 30s (pastas extras do Drive entram sozinhas) e avisa se a pasta extra falhar */
+async function ac2Atualizar() {
+  if (document.hidden || !AC2.pronto) return;
+  try {
+    const st = await fetch('/api/acervo/extra-status').then(r => r.ok ? r.json() : null).catch(() => null);
+    const stats = $('ac2-stats');
+    let aviso = $('ac2-extra-st');
+    if (st && stats) {
+      if (!aviso) { aviso = document.createElement('span'); aviso.id = 'ac2-extra-st'; aviso.style.cssText = 'display:block;width:100%;font-size:11.5px;margin-top:4px'; stats.appendChild(aviso); }
+      aviso.innerHTML = st.erro && !st.videos && !st.materiais ? '<span style="color:var(--amber,#f59e0b)">⚠ Pasta extra do Drive: ' + esc(st.erro) + ' — confira a chave do Drive e se a pasta está compartilhada com "qualquer pessoa com o link".</span>' : (st.running ? '<span style="color:var(--text-muted)">Atualizando pasta extra…</span>' : '');
+    }
+    const data = await fetch('/acervo-manifest.json').then(r => r.json());
+    const sig = (data.videos || []).length + '/' + (data.materials || []).length;
+    if (sig === AC2.sig) return;
+    const atual = AC2.atualId;
+    AC2.LISTA.length = 0; AC2.ARVORE.clear(); AC2.ORDEM.length = 0; AC2.MAT.clear(); AC2.indice.clear();
+    AC2.NOS = []; AC2.RAIZ = new Map(); AC2.pronto = false; AC2.carregando = null;
+    const arv = $('ac2-arvore'); if (arv) arv.dataset.pronto = '';
+    await ac2Init();
+    if (atual && AC2.indice.has(atual)) { AC2.atualId = atual; ac2AbrirCaminho(AC2.indice.get(atual)); }
+    if (currentDriveFolderId === DRIVE_ROOT_ID) loadDriveFolder(DRIVE_ROOT_ID, 'Cursos', false, true);
+    toast('📂 Acervo atualizado', 'info');
+  } catch (_) {}
+}
+setInterval(ac2Atualizar, 30000);
+setTimeout(ac2Atualizar, 8000);
 
 // Renderização do Acervo
 function renderAcervo() {
