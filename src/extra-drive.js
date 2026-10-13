@@ -9,7 +9,12 @@ const API = (process.env.DRIVE_API_BASE || 'https://www.googleapis.com').replace
 const VIDEO = /\.(mp4|webm|mkv|mov|avi)$/i, DOC = /\.(pdf|docx?|pptx?|xlsx?|txt)$/i;
 const limpa = n => String(n || '').replace(/(\.(mp4|webm|mkv|mov|avi|pdf|docx?|pptx?|xlsx?|txt))+$/gi, '').trim();
 
-export const EXTRA_IDS = () => [...new Set(String(process.env.GOOGLE_DRIVE_EXTRA_FOLDERS || '1tIpf5nlW1lspY7BPBsCUqKweULeJHZsP').split(/[,\s]+/).map(s => s.trim()).filter(Boolean))];
+export const ROOT_PADRAO = '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7';
+const idDe = x => (String(x || '').match(/[-\w]{25,}/) || [''])[0];
+export const MAIN_ID = () => idDe(process.env.GOOGLE_DRIVE_FOLDER_ID) || ROOT_PADRAO;
+/* Se a pasta principal (GOOGLE_DRIVE_FOLDER_ID) não for a antiga, a lista inteira é gerada ao vivo a partir dela; senão vale o catálogo fixo + extras */
+export const USA_BASE = () => MAIN_ID() === ROOT_PADRAO;
+export const EXTRA_IDS = () => [...new Set(String(process.env.GOOGLE_DRIVE_EXTRA_FOLDERS || '1tIpf5nlW1lspY7BPBsCUqKweULeJHZsP').split(/[,\s]+/).map(idDe).filter(Boolean))].filter(id => id !== MAIN_ID());
 export const STATUS = { running: false, at: null, erro: '', pastas: 0, videos: 0, materiais: 0 };
 
 export function lerExtra() { try { return JSON.parse(fs.readFileSync(EXTRA_FILE, 'utf8')); } catch (_) { return { videos: [], materials: [], roots: [] }; } }
@@ -40,9 +45,19 @@ export async function varrerExtras(key = process.env.GOOGLE_DRIVE_API_KEY || '')
   STATUS.running = true; STATUS.erro = '';
   const videos = [], materials = [], roots = [];
   try {
-    for (const rid of EXTRA_IDS()) {
-      const meta = await get(`${API}/drive/v3/files/${rid}?fields=id,name&key=${key}`);
-      const curso = limpa(meta.name) || 'Extra';
+    // pastas a varrer: [id, nome fixo do curso | null]. A principal (quando trocada) vira vários cursos, um por subpasta.
+    const alvos = [];
+    if (!USA_BASE()) {
+      const itens = await filhos(MAIN_ID(), key);
+      for (const it of itens) {
+        const alvoId = it.shortcutDetails && it.shortcutDetails.targetId || it.id;
+        const mime = it.shortcutDetails && it.shortcutDetails.targetMimeType || it.mimeType;
+        if (mime === 'application/vnd.google-apps.folder') alvos.push({ rid: alvoId, curso: limpa(it.name.trim()) });
+        else { const reg = { d: it.name, t: limpa(it.name), id: alvoId, course: 'Geral', path: 'Geral / ' + it.name }; if (/^video\//.test(mime || '') || VIDEO.test(it.name)) videos.push(reg); else if (/pdf|document|presentation|spreadsheet|text/.test(mime || '') || DOC.test(it.name)) materials.push(reg); }
+      }
+    }
+    for (const rid of EXTRA_IDS()) { const meta = await get(`${API}/drive/v3/files/${rid}?fields=id,name&key=${key}`); alvos.push({ rid, curso: limpa(meta.name) || 'Extra' }); }
+    for (const { rid, curso } of alvos) {
       roots.push({ id: rid, name: curso });
       const fila = [{ id: rid, partes: [curso] }];
       while (fila.length) {
@@ -67,7 +82,8 @@ export async function varrerExtras(key = process.env.GOOGLE_DRIVE_API_KEY || '')
 }
 
 /* Junta o catálogo principal com o das pastas extras (ids repetidos valem o principal) */
-export function juntar(base) {
+export function juntar(base0) {
+  const base = USA_BASE() ? base0 : { ...base0, videos: [], materials: [], courses: [] };
   const ex = lerExtra();
   if (!ex.videos.length && !ex.materials.length) return base;
   const vi = new Set((base.videos || []).map(v => v.id)), mi = new Set((base.materials || []).map(m => m.id));
