@@ -3249,6 +3249,17 @@ app.use((req, res, next) => {
   next();
 });
 let _manifCache = null;
+// A página principal usa a pasta raiz configurada no Render (GOOGLE_DRIVE_FOLDER_ID), não a antiga fixa no código
+let _indexRaiz = null;
+app.get(['/', '/index.html'], (req, res, next) => {
+  const raiz = DRIVE_ROOT_FOLDER_ID, antiga = '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7';
+  if (raiz === antiga) return next();
+  try {
+    if (!_indexRaiz) _indexRaiz = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').split(antiga).join(raiz);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.setHeader('Cache-Control', 'no-cache');
+    return res.send(_indexRaiz);
+  } catch (_) { next(); }
+});
 // Catálogo de aulas (traz os IDs do Drive): só com login
 app.get('/acervo-manifest.json', (req, res, next) => {
   if (APP_PASSWORD) {
