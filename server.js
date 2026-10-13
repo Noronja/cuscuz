@@ -3260,8 +3260,9 @@ app.get('/acervo-manifest.json', (req, res, next) => {
 });
 // Varredura das pastas extras do Drive (em segundo plano; refaz a cada 6h)
 async function rodarExtras() { try { const r = await varrerExtras(); if (r) { resetCatalogo(); console.log(`📂 [Extras] ${r.videos} vídeos e ${r.materials} materiais das pastas extras.`); } } catch (e) { console.warn('⚠️ [Extras]', e.message); } }
-setTimeout(rodarExtras, 25000);
-setInterval(rodarExtras, 6 * 3600 * 1000);
+// repete 10s depois de terminar cada varredura (ajuste com EXTRA_SCAN_S no Render)
+const EXTRA_PAUSA = Math.max(5, parseInt(process.env.EXTRA_SCAN_S, 10) || 10) * 1000;
+setTimeout(function cicloExtras() { rodarExtras().finally(() => setTimeout(cicloExtras, EXTRA_PAUSA)); }, 25000);
 app.get('/api/acervo/extra-status', (req, res) => res.json({ success: true, ids: EXTRA_IDS(), ...EXTRA_STATUS }));
 app.post('/api/acervo/extra-scan', (req, res) => { rodarExtras(); res.json({ success: true, started: !EXTRA_STATUS.running }); });
 // Serve static assets from root directory
