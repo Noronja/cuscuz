@@ -11,6 +11,7 @@
   const hoje = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Fortaleza' }).format(new Date());
   const DIAS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
   const fmtDia = iso => { const d = new Date(iso + 'T00:00:00Z'); return DIAS[d.getUTCDay()] + ', ' + iso.slice(8, 10) + '/' + iso.slice(5, 7); };
+  const fmtBr = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
   const fmtMin = m => m >= 60 ? Math.floor(m / 60) + 'h' + (m % 60 ? String(m % 60).padStart(2, '0') : '') : m + ' min';
   const ICON = { aula: 'ph-video-camera', resumo: 'ph-notebook', questoes: 'ph-list-checks', flashcards: 'ph-cards', erros: 'ph-warning-circle', simulado: 'ph-timer', prova: 'ph-flag' };
   const NOME = { aula: 'Aula', resumo: 'Resumo', questoes: 'Questões', flashcards: 'Flashcards', erros: 'Erros', simulado: 'Simulado', prova: 'Prova' };
@@ -209,7 +210,7 @@
     const done = plano.tarefas.filter(t => t.status === 'feito' && t.tipo !== 'prova').length, tot = plano.tarefas.filter(t => t.tipo !== 'prova').length;
     const tabs = [['hoje', 'Hoje'], ['semana', 'Próximos 7 dias'], ['tudo', 'Tudo'], ['atrasadas', 'Atrasadas' + (atrasadas.length ? ' (' + atrasadas.length + ')' : '')]];
     r.innerHTML = `<div class="plv2"><div class="plv2-bar"><div><h2>Seu cronograma</h2><div class="plv2-sub">${done}/${tot} tarefas concluídas · de ${plano.inicio.split('-').reverse().slice(0, 2).join('/')} a ${plano.fim.split('-').reverse().slice(0, 2).join('/')}${plano.perfil && plano.perfil.dataProva ? ' · prova ' + plano.perfil.dataProva.split('-').reverse().join('/') : ''}</div></div>
-      <div class="plv2-btns"><button class="b pri" onclick="plv2.conversar()"><i class="ph ph-chats-circle"></i> Conversar / ajustar</button><button class="b" onclick="plv2.colar()"><i class="ph ph-clipboard-text"></i> Colar cronograma da faculdade</button><button class="b" onclick="plv2.maisSemanas()"><i class="ph ph-calendar-plus"></i> +4 semanas</button><button class="b" onclick="plv2.ia()"><i class="ph ph-sparkle"></i> Detalhar com IA</button>${atrasadas.length ? '<button class="b" onclick="plv2.reagendar()"><i class="ph ph-arrows-clockwise"></i> Reagendar atrasadas</button>' : ''}${legacyRender ? '<button class="b" onclick="plv2.antigo()"><i class="ph ph-clock-counter-clockwise"></i> Planner antigo</button>' : ''}</div></div>
+      <div class="plv2-btns"><button class="b pri" onclick="plv2.conversar()"><i class="ph ph-chats-circle"></i> Conversar / ajustar</button><button class="b" onclick="plv2.colar()"><i class="ph ph-clipboard-text"></i> Colar cronograma da faculdade</button><button class="b" onclick="plv2.exportar()"><i class="ph ph-export"></i> Exportar</button><button class="b" onclick="plv2.maisSemanas()"><i class="ph ph-calendar-plus"></i> +4 semanas</button><button class="b" onclick="plv2.ia()"><i class="ph ph-sparkle"></i> Detalhar com IA</button>${atrasadas.length ? '<button class="b" onclick="plv2.reagendar()"><i class="ph ph-arrows-clockwise"></i> Reagendar atrasadas</button>' : ''}${legacyRender ? '<button class="b" onclick="plv2.antigo()"><i class="ph ph-clock-counter-clockwise"></i> Planner antigo</button>' : ''}</div></div>
       <div class="plv2-tabs">${tabs.map(([k, n]) => `<button class="b ${tab === k ? 'on' : ''}" onclick="plv2.aba('${k}')">${n}</button>`).join('')}</div>
       <div id="plv2-lista">${dias.length ? dias.map(d => { const lst = porDia[d]; const m = lst.reduce((a, t) => a + (t.minutos || 0), 0); return `<div class="plv2-day"><div class="plv2-dh ${d === h ? 'hoje' : ''}">${fmtDia(d)}${d === h ? ' · hoje' : ''}<span>${m ? fmtMin(m) + ' planejados' : ''}</span></div><table class="plv2-t"><thead><tr><th style="width:21%">Tarefa</th><th style="width:36%">Passo a passo</th><th style="width:23%">Materiais</th><th>Observações</th></tr></thead><tbody>${lst.map(tarefaRow).join('')}</tbody></table></div>`; }).join('') : `<div class="plv2-empty">${tab === 'hoje' ? 'Nada agendado para hoje — dia livre no seu cronograma. 🎉' : tab === 'atrasadas' ? 'Nenhuma tarefa atrasada.' : 'Nada por aqui.'}</div>`}</div></div>`;
   }
@@ -244,6 +245,58 @@
   window.plv2 = {
     enviar(txt) { const el = document.getElementById('plv2-txt'); let v = txt !== undefined ? JSON.parse(txt) : (el ? el.value.trim() : ''); if (!v) return; if (/^gerar meu cronograma$/i.test(v)) return gerar(); turno(v); },
     gerar() { gerar(); },
+    exportar() {
+      const p = get(K_PLAN, null); if (!p || !(p.tarefas || []).length) return toast && toast('Gere o cronograma primeiro.', 'warning');
+      openModal('<div class="modal-title">Exportar cronograma<button class="modal-close"><i class="ph ph-x"></i></button></div>' +
+        '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">' + p.tarefas.length + ' tarefas, de ' + fmtBr(p.tarefas[0].data) + ' a ' + fmtBr(p.tarefas[p.tarefas.length - 1].data) + '.</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px">' +
+        '<button class="btn-primary" onclick="plv2.baixar(\'ics\')"><i class="ph ph-calendar-plus"></i> Calendário (.ics) — Apple, Google, Outlook</button>' +
+        '<button class="btn-outline" onclick="plv2.baixar(\'pdf\')"><i class="ph ph-file-pdf"></i> PDF / imprimir</button>' +
+        '<button class="btn-outline" onclick="plv2.baixar(\'csv\')"><i class="ph ph-table"></i> Planilha (.csv) — Excel, Google Sheets</button>' +
+        '<button class="btn-outline" onclick="plv2.baixar(\'txt\')"><i class="ph ph-note"></i> Texto (.txt) — NotebookLM, Notion, Anki</button></div>');
+    },
+    baixar(fmt) {
+      const p = get(K_PLAN, null); if (!p) return;
+      const T = p.tarefas.slice().sort((x, y) => x.data.localeCompare(y.data));
+      const ok = ['pendente', 'feito'];
+      const passos = t => (t.passos || []).map(s => s.n + '. ' + s.texto + (s.minutos ? ' (' + s.minutos + ' min)' : '')).join('\n');
+      const baixa = (nome, tipo, conteudo) => { const u = URL.createObjectURL(new Blob([conteudo], { type: tipo + ';charset=utf-8' })); const a = document.createElement('a'); a.href = u; a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); };
+      if (fmt === 'ics') {
+        const esc = x => String(x || '').replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+        const dobra = l => { const o = []; let r = l; while (r.length > 74) { o.push(r.slice(0, 74)); r = ' ' + r.slice(74); } o.push(r); return o.join('\r\n'); };
+        const dia = (iso, add) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + (add || 0)); return d.toISOString().slice(0, 10).replace(/-/g, ''); };
+        const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+        const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cuscuz-MED//Planner//PT-BR', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Cronograma Cuscuz-MED'];
+        T.forEach(t => {
+          L.push('BEGIN:VEVENT', 'UID:' + t.id + '@cuscuz-med', 'DTSTAMP:' + stamp, 'DTSTART;VALUE=DATE:' + dia(t.data), 'DTEND;VALUE=DATE:' + dia(t.data, 1),
+            dobra('SUMMARY:' + esc((t.tipo === 'prova' ? '🎯 ' : '') + t.titulo + (t.minutos ? ' (' + fmtMin(t.minutos) + ')' : ''))),
+            dobra('DESCRIPTION:' + esc(passos(t) + (t.observacoes ? '\n\n' + t.observacoes : ''))), 'TRANSP:TRANSPARENT', 'END:VEVENT');
+        });
+        L.push('END:VCALENDAR');
+        baixa('cronograma-cuscuz-med.ics', 'text/calendar', L.join('\r\n'));
+      } else if (fmt === 'csv') {
+        const c = x => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"';
+        const rows = [['Data', 'Dia', 'Tipo', 'Disciplina', 'Tarefa', 'Tema', 'Minutos', 'Passo a passo', 'Observações', 'Status']];
+        T.forEach(t => rows.push([fmtBr(t.data), DIAS[new Date(t.data + 'T00:00:00Z').getUTCDay()], t.tipo, t.materia, t.titulo, t.tema, t.minutos, passos(t), t.observacoes, t.status]));
+        baixa('cronograma-cuscuz-med.csv', 'text/csv', '\ufeff' + rows.map(r => r.map(c).join(';')).join('\r\n'));
+      } else if (fmt === 'txt') {
+        let ult = '';
+        const out = ['CRONOGRAMA CUSCUZ-MED', ''];
+        T.forEach(t => { if (t.data !== ult) { out.push('', '== ' + fmtDia(t.data) + ' =='); ult = t.data; } out.push('', '• ' + t.titulo + (t.minutos ? ' — ' + fmtMin(t.minutos) : ''), passos(t), t.observacoes ? 'Obs.: ' + t.observacoes : ''); });
+        baixa('cronograma-cuscuz-med.txt', 'text/plain', out.join('\n'));
+      } else if (fmt === 'pdf') {
+        let ult = '', h = '';
+        T.forEach(t => {
+          if (t.data !== ult) { h += '<h2>' + E(fmtDia(t.data)) + '</h2>'; ult = t.data; }
+          h += '<div class="t"><b>' + E(t.titulo) + '</b>' + (t.minutos ? ' <i>(' + E(fmtMin(t.minutos)) + ')</i>' : '') + '<ol>' + (t.passos || []).map(s => '<li>' + E(s.texto) + (s.minutos ? ' <i>(' + s.minutos + ' min)</i>' : '') + '</li>').join('') + '</ol>' + (t.observacoes ? '<p class="o">' + E(t.observacoes) + '</p>' : '') + '</div>';
+        });
+        const w = window.open('', '_blank');
+        if (!w) return toast && toast('Permita pop-ups para gerar o PDF.', 'warning');
+        w.document.write('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cronograma Cuscuz-MED</title><style>body{font:14px/1.5 -apple-system,Segoe UI,Arial,sans-serif;max-width:800px;margin:20px auto;padding:0 16px;color:#111}h1{font-size:22px}h2{font-size:15px;margin:22px 0 6px;padding:6px 10px;background:#e6f7f5;border-left:4px solid #0d9488;break-after:avoid}.t{margin:0 0 10px 6px;break-inside:avoid}ol{margin:4px 0 4px 20px;padding:0}.o{margin:4px 0;color:#555;font-size:12.5px}@media print{body{margin:0}}</style><h1>Cronograma Cuscuz-MED</h1>' + h + '<script>setTimeout(function(){window.print()},400)<\/script>');
+        w.document.close();
+      }
+      if (window.closeModals) closeModals();
+    },
     aba(k) { tab = k; renderPlano(); },
     feito(id) { const p = get(K_PLAN, null); const t = p && p.tarefas.find(x => x.id === id); if (!t) return; t.status = t.status === 'feito' ? 'pendente' : 'feito'; set(K_PLAN, p); sync(); renderPlano(); },
     conversar() {
