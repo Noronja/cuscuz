@@ -29,9 +29,16 @@ async function get(url, tent = 3) {
     try {
       const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
       if (r.status === 429 || r.status >= 500) { await new Promise(s => setTimeout(s, 700 * i)); continue; }
-      if (!r.ok) throw new Error('Drive ' + r.status);
+      if (!r.ok) {
+        const corpo = await r.text().catch(() => '');
+        let hint = '';
+        if (r.status === 400) hint = 'chave do Drive inválida (GOOGLE_DRIVE_API_KEY)';
+        else if (r.status === 403) hint = /referer|ip address|blocked/i.test(corpo) ? 'a chave tem restrição de site/IP — no Google Cloud deixe "Restrições de aplicativo: Nenhuma"' : /disabled|not been used|accessNotConfigured/i.test(corpo) ? 'a Google Drive API não está ativada para essa chave' : /quota|rate/i.test(corpo) ? 'cota da chave esgotada — aumente EXTRA_SCAN_S' : 'sem permissão (pasta privada ou chave sem acesso à Drive API)';
+        else if (r.status === 404) hint = 'pasta não encontrada ou privada — compartilhe como "qualquer pessoa com o link"';
+        const e = new Error('Drive ' + r.status + (hint ? ': ' + hint : '')); e.fatal = r.status < 500 && r.status !== 429; throw e;
+      }
       return await r.json();
-    } catch (e) { if (i === tent) throw e; await new Promise(s => setTimeout(s, 700 * i)); }
+    } catch (e) { if (i === tent || e.fatal) throw e; await new Promise(s => setTimeout(s, 700 * i)); }
   }
 }
 async function filhos(id, key) {
@@ -47,7 +54,7 @@ async function filhos(id, key) {
 export async function varrerExtras(key = process.env.GOOGLE_DRIVE_API_KEY || '') {
   if (!key) { STATUS.erro = 'GOOGLE_DRIVE_API_KEY ausente'; return null; }
   if (STATUS.running) return null;
-  STATUS.running = true; STATUS.erro = '';
+  STATUS.running = true; STATUS.erro = ''; STATUS.pastas = 0;
   const videos = [], materials = [], roots = [];
   const tinha = !!(lerExtra().videos.length || lerExtra().materials.length);
   try {
@@ -77,6 +84,7 @@ export async function varrerExtras(key = process.env.GOOGLE_DRIVE_API_KEY || '')
           if (/^video\//.test(mime || '') || VIDEO.test(it.name)) videos.push(reg);
           else if (/pdf|document|presentation|spreadsheet|text/.test(mime || '') || DOC.test(it.name)) materials.push(reg);
         }
+        Object.assign(STATUS, { videos: videos.length, materiais: materials.length });
         if (!tinha) MEM = { generatedAt: 'parcial-' + Date.now(), roots, videos, materials }; // primeira varredura: já mostra o que achou
       }
     }
@@ -85,7 +93,7 @@ export async function varrerExtras(key = process.env.GOOGLE_DRIVE_API_KEY || '')
     fs.writeFileSync(EXTRA_FILE, JSON.stringify(pronto)); MEM = pronto;
     Object.assign(STATUS, { at: new Date().toISOString(), videos: videos.length, materiais: materials.length });
     return { videos: videos.length, materials: materials.length };
-  } catch (e) { STATUS.erro = String(e.message || e).slice(0, 140); return null; }
+  } catch (e) { STATUS.erro = String(e.message || e).slice(0, 260); return null; }
   finally { STATUS.running = false; }
 }
 

@@ -8811,15 +8811,19 @@ function ac2Init() {
 
 /* Atualização automática do acervo: confere o catálogo a cada 30s (pastas extras do Drive entram sozinhas) e avisa se a pasta extra falhar */
 async function ac2Atualizar() {
-  if (document.hidden || !AC2.pronto) return;
+  if (document.hidden) return;
   try {
     const st = await fetch('/api/acervo/extra-status').then(r => r.ok ? r.json() : null).catch(() => null);
     const stats = $('ac2-stats');
     let aviso = $('ac2-extra-st');
     if (st && stats) {
       if (!aviso) { aviso = document.createElement('span'); aviso.id = 'ac2-extra-st'; aviso.style.cssText = 'display:block;width:100%;font-size:11.5px;margin-top:4px'; stats.appendChild(aviso); }
-      aviso.innerHTML = st.erro && !st.videos && !st.materiais ? '<span style="color:var(--amber,#f59e0b)">⚠ Pasta extra do Drive: ' + esc(st.erro) + ' — confira a chave do Drive e se a pasta está compartilhada com "qualquer pessoa com o link".</span>' : (st.running ? '<span style="color:var(--text-muted)">Atualizando pasta extra…</span>' : '');
+      aviso.innerHTML = !st.chave ? '<span style="color:var(--amber,#f59e0b)">⚠ Falta a GOOGLE_DRIVE_API_KEY no Render — sem ela o servidor não lê o Drive.</span>'
+        : st.erro && !st.videos && !st.materiais ? '<span style="color:var(--amber,#f59e0b)">⚠ Não consegui ler o Drive: ' + esc(st.erro) + '</span>'
+        : st.running ? '<span style="color:var(--text-muted)">Lendo o Drive… ' + (st.pastas || 0) + ' pastas, ' + (st.videos || 0) + ' vídeos, ' + (st.materiais || 0) + ' materiais</span>'
+        : st.erro ? '<span style="color:var(--amber,#f59e0b)">⚠ ' + esc(st.erro) + '</span>' : '<span style="color:var(--text-muted)">Drive em dia · ' + ((st.videos || 0) + (st.materiais || 0)).toLocaleString('pt-BR') + ' itens lidos das pastas ao vivo</span>';
     }
+    if (!AC2.pronto) { if (!AC2.carregando && $('view-acervo') && $('view-acervo').classList.contains('active')) ac2Init(); return; }
     const data = await fetch('/acervo-manifest.json').then(r => r.json());
     const sig = (data.videos || []).length + '/' + (data.materials || []).length;
     if (sig === AC2.sig) return;

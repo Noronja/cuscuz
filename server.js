@@ -3275,7 +3275,7 @@ async function rodarExtras() { try { const r = await varrerExtras(); if (r) { re
 // repete 10s depois de terminar cada varredura (ajuste com EXTRA_SCAN_S no Render)
 const EXTRA_PAUSA = Math.max(5, parseInt(process.env.EXTRA_SCAN_S, 10) || 10) * 1000;
 setTimeout(function cicloExtras() { rodarExtras().finally(() => setTimeout(cicloExtras, EXTRA_PAUSA)); }, 3000);
-app.get('/api/acervo/extra-status', (req, res) => res.json({ success: true, ids: EXTRA_IDS(), ...EXTRA_STATUS }));
+app.get('/api/acervo/extra-status', (req, res) => res.json({ success: true, ids: EXTRA_IDS(), principal: DRIVE_ROOT_FOLDER_ID, chave: !!DRIVE_API_KEY, ...EXTRA_STATUS }));
 app.post('/api/acervo/extra-scan', (req, res) => { rodarExtras(); res.json({ success: true, started: !EXTRA_STATUS.running }); });
 // Serve static assets from root directory
 app.use(express.static(__dirname, {
