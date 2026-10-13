@@ -3,6 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { temConta, emailConta, driveFetch } from './drive-auth.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const EXTRA_FILE = path.join(__dirname, '..', 'data', 'extra-manifest.json');
 const API = (process.env.DRIVE_API_BASE || 'https://www.googleapis.com').replace(/\/$/, '');
@@ -27,14 +28,14 @@ export function lerExtra() {
 async function get(url, tent = 6) {
   for (let i = 1; i <= tent; i++) {
     try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      const r = await driveFetch(url, { signal: AbortSignal.timeout(15000) });
       if (r.status === 429 || r.status >= 500) { await new Promise(s => setTimeout(s, 900 * i * i)); continue; }
       if (!r.ok) {
         const corpo = await r.text().catch(() => '');
         let hint = '';
         if (r.status === 400) hint = 'chave do Drive inválida (GOOGLE_DRIVE_API_KEY)';
-        else if (r.status === 403) hint = /referer|ip address|blocked/i.test(corpo) ? 'a chave tem restrição de site/IP — no Google Cloud deixe "Restrições de aplicativo: Nenhuma"' : /disabled|not been used|accessNotConfigured/i.test(corpo) ? 'a Google Drive API não está ativada para essa chave' : /quota|rate/i.test(corpo) ? 'cota da chave esgotada — aumente EXTRA_SCAN_S' : 'sem permissão (pasta privada ou chave sem acesso à Drive API)';
-        else if (r.status === 404) hint = 'pasta não encontrada ou privada — compartilhe como "qualquer pessoa com o link"';
+        else if (r.status === 403) hint = /referer|ip address|blocked/i.test(corpo) ? 'a chave tem restrição de site/IP — no Google Cloud deixe "Restrições de aplicativo: Nenhuma"' : /disabled|not been used|accessNotConfigured/i.test(corpo) ? 'a Google Drive API não está ativada para essa chave' : /quota|rate/i.test(corpo) ? 'cota da chave esgotada — aumente EXTRA_SCAN_S' : (temConta() ? 'sem permissão — compartilhe a pasta (Leitor) com ' + emailConta() + ' e ative a Google Drive API no projeto' : 'sem permissão (pasta privada ou chave sem acesso à Drive API)');
+        else if (r.status === 404) hint = temConta() ? 'pasta não encontrada — compartilhe a pasta (Leitor) com ' + emailConta() : 'pasta não encontrada ou privada — compartilhe como "qualquer pessoa com o link" ou use uma conta de serviço';
         const e = new Error('Drive ' + r.status + (hint ? ': ' + hint : '')); e.fatal = r.status < 500 && r.status !== 429 && !(r.status === 403 && /rate|quota|limit/i.test(corpo)); throw e;
       }
       return await r.json();
@@ -45,14 +46,14 @@ async function filhos(id, key) {
   const todos = []; let tok = '';
   do {
     const q = encodeURIComponent(`'${id}' in parents and trashed=false`);
-    const d = await get(`${API}/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name,mimeType,shortcutDetails)&orderBy=folder,name_natural&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true&key=${key}${tok ? '&pageToken=' + encodeURIComponent(tok) : ''}`);
+    const d = await get(`${API}/drive/v3/files?q=${q}&fields=nextPageToken,files(id,name,mimeType,shortcutDetails)&orderBy=folder,name_natural&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true${tok ? '&pageToken=' + encodeURIComponent(tok) : ''}`);
     todos.push(...(d.files || [])); tok = d.nextPageToken || '';
   } while (tok);
   return todos;
 }
 
 export async function varrerExtras(key = process.env.GOOGLE_DRIVE_API_KEY || '') {
-  if (!key) { STATUS.erro = 'GOOGLE_DRIVE_API_KEY ausente'; return null; }
+  if (!key && !temConta()) { STATUS.erro = 'falta GOOGLE_SERVICE_ACCOUNT_JSON (pasta privada) ou GOOGLE_DRIVE_API_KEY (pasta com link público)'; return null; }
   if (STATUS.running) return null;
   STATUS.running = true; STATUS.erro = ''; STATUS.pastas = 0;
   const videos = [], materials = [], roots = [];
@@ -70,7 +71,7 @@ export async function varrerExtras(key = process.env.GOOGLE_DRIVE_API_KEY || '')
         else { const reg = { d: it.name, t: limpa(it.name), id: alvoId, course: 'Geral', path: 'Geral / ' + it.name }; if (/^video\//.test(mime || '') || VIDEO.test(it.name)) videos.push(reg); else if (/pdf|document|presentation|spreadsheet|text/.test(mime || '') || DOC.test(it.name)) materials.push(reg); }
       }
     }
-    for (const rid of EXTRA_IDS()) { const meta = await get(`${API}/drive/v3/files/${rid}?fields=id,name&key=${key}`); alvos.push({ rid, curso: limpa(meta.name) || 'Extra' }); }
+    for (const rid of EXTRA_IDS()) { const meta = await get(`${API}/drive/v3/files/${rid}?fields=id,name&supportsAllDrives=true`); alvos.push({ rid, curso: limpa(meta.name) || 'Extra' }); }
     for (const { rid, curso } of alvos) {
       roots.push({ id: rid, name: curso });
       const fila = [{ id: rid, partes: [curso] }]; let tentativas = 0;

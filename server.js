@@ -17,6 +17,7 @@ import { registerJarvis } from './src/jarvis.js';
 import { registerAula } from './src/aula.js';
 import { varrerExtras, juntar as juntarExtras, lerExtra, STATUS as EXTRA_STATUS, EXTRA_IDS } from './src/extra-drive.js';
 import { resetCatalogo } from './src/planner-engine.js';
+import { temConta, emailConta, erroConta, driveFetch, authHeaders } from './src/drive-auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -337,12 +338,14 @@ function cleanDriveId(raw) {
 
 // Google Drive Proxy & In-Memory Cache
 const DRIVE_API_KEY = (process.env.GOOGLE_DRIVE_API_KEY || '').trim();
-if (!DRIVE_API_KEY) console.warn('⚠️ GOOGLE_DRIVE_API_KEY não definida: o acervo do Drive não vai carregar.');
+// Acesso ao Drive: conta de serviço (pasta privada) ou chave de API (pasta com link público)
+const DRIVE_OK = !!DRIVE_API_KEY || temConta();
+if (!DRIVE_OK) console.warn('⚠️ Nem GOOGLE_SERVICE_ACCOUNT_JSON nem GOOGLE_DRIVE_API_KEY definidas: o acervo do Drive não vai carregar.');
 const DRIVE_ROOT_FOLDER_ID = cleanDriveId(process.env.GOOGLE_DRIVE_FOLDER_ID || '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7');
 const driveCache = new Map();
 
 /* Diagnóstico da chave do Drive: traduz o erro do Google em uma dica clara (sem expor segredos) */
-const driveStatus = { configured: !!DRIVE_API_KEY, ok: null, status: null, reason: null, hint: null, checkedAt: null };
+const driveStatus = { configured: DRIVE_OK, ok: null, status: null, reason: null, hint: null, checkedAt: null };
 function driveErrorInfo(status, bodyText) {
   let reason = '', msg = '';
   try {
@@ -363,7 +366,7 @@ function driveErrorInfo(status, bodyText) {
   return { reason: reason || ('http_' + status), hint };
 }
 function noteDriveResult(ok, status, bodyText) {
-  driveStatus.configured = !!DRIVE_API_KEY;
+  driveStatus.configured = DRIVE_OK;
   driveStatus.ok = ok; driveStatus.status = status; driveStatus.checkedAt = new Date().toISOString();
   if (ok) { driveStatus.reason = null; driveStatus.hint = null; return null; }
   const info = driveErrorInfo(status, bodyText);
@@ -372,10 +375,10 @@ function noteDriveResult(ok, status, bodyText) {
   return info;
 }
 async function checkDriveKey() {
-  if (!DRIVE_API_KEY) { driveStatus.ok = false; driveStatus.reason = 'missing_key'; driveStatus.hint = 'GOOGLE_DRIVE_API_KEY não está definida no Render.'; driveStatus.checkedAt = new Date().toISOString(); console.warn('⚠️ [Drive] ' + driveStatus.hint); return; }
+  if (!DRIVE_OK) { driveStatus.ok = false; driveStatus.reason = 'missing_key'; driveStatus.hint = 'GOOGLE_DRIVE_API_KEY não está definida no Render.'; driveStatus.checkedAt = new Date().toISOString(); console.warn('⚠️ [Drive] ' + driveStatus.hint); return; }
   try {
     const q = encodeURIComponent(`'${DRIVE_ROOT_FOLDER_ID}' in parents and trashed=false`);
-    const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1&fields=files(id)&key=${DRIVE_API_KEY}`);
+    const r = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true`);
     const t = await r.text();
     noteDriveResult(r.ok, r.status, t);
     if (r.ok) console.log('✅ [Drive] Chave do Drive funcionando.');
@@ -485,7 +488,7 @@ app.get('/api/drive/list', async (req, res) => {
   }
 
   // Tenta buscar da Google Drive API se a chave estiver configurada
-  if (DRIVE_API_KEY) {
+  if (DRIVE_OK) {
     try {
       let rawFiles = [];
       let pageToken = '';
@@ -494,9 +497,9 @@ app.get('/api/drive/list', async (req, res) => {
         const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
         const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,webViewLink,size,createdTime,shortcutDetails)');
         const pageParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
-        const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&orderBy=folder,name_natural&pageSize=1000&key=${DRIVE_API_KEY}${pageParam}`;
+        const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&orderBy=folder,name_natural&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true${pageParam}`;
         
-        const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        const r = await driveFetch(url, { signal: AbortSignal.timeout(8000) });
         if (!r.ok) {
           const errText = await r.text();
           noteDriveResult(false, r.status, errText);
@@ -547,7 +550,7 @@ app.get('/api/drive/list', async (req, res) => {
   }
 
   // Se não foi encontrado no snapshot e a chave não estava ativa
-  if (!DRIVE_API_KEY) {
+  if (!DRIVE_OK) {
     return res.status(503).json({ error: 'GOOGLE_DRIVE_API_KEY ausente', reason: 'missing_key', hint: 'GOOGLE_DRIVE_API_KEY não configurada no servidor.' });
   }
   return res.json({ files: [], cached: false, total: 0 });
@@ -561,7 +564,7 @@ app.get('/api/drive/video-info', async (req, res) => {
   const out = {};
   await Promise.all(ids.map(id => new Promise(resolve => {
     if (driveInfoCache.has(id)) { out[id] = driveInfoCache.get(id); return resolve(); }
-    fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=size,videoMediaMetadata,mimeType&key=${DRIVE_API_KEY}`)
+    driveFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=size,videoMediaMetadata,mimeType&supportsAllDrives=true`)
       .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
       .then(j => {
         const sizeB = parseInt(j.size || '0', 10);
@@ -586,7 +589,7 @@ app.get('/api/drive/video-info', async (req, res) => {
 // (um AbortSignal.timeout normal também cortaria o corpo do vídeo depois de alguns segundos).
 function driveCandidates(fileId) {
   const c = [];
-  if (DRIVE_API_KEY) c.push(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&key=${DRIVE_API_KEY}`);
+  if (DRIVE_OK) c.push(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true${temConta() ? '' : '&key=' + DRIVE_API_KEY}`);
   c.push(`https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`);
   c.push(`https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}&confirm=t`);
   return c;
@@ -601,6 +604,7 @@ async function driveOpen(fileId, start, end, method, client) {
     const timer = setTimeout(() => ac.abort(), 12000);
     try {
       const headers = {};
+      if (temConta() && url.startsWith('https://www.googleapis.com/')) Object.assign(headers, await authHeaders());
       if (start != null) headers.Range = `bytes=${start}-${end != null ? end : ''}`;
       const resp = await fetch(url, { method, headers, signal: ac.signal });
       clearTimeout(timer);
@@ -3286,7 +3290,7 @@ async function rodarExtras() { try { const r = await varrerExtras(); if (r) { re
 // repete 10s depois de terminar cada varredura (ajuste com EXTRA_SCAN_S no Render)
 const EXTRA_PAUSA = Math.max(5, parseInt(process.env.EXTRA_SCAN_S, 10) || 10) * 1000;
 setTimeout(function cicloExtras() { rodarExtras().finally(() => setTimeout(cicloExtras, EXTRA_PAUSA)); }, 3000);
-app.get('/api/acervo/extra-status', (req, res) => res.json({ success: true, ids: EXTRA_IDS(), principal: DRIVE_ROOT_FOLDER_ID, chave: !!DRIVE_API_KEY, ...EXTRA_STATUS }));
+app.get('/api/acervo/extra-status', (req, res) => res.json({ success: true, ids: EXTRA_IDS(), principal: DRIVE_ROOT_FOLDER_ID, chave: DRIVE_OK, conta: temConta() ? emailConta() : '', erroConta: erroConta(), ...EXTRA_STATUS }));
 app.post('/api/acervo/extra-scan', (req, res) => { rodarExtras(); res.json({ success: true, started: !EXTRA_STATUS.running }); });
 // Serve static assets from root directory
 app.use(express.static(__dirname, {

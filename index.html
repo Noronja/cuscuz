@@ -8818,7 +8818,8 @@ async function ac2Atualizar() {
     let aviso = $('ac2-extra-st');
     if (st && stats) {
       if (!aviso) { aviso = document.createElement('span'); aviso.id = 'ac2-extra-st'; aviso.style.cssText = 'display:block;width:100%;font-size:11.5px;margin-top:4px'; stats.appendChild(aviso); }
-      aviso.innerHTML = !st.chave ? '<span style="color:var(--amber,#f59e0b)">⚠ Falta a GOOGLE_DRIVE_API_KEY no Render — sem ela o servidor não lê o Drive.</span>'
+      aviso.innerHTML = !st.chave ? '<span style="color:var(--amber,#f59e0b)">⚠ Falta GOOGLE_SERVICE_ACCOUNT_JSON (pasta privada) ou GOOGLE_DRIVE_API_KEY (pasta com link) no Render — sem isso o servidor não lê o Drive.</span>'
+        : st.erroConta ? '<span style="color:var(--amber,#f59e0b)">⚠ Conta de serviço: ' + esc(st.erroConta) + '</span>'
         : st.erro && !st.videos && !st.materiais ? '<span style="color:var(--amber,#f59e0b)">⚠ Não consegui ler o Drive: ' + esc(st.erro) + '</span>'
         : st.running ? '<span style="color:var(--text-muted)">Lendo o Drive… ' + (st.pastas || 0) + ' pastas, ' + (st.videos || 0) + ' vídeos, ' + (st.materiais || 0) + ' materiais</span>'
         : st.erro || st.falhas ? '<span style="color:var(--amber,#f59e0b)">⚠ ' + esc(st.erro || (st.falhas + ' pasta(s) não puderam ser lidas')) + '</span>' : '<span style="color:var(--text-muted)">Drive em dia · ' + ((st.videos || 0) + (st.materiais || 0)).toLocaleString('pt-BR') + ' itens lidos das pastas ao vivo</span>';
