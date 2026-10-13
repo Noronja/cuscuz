@@ -3248,6 +3248,7 @@ app.use((req, res, next) => {
   if (/^\/(server\.js|smart_scheduler\.js|package(-lock)?\.json|bun\.lock|render\.yaml|supabase-schema\.sql|metadata\.json|drive-tree-snapshot\.json|radar-medico\.json|deploy\.md|readme\.md)$/.test(p) || /^\/(src|data|scripts|node_modules|\.github)(\/|$)/.test(p)) return res.status(404).send('Not found');
   next();
 });
+let _manifCache = null;
 // Catálogo de aulas (traz os IDs do Drive): só com login
 app.get('/acervo-manifest.json', (req, res, next) => {
   if (APP_PASSWORD) {
@@ -3256,13 +3257,24 @@ app.get('/acervo-manifest.json', (req, res, next) => {
     if (!verifyToken(tk)) return res.status(401).json({ error: 'Faça login.' });
   }
   res.setHeader('Cache-Control', 'private, no-cache');
-  try { return res.json(juntarExtras(JSON.parse(fs.readFileSync(path.join(__dirname, 'acervo-manifest.json'), 'utf8')))); } catch (_) { next(); }
+  try {
+    const ex = lerExtra();
+    const sig = [ex.generatedAt, (ex.videos || []).length, (ex.materials || []).length, process.env.GOOGLE_DRIVE_FOLDER_ID || ''].join('|');
+    if (!_manifCache || _manifCache.sig !== sig) {
+      const corpo = Buffer.from(JSON.stringify(juntarExtras(JSON.parse(fs.readFileSync(path.join(__dirname, 'acervo-manifest.json'), 'utf8')))));
+      _manifCache = { sig, raw: corpo, gz: zlib.gzipSync(corpo, { level: 6 }), etag: '"' + crypto.createHash('md5').update(sig).digest('hex') + '"' };
+    }
+    res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.setHeader('ETag', _manifCache.etag); res.setHeader('Vary', 'Accept-Encoding');
+    if (req.headers['if-none-match'] === _manifCache.etag) return res.status(304).end();
+    if (/\bgzip\b/.test(req.headers['accept-encoding'] || '')) { res.setHeader('Content-Encoding', 'gzip'); return res.end(_manifCache.gz); }
+    return res.end(_manifCache.raw);
+  } catch (_) { next(); }
 });
 // Varredura das pastas extras do Drive (em segundo plano; refaz a cada 6h)
 async function rodarExtras() { try { const r = await varrerExtras(); if (r) { resetCatalogo(); console.log(`📂 [Extras] ${r.videos} vídeos e ${r.materials} materiais das pastas extras.`); } } catch (e) { console.warn('⚠️ [Extras]', e.message); } }
 // repete 10s depois de terminar cada varredura (ajuste com EXTRA_SCAN_S no Render)
 const EXTRA_PAUSA = Math.max(5, parseInt(process.env.EXTRA_SCAN_S, 10) || 10) * 1000;
-setTimeout(function cicloExtras() { rodarExtras().finally(() => setTimeout(cicloExtras, EXTRA_PAUSA)); }, 25000);
+setTimeout(function cicloExtras() { rodarExtras().finally(() => setTimeout(cicloExtras, EXTRA_PAUSA)); }, 3000);
 app.get('/api/acervo/extra-status', (req, res) => res.json({ success: true, ids: EXTRA_IDS(), ...EXTRA_STATUS }));
 app.post('/api/acervo/extra-scan', (req, res) => { rodarExtras(); res.json({ success: true, started: !EXTRA_STATUS.running }); });
 // Serve static assets from root directory

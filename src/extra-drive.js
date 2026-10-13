@@ -17,7 +17,12 @@ export const USA_BASE = () => MAIN_ID() === ROOT_PADRAO;
 export const EXTRA_IDS = () => [...new Set(String(process.env.GOOGLE_DRIVE_EXTRA_FOLDERS || '1tIpf5nlW1lspY7BPBsCUqKweULeJHZsP').split(/[,\s]+/).map(idDe).filter(Boolean))].filter(id => id !== MAIN_ID());
 export const STATUS = { running: false, at: null, erro: '', pastas: 0, videos: 0, materiais: 0 };
 
-export function lerExtra() { try { return JSON.parse(fs.readFileSync(EXTRA_FILE, 'utf8')); } catch (_) { return { videos: [], materials: [], roots: [] }; } }
+let MEM = null; // catálogo em memória (arquivo lido uma vez; durante a primeira varredura mostra o que já foi achado)
+export function lerExtra() {
+  if (MEM) return MEM;
+  try { MEM = JSON.parse(fs.readFileSync(EXTRA_FILE, 'utf8')); } catch (_) { return { videos: [], materials: [], roots: [] }; }
+  return MEM;
+}
 
 async function get(url, tent = 3) {
   for (let i = 1; i <= tent; i++) {
@@ -44,6 +49,7 @@ export async function varrerExtras(key = process.env.GOOGLE_DRIVE_API_KEY || '')
   if (STATUS.running) return null;
   STATUS.running = true; STATUS.erro = '';
   const videos = [], materials = [], roots = [];
+  const tinha = !!(lerExtra().videos.length || lerExtra().materials.length);
   try {
     // pastas a varrer: [id, nome fixo do curso | null]. A principal (quando trocada) vira vários cursos, um por subpasta.
     const alvos = [];
@@ -61,7 +67,7 @@ export async function varrerExtras(key = process.env.GOOGLE_DRIVE_API_KEY || '')
       roots.push({ id: rid, name: curso });
       const fila = [{ id: rid, partes: [curso] }];
       while (fila.length) {
-        const lote = fila.splice(0, 8);
+        const lote = fila.splice(0, 24);
         const res = await Promise.all(lote.map(async f => ({ f, itens: await filhos(f.id, key).catch(e => { STATUS.erro = String(e.message).slice(0, 100); return []; }) })));
         for (const { f, itens } of res) for (const it of itens) {
           const alvoId = it.shortcutDetails && it.shortcutDetails.targetId || it.id;
@@ -71,10 +77,12 @@ export async function varrerExtras(key = process.env.GOOGLE_DRIVE_API_KEY || '')
           if (/^video\//.test(mime || '') || VIDEO.test(it.name)) videos.push(reg);
           else if (/pdf|document|presentation|spreadsheet|text/.test(mime || '') || DOC.test(it.name)) materials.push(reg);
         }
+        if (!tinha) MEM = { generatedAt: 'parcial-' + Date.now(), roots, videos, materials }; // primeira varredura: já mostra o que achou
       }
     }
     fs.mkdirSync(path.dirname(EXTRA_FILE), { recursive: true });
-    fs.writeFileSync(EXTRA_FILE, JSON.stringify({ generatedAt: new Date().toISOString(), roots, videos, materials }));
+    const pronto = { generatedAt: new Date().toISOString(), roots, videos, materials };
+    fs.writeFileSync(EXTRA_FILE, JSON.stringify(pronto)); MEM = pronto;
     Object.assign(STATUS, { at: new Date().toISOString(), videos: videos.length, materiais: materials.length });
     return { videos: videos.length, materials: materials.length };
   } catch (e) { STATUS.erro = String(e.message || e).slice(0, 140); return null; }
