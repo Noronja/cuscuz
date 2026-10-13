@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 
+import { juntar as juntarExtras } from './extra-drive.js';
 import { selecionar as selecionarQuestoes } from './questoes-aula.js';
 let _BANCO = null; // banco de questões do servidor (para ligar cada tarefa às questões reais da aula)
 const _qCache = new Map();
@@ -68,6 +69,7 @@ export function detectDisc(texto) {
 
 /* ───────────────────────── Catálogo do acervo ───────────────────────── */
 let CAT = null;
+export function resetCatalogo() { CAT = null; }
 function limparTema(str) {
   return String(str || '')
     .replace(/\.(mp4|webm|mkv|mov|pdf|avi)$/i, '')
@@ -92,7 +94,7 @@ function natCmp(a, b) { return ehBonus(a.path) - ehBonus(b.path) || a.path.local
 export function getCatalogo() {
   if (CAT) return CAT;
   let m = { videos: [], materials: [], courses: [] };
-  try { m = JSON.parse(fs.readFileSync(path.join(ROOT, 'acervo-manifest.json'), 'utf8')); } catch (_) {}
+  try { m = juntarExtras(JSON.parse(fs.readFileSync(path.join(ROOT, 'acervo-manifest.json'), 'utf8'))); } catch (_) {}
   const temasPorDisc = new Map(); // disc -> course -> Map(temaKey -> {tema, videos[]})
   const materiais = []; // {id,titulo,curso,path,disc,toks,tipo}
 

@@ -15,6 +15,8 @@ import { plGerarPlanSinergia as plEngineGerarPlan } from './smart_scheduler.js';
 import { registerPlanner } from './src/planner-routes.js';
 import { registerJarvis } from './src/jarvis.js';
 import { registerAula } from './src/aula.js';
+import { varrerExtras, juntar as juntarExtras, lerExtra, STATUS as EXTRA_STATUS, EXTRA_IDS } from './src/extra-drive.js';
+import { resetCatalogo } from './src/planner-engine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -457,6 +459,13 @@ function getFilesFromSnapshot(folderId) {
   return [...folders, ...files];
 }
 
+// Pastas extras do Drive aparecem como cursos na raiz
+function comPastasExtras(folderId, files) {
+  if (folderId !== DRIVE_ROOT_FOLDER_ID) return files;
+  const roots = (lerExtra().roots || []).filter(r => !files.some(f => f.id === r.id));
+  const ids = roots.length ? roots : EXTRA_IDS().filter(id => !files.some(f => f.id === id)).map(id => ({ id, name: 'Conteúdo extra' }));
+  return [...files, ...ids.map(r => ({ id: r.id, name: r.name, rawName: r.name, mimeType: 'application/vnd.google-apps.folder', isFolder: true, isVideo: false, isPdf: false, webViewLink: `https://drive.google.com/drive/folders/${r.id}`, previewUrl: `https://drive.google.com/drive/folders/${r.id}` }))];
+}
 app.get('/api/drive/clear-cache', (req, res) => {
   const size = driveCache.size;
   driveCache.clear();
@@ -471,7 +480,7 @@ app.get('/api/drive/list', async (req, res) => {
   if (!forceRefresh) {
     const cached = driveCache.get(folderId);
     if (cached && (now - cached.timestamp < DRIVE_CACHE_TTL)) {
-      return res.json({ files: cached.files, cached: true });
+      return res.json({ files: comPastasExtras(folderId, cached.files), cached: true });
     }
   }
 
@@ -524,7 +533,7 @@ app.get('/api/drive/list', async (req, res) => {
       });
 
       driveCache.set(folderId, { timestamp: now, files: processed });
-      return res.json({ files: processed, cached: false, total: processed.length });
+      return res.json({ files: comPastasExtras(folderId, processed), cached: false, total: processed.length });
     } catch (err) {
       console.warn(`[Drive] Falha ao consultar Google Drive API para pasta ${folderId} (${err.message}), recorrendo ao snapshot local...`);
     }
@@ -534,7 +543,7 @@ app.get('/api/drive/list', async (req, res) => {
   const snapshotFiles = getFilesFromSnapshot(folderId);
   if (snapshotFiles && snapshotFiles.length > 0) {
     driveCache.set(folderId, { timestamp: now, files: snapshotFiles });
-    return res.json({ files: snapshotFiles, cached: true, fromSnapshot: true, total: snapshotFiles.length });
+    return res.json({ files: comPastasExtras(folderId, snapshotFiles), cached: true, fromSnapshot: true, total: snapshotFiles.length });
   }
 
   // Se não foi encontrado no snapshot e a chave não estava ativa
@@ -3247,8 +3256,14 @@ app.get('/acervo-manifest.json', (req, res, next) => {
     if (!verifyToken(tk)) return res.status(401).json({ error: 'Faça login.' });
   }
   res.setHeader('Cache-Control', 'private, no-cache');
-  next();
+  try { return res.json(juntarExtras(JSON.parse(fs.readFileSync(path.join(__dirname, 'acervo-manifest.json'), 'utf8')))); } catch (_) { next(); }
 });
+// Varredura das pastas extras do Drive (em segundo plano; refaz a cada 6h)
+async function rodarExtras() { try { const r = await varrerExtras(); if (r) { resetCatalogo(); console.log(`📂 [Extras] ${r.videos} vídeos e ${r.materials} materiais das pastas extras.`); } } catch (e) { console.warn('⚠️ [Extras]', e.message); } }
+setTimeout(rodarExtras, 25000);
+setInterval(rodarExtras, 6 * 3600 * 1000);
+app.get('/api/acervo/extra-status', (req, res) => res.json({ success: true, ids: EXTRA_IDS(), ...EXTRA_STATUS }));
+app.post('/api/acervo/extra-scan', (req, res) => { rodarExtras(); res.json({ success: true, started: !EXTRA_STATUS.running }); });
 // Serve static assets from root directory
 app.use(express.static(__dirname, {
   dotfiles: 'deny',
