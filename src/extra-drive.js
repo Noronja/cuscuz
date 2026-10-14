@@ -10,7 +10,8 @@ const API = (process.env.DRIVE_API_BASE || 'https://www.googleapis.com').replace
 const VIDEO = /\.(mp4|webm|mkv|mov|avi|m4v|wmv|flv|mpg|mpeg|3gp)$/i, DOC = /\.(pdf|docx?|pptx?|xlsx?|txt)$/i;
 const limpa = n => String(n || '').replace(/(\.(mp4|webm|mkv|mov|avi|pdf|docx?|pptx?|xlsx?|txt))+$/gi, '').trim();
 
-export const ROOT_PADRAO = '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7';
+// ID padrão removido - deve vir da variável de ambiente GOOGLE_DRIVE_FOLDER_ID
+export const ROOT_PADRAO = '';
 const idDe = x => (String(x || '').match(/[-\w]{25,}/) || [''])[0];
 export const MAIN_ID = () => idDe(process.env.GOOGLE_DRIVE_FOLDER_ID) || ROOT_PADRAO;
 /* Se a pasta principal (GOOGLE_DRIVE_FOLDER_ID) não for a antiga, a lista inteira é gerada ao vivo a partir dela; senão vale o catálogo fixo + extras */

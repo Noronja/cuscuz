@@ -188,7 +188,7 @@ export function registerApostilaReader(app) {
   
   // Endpoint para listar apostilas (arquivos HTML) em uma pasta
   app.get('/api/apostila/list', async (req, res) => {
-    const folderId = cleanDriveId(req.query.folderId) || process.env.GOOGLE_DRIVE_FOLDER_ID || '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7';
+    const folderId = cleanDriveId(req.query.folderId) || process.env.GOOGLE_DRIVE_FOLDER_ID || '';
     
     try {
       const q = encodeURIComponent(`'${folderId}' in parents and trashed=false and (mimeType='text/html' or name contains '.html' or name contains '.htm')`);

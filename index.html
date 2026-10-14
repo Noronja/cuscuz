@@ -4384,10 +4384,9 @@ function renderPrep(){
  ||'<div style="font-size:12px;color:var(--text-muted)">Nada aqui ainda.</div>'}
 
 /* ═══ ACERVO E INTEGRAÇÃO GOOGLE DRIVE (TAL QUAL ESTÁ NO DRIVE) ═══ */
-const HARDCODED_DRIVE_CONFIG = {
-  folderId: '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7'
-};
-const DRIVE_ROOT_ID = HARDCODED_DRIVE_CONFIG.folderId;
+// Folder ID vem da variável de ambiente GOOGLE_DRIVE_FOLDER_ID no servidor
+// Se não configurado, o Drive não carrega até ser definido
+const DRIVE_ROOT_ID = '';
 let currentDriveFolderId = DRIVE_ROOT_ID;
 let currentDrivePath = [{ id: DRIVE_ROOT_ID, name: 'Cursos' }];
 let currentFolderItems = { folders: [], videos: [], pdfs: [], apostilas: [], other: [] };

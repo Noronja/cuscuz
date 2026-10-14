@@ -280,7 +280,7 @@ const DRIVE_API_KEY = (process.env.GOOGLE_DRIVE_API_KEY || '').trim();
 // Acesso ao Drive: conta de serviço (pasta privada) ou chave de API (pasta com link público)
 const DRIVE_OK = !!DRIVE_API_KEY || temConta();
 if (!DRIVE_OK) console.warn('⚠️ Nem GOOGLE_SERVICE_ACCOUNT_JSON nem GOOGLE_DRIVE_API_KEY definidas: o acervo do Drive não vai carregar.');
-const DRIVE_ROOT_FOLDER_ID = cleanDriveId(process.env.GOOGLE_DRIVE_FOLDER_ID || '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7');
+const DRIVE_ROOT_FOLDER_ID = cleanDriveId(process.env.GOOGLE_DRIVE_FOLDER_ID || '');
 
 // Persistent disk cache for Drive folder listings
 const DRIVE_CACHE_DIR = path.join(__dirname, 'data');
@@ -3246,15 +3246,12 @@ app.use((req, res, next) => {
   next();
 });
 let _manifCache = null;
-// A página principal usa a pasta raiz configurada no Render (GOOGLE_DRIVE_FOLDER_ID), não a antiga fixa no código
+// A página principal usa a pasta raiz configurada no Render (GOOGLE_DRIVE_FOLDER_ID)
 let _indexRaiz = null;
 app.get(['/', '/index.html'], (req, res, next) => {
-  const raiz = DRIVE_ROOT_FOLDER_ID, antiga = '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7';
-  if (raiz === antiga) return next();
+  const raiz = DRIVE_ROOT_FOLDER_ID;
+  if (!raiz) return next();
   try {
-    if (!_indexRaiz) _indexRaiz = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').split(antiga).join(raiz);
-    res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.setHeader('Cache-Control', 'no-cache');
-    return res.send(_indexRaiz);
   } catch (_) { next(); }
 });
 // Catálogo de aulas (traz os IDs do Drive): só com login

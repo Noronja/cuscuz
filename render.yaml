@@ -37,7 +37,7 @@ services:
       - key: GOOGLE_DRIVE_API_KEY
         sync: false
       - key: GOOGLE_DRIVE_FOLDER_ID
-        value: "1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7"
+        sync: false
       # Opcionais (deixe em branco se não usar; o app funciona sem elas, com recursos reduzidos)
       - key: GEMINI_API_KEY
         sync: false
