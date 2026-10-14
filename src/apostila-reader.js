@@ -1,9 +1,42 @@
 // Apostila Reader — busca HTML do Drive e serve sanitizado para o leitor
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { driveFetch, cleanDriveId } from './drive-auth.js';
 
-const CACHE_TTL = 30 * 60 * 1000; // 30 min
-const htmlCache = new Map();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CACHE_DIR = path.join(__dirname, '..', 'data');
+const CACHE_FILE = path.join(CACHE_DIR, 'apostila-cache.json');
+
+let htmlCache = new Map();
+try {
+  if (fs.existsSync(CACHE_FILE)) {
+    const raw = fs.readFileSync(CACHE_FILE, 'utf8');
+    const obj = JSON.parse(raw);
+    for (const [k, v] of Object.entries(obj)) {
+      htmlCache.set(k, v);
+    }
+    console.log(`📂 Cache permanente de apostilas carregado (${htmlCache.size} itens).`);
+  }
+} catch (e) {
+  console.warn('⚠️ Falha ao carregar cache de apostilas:', e.message);
+}
+
+function saveHtmlCacheToDisk() {
+  try {
+    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+    const obj = {};
+    for (const [k, v] of htmlCache.entries()) {
+      obj[k] = v;
+    }
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(obj), 'utf8');
+  } catch (e) {
+    console.warn('⚠️ Falha ao salvar cache de apostilas no disco:', e.message);
+  }
+}
+
+const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 dias (permanente na prática)
 
 // URLs dos CSSs mestres do MedReader (S3)
 const CSS_MESTRE_URLS = [
@@ -95,14 +128,11 @@ export async function getApostilaHtml(fileId) {
     try {
       const resp = await driveFetch(url, { signal: AbortSignal.timeout(15000) });
       if (resp.ok) {
-        const ct = resp.headers.get('content-type') || '';
         const text = await resp.text();
-        if (!ct.includes('text/html') && !text.trim().startsWith('<!DOCTYPE') && !text.trim().startsWith('<html')) {
-          // Pode ser um Google Doc exportado como HTML - tenta export
-          continue;
+        if (text && text.length > 50) {
+          html = text;
+          break;
         }
-        html = text;
-        break;
       }
       lastErr = new Error(`HTTP ${resp.status}`);
     } catch (err) {
@@ -122,6 +152,7 @@ export async function getApostilaHtml(fileId) {
   
   // Cache
   htmlCache.set(id, { timestamp: now, data: processed });
+  saveHtmlCacheToDisk();
   
   return processed;
 }

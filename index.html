@@ -2400,6 +2400,10 @@ mark.exam-highlight {
 
       <div class="drive-nav-bar">
         <div class="drive-breadcrumbs" id="drive-breadcrumbs"></div>
+        <div id="drive-sync-status" style="display:flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--text-muted);height:22px">
+          <span id="drive-sync-dot" style="width:8px;height:8px;border-radius:50%;background:var(--border-muted)"></span>
+          <span id="drive-sync-text">Aguardando</span>
+        </div>
       </div>
 
       <div id="drive-loading-state" style="display:none;padding:50px 20px;text-align:center">
@@ -4425,6 +4429,24 @@ async function fetchDriveFolderItems(folderId, forceRefresh = false) {
     throw new Error('Não consegui falar com o servidor. Ele pode estar acordando (leva até 1 min) — tente de novo.');
   }
 }
+}
+
+// Drive Sync Status UI
+function updateDriveSyncStatus(success, errorMsg = '') {
+  const dot = $('drive-sync-dot');
+  const text = $('drive-sync-text');
+  if (!dot || !text) return;
+  if (success) {
+    dot.style.background = 'var(--green)';
+    text.textContent = 'Sincronizado ✓';
+    text.style.color = 'var(--green)';
+  } else {
+    dot.style.background = 'var(--rose)';
+    text.textContent = 'Erro de sync';
+    text.style.color = 'var(--rose)';
+    if (errorMsg) text.title = errorMsg;
+  }
+}
 
 async function loadDriveFolder(folderId, folderName, addToHistory = true, forceRefresh = false) {
   currentDriveFolderId = folderId;
@@ -4459,6 +4481,11 @@ async function loadDriveFolder(folderId, folderName, addToHistory = true, forceR
 
   try {
     let items = null;
+    updateDriveSyncStatus(false, 'Sincronizando...');
+    const syncDot = $('drive-sync-dot');
+    const syncText = $('drive-sync-text');
+    if (syncDot) syncDot.style.background = 'var(--amber)';
+    if (syncText) { syncText.textContent = 'Sincronizando...'; syncText.style.color = 'var(--amber)'; }
 
     // 1. Tenta carregar do backend (rede)
     try {
@@ -4526,7 +4553,9 @@ async function loadDriveFolder(folderId, folderName, addToHistory = true, forceR
     }
 
     renderDriveCurrentItems(items);
+    updateDriveSyncStatus(true);
   } catch (err) {
+    updateDriveSyncStatus(false, err.message);
     console.error('Error loading drive folder:', err);
     toast('Aviso: ' + err.message, 'warning');
     const allPinned = await getAllPinnedPdfsFromIDB();
@@ -4825,7 +4854,7 @@ function openDriveItemById(fileId) {
   }
 
   const isVideo = item.isVideo || /video|mp4|webm|mkv|mov/i.test(item.mimeType || '');
-  const isHtml = (item.mimeType && item.mimeType.includes('html')) || 
+  const isHtml = item.isHtml || (item.mimeType && item.mimeType.includes('html')) || 
                  (item.name && /\.(html?|htm)(\?.*)?$/i.test(item.name)) || 
                  (item.rawName && /\.(html?|htm)(\?.*)?$/i.test(item.rawName));
   if (isHtml && item.id) {

@@ -332,7 +332,36 @@ const DRIVE_API_KEY = (process.env.GOOGLE_DRIVE_API_KEY || '').trim();
 const DRIVE_OK = !!DRIVE_API_KEY || temConta();
 if (!DRIVE_OK) console.warn('⚠️ Nem GOOGLE_SERVICE_ACCOUNT_JSON nem GOOGLE_DRIVE_API_KEY definidas: o acervo do Drive não vai carregar.');
 const DRIVE_ROOT_FOLDER_ID = cleanDriveId(process.env.GOOGLE_DRIVE_FOLDER_ID || '1pVd7V_pfyM4Vw20yfw45jBmNFqtKTHK7');
-const driveCache = new Map();
+
+// Persistent disk cache for Drive folder listings
+const DRIVE_CACHE_DIR = path.join(__dirname, 'data');
+const DRIVE_CACHE_FILE = path.join(DRIVE_CACHE_DIR, 'drive-folder-cache.json');
+let driveCache = new Map();
+try {
+  if (fs.existsSync(DRIVE_CACHE_FILE)) {
+    const raw = fs.readFileSync(DRIVE_CACHE_FILE, 'utf8');
+    const obj = JSON.parse(raw);
+    for (const [k, v] of Object.entries(obj)) {
+      driveCache.set(k, v);
+    }
+    console.log(`📂 Cache permanente de pastas do Drive carregado (${driveCache.size} pastas).`);
+  }
+} catch (e) {
+  console.warn('⚠️ Falha ao carregar cache de pastas do Drive:', e.message);
+}
+
+function saveDriveCacheToDisk() {
+  try {
+    if (!fs.existsSync(DRIVE_CACHE_DIR)) fs.mkdirSync(DRIVE_CACHE_DIR, { recursive: true });
+    const obj = {};
+    for (const [k, v] of driveCache.entries()) {
+      obj[k] = v;
+    }
+    fs.writeFileSync(DRIVE_CACHE_FILE, JSON.stringify(obj), 'utf8');
+  } catch (e) {
+    console.warn('⚠️ Falha ao salvar cache de pastas do Drive no disco:', e.message);
+  }
+}
 
 /* Diagnóstico da chave do Drive: traduz o erro do Google em uma dica clara (sem expor segredos) */
 const driveStatus = { configured: DRIVE_OK, ok: null, status: null, reason: null, hint: null, checkedAt: null };
@@ -528,6 +557,7 @@ app.get('/api/drive/list', async (req, res) => {
       });
 
       driveCache.set(folderId, { timestamp: now, files: processed });
+      saveDriveCacheToDisk();
       return res.json({ files: comPastasExtras(folderId, processed), cached: false, total: processed.length });
     } catch (err) {
       console.warn(`[Drive] Falha ao consultar Google Drive API para pasta ${folderId} (${err.message}), recorrendo ao snapshot local...`);
@@ -538,6 +568,7 @@ app.get('/api/drive/list', async (req, res) => {
   const snapshotFiles = getFilesFromSnapshot(folderId);
   if (snapshotFiles && snapshotFiles.length > 0) {
     driveCache.set(folderId, { timestamp: now, files: snapshotFiles });
+    saveDriveCacheToDisk();
     return res.json({ files: comPastasExtras(folderId, snapshotFiles), cached: true, fromSnapshot: true, total: snapshotFiles.length });
   }
 
