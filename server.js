@@ -1190,6 +1190,26 @@ function readQuestionsBank() {
   return (_bankCache = []);
 }
 
+// Carregamento assíncrono não-bloqueante do banco (chamado no startup)
+async function preloadQuestionsBank() {
+  try {
+    const lerPlain = async () => fs.existsSync(QUESTIONS_BANK_FILE) ? JSON.parse(await fs.promises.readFile(QUESTIONS_BANK_FILE, 'utf8')) : [];
+    const lerGz = async () => fs.existsSync(QUESTIONS_BANK_GZ) ? JSON.parse(zlib.gunzipSync(await fs.promises.readFile(QUESTIONS_BANK_GZ)).toString('utf8')) : [];
+    const [a, b] = await Promise.all([lerPlain().catch(() => []), lerGz().catch(() => [])]);
+    const data = b.length > a.length ? b : a;
+    if (Array.isArray(data) && data.length) {
+      _bankCache = data;
+      _bankBase = data.length;
+      console.log(`📚 Banco de questões pré-carregado: ${data.length} questões`);
+    }
+  } catch (err) {
+    console.warn('Pré-carregamento do banco falhou (carregará sob demanda):', err.message);
+  }
+}
+
+// Inicia pré-carregamento em background (não bloqueia o servidor)
+preloadQuestionsBank();
+
 // Escrita: atualiza a memória na hora e grava o arquivo (compacto) em segundo plano, sem bloquear o servidor
 function flushQuestionsBank() {
   try {
