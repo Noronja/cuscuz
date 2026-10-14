@@ -1755,7 +1755,7 @@ mark.exam-highlight {
 <!-- YouTube Audio Player (invisível) -->
 <div id="yt-player-container" style="display:none"></div>
 
-<!-- ═══ LOGIN LIQUID GLASS ═══ -->
+<!-- ═══ LOGIN / SIGN UP LIQUID GLASS ═══ -->
 <div id="login-screen" style="position:fixed;inset:0;z-index:100;background:var(--bg-void);display:flex;align-items:center;justify-content:center;padding:20px">
   <div style="width:100%;max-width:380px;text-align:center;position:relative;z-index:2">
     <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:12px">
@@ -1764,17 +1764,47 @@ mark.exam-highlight {
     </div>
     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:28px;letter-spacing:0.02em">Planejador + Acervo Médico · <span style="color:var(--teal)">Liquid Glass UI</span> ☁️</div>
     <div class="iridescent-border" style="background:var(--bg-surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--border-default);border-radius:24px;padding:32px 28px;box-shadow:var(--shadow-glass-lg)">
-      <div style="margin-bottom:18px;text-align:left">
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;font-family:var(--font-mono)">Usuário</label>
-        <input id="login-user" placeholder="seu usuário" style="width:100%;padding:11px 14px;font-size:14px" autocomplete="username">
+      <!-- Login Form -->
+      <div id="login-form">
+        <div style="margin-bottom:18px;text-align:left">
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;font-family:var(--font-mono)">Usuário</label>
+          <input id="login-user" placeholder="seu usuário" style="width:100%;padding:11px 14px;font-size:14px" autocomplete="username">
+        </div>
+        <div style="margin-bottom:22px;text-align:left">
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;font-family:var(--font-mono)">Senha</label>
+          <input id="login-pass" type="password" placeholder="sua senha" style="width:100%;padding:11px 14px;font-size:14px" autocomplete="current-password" onkeypress="if(event.key==='Enter')doLogin()">
+        </div>
+        <div id="login-error" style="color:var(--rose);font-size:12px;margin-bottom:14px;display:none;background:var(--rose-dim);padding:8px 12px;border-radius:8px;border:1px solid var(--rose-border)">Usuário ou senha incorretos</div>
+        <button onclick="doLogin()" class="btn-primary glass-shimmer" style="width:100%;padding:12px;border-radius:var(--radius-md);font-size:14px;font-weight:700">Acessar Plataforma</button>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:14px;line-height:1.5">
+          Não tem conta? <button type="button" onclick="showSignupForm()" style="background:none;border:none;color:var(--teal);font-weight:700;padding:0;margin:0">Criar conta grátis</button>
+        </div>
       </div>
-      <div style="margin-bottom:22px;text-align:left">
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;font-family:var(--font-mono)">Senha</label>
-        <input id="login-pass" type="password" placeholder="sua senha" style="width:100%;padding:11px 14px;font-size:14px" autocomplete="current-password" onkeypress="if(event.key==='Enter')doLogin()">
+      
+      <!-- Sign Up Form (hidden by default) -->
+      <div id="signup-form" style="display:none">
+        <div style="margin-bottom:18px;text-align:left">
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;font-family:var(--font-mono)">Nome de Usuário</label>
+          <input id="signup-user" placeholder="min. 3 caracteres (letras, números, _ -)" style="width:100%;padding:11px 14px;font-size:14px" autocomplete="username">
+        </div>
+        <div style="margin-bottom:18px;text-align:left">
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;font-family:var(--font-mono)">Nome para Exibição</label>
+          <input id="signup-display" placeholder="Como você quer ser chamado" style="width:100%;padding:11px 14px;font-size:14px" autocomplete="name">
+        </div>
+        <div style="margin-bottom:18px;text-align:left">
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;font-family:var(--font-mono)">Senha</label>
+          <input id="signup-pass" type="password" placeholder="mínimo 6 caracteres" style="width:100%;padding:11px 14px;font-size:14px" autocomplete="new-password" onkeypress="if(event.key==='Enter')doSignup()">
+        </div>
+        <div style="margin-bottom:22px;text-align:left">
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px;font-family:var(--font-mono)">Confirmar Senha</label>
+          <input id="signup-pass-confirm" type="password" placeholder="repita a senha" style="width:100%;padding:11px 14px;font-size:14px" autocomplete="new-password" onkeypress="if(event.key==='Enter')doSignup()">
+        </div>
+        <div id="signup-error" style="color:var(--rose);font-size:12px;margin-bottom:14px;display:none;background:var(--rose-dim);padding:8px 12px;border-radius:8px;border:1px solid var(--rose-border)"></div>
+        <button onclick="doSignup()" class="btn-primary glass-shimmer" style="width:100%;padding:12px;border-radius:var(--radius-md);font-size:14px;font-weight:700">Criar Conta</button>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:14px;line-height:1.5">
+          Já tem conta? <button type="button" onclick="showLoginForm()" style="background:none;border:none;color:var(--teal);font-weight:700;padding:0;margin:0">Entrar</button>
+        </div>
       </div>
-      <div id="login-error" style="color:var(--rose);font-size:12px;margin-bottom:14px;display:none;background:var(--rose-dim);padding:8px 12px;border-radius:8px;border:1px solid var(--rose-border)">Usuário ou senha incorretos</div>
-      <button onclick="doLogin()" class="btn-primary glass-shimmer" style="width:100%;padding:12px;border-radius:var(--radius-md);font-size:14px;font-weight:700">Acessar Plataforma</button>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:14px;line-height:1.5">Primeiro acesso? A conta é criada automaticamente e o progresso sincroniza na nuvem.</div>
     </div>
   </div>
 </div>
@@ -3985,17 +4015,48 @@ const hsh=s=>{let x=5381;for(const c of s)x=(x*33+c.charCodeAt(0))>>>0;return x.
 function setDot(st){const d=$('cloud-dot');if(d)d.style.background=st==='ok'?'var(--green)':st==='off'?'var(--text-disabled)':'var(--amber)'}
 
 async function doLogin(){const u=cleanStr($('login-user').value.trim()),p=$('login-pass').value;
- const err=$('login-error');
- if(!u||!p){err.textContent='Informe usuário e senha';err.style.display='block';return}
- try{
-  const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});
-  const d=await r.json().catch(()=>({}));
-  if(!r.ok||!d.token){err.textContent=d.msg||'Usuário ou senha incorretos';err.style.display='block';return}
-  localStorage.setItem('cuscuz_token',d.token);
- }catch(e){err.textContent='Servidor indisponível. Tente de novo em instantes.';err.style.display='block';return}
- SYNC_USER=u;localStorage.setItem('medplan_logged','1');localStorage.setItem('medplan_user',u);
- err.style.display='none';startApp();
- try{loadDriveFolder(DRIVE_ROOT_ID,'Cursos',false);loadQuestionsBankFromAPI(true);if(typeof fetchRadarMedico==='function')fetchRadarMedico()}catch(_){}}
+  const err=$('login-error');
+  if(!u||!p){err.textContent='Informe usuário e senha';err.style.display='block';return}
+  try{
+    const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.token){err.textContent=d.msg||'Usuário ou senha incorretos';err.style.display='block';return}
+    localStorage.setItem('cuscuz_token',d.token);
+  }catch(e){err.textContent='Servidor indisponível. Tente de novo em instantes.';err.style.display='block';return}
+  SYNC_USER=u;localStorage.setItem('medplan_logged','1');localStorage.setItem('medplan_user',u);
+  err.style.display='none';startApp();
+  try{loadDriveFolder(DRIVE_ROOT_ID,'Cursos',false);loadQuestionsBankFromAPI(true);if(typeof fetchRadarMedico==='function')fetchRadarMedico()}catch(_){}}
+function showSignupForm(){
+  $('login-form').style.display='none';
+  $('signup-form').style.display='block';
+  $('signup-error').style.display='none';
+  $('signup-user').focus();
+}
+function showLoginForm(){
+  $('signup-form').style.display='none';
+  $('login-form').style.display='block';
+  $('login-error').style.display='none';
+  $('login-user').focus();
+}
+async function doSignup(){
+  const u=cleanStr($('signup-user').value.trim());
+  const d=$('signup-display').value.trim();
+  const p=$('signup-pass').value;
+  const pc=$('signup-pass-confirm').value;
+  const err=$('signup-error');
+  if(!u||u.length<3){err.textContent='Usuário deve ter pelo menos 3 caracteres';err.style.display='block';return}
+  if(!/^[a-z0-9_-]+$/.test(u)){err.textContent='Usuário: apenas letras, números, _ e -';err.style.display='block';return}
+  if(p.length<6){err.textContent='Senha deve ter pelo menos 6 caracteres';err.style.display='block';return}
+  if(p!==pc){err.textContent='Senhas não conferem';err.style.display='block';return}
+  try{
+    const r=await fetch('/api/auth/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p,displayName:d||u})});
+    const res=await r.json().catch(()=>({}));
+    if(!r.ok||!res.token){err.textContent=res.msg||'Erro ao criar conta';err.style.display='block';return}
+    localStorage.setItem('cuscuz_token',res.token);
+  }catch(e){err.textContent='Servidor indisponível. Tente de novo em instantes.';err.style.display='block';return}
+  SYNC_USER=u;localStorage.setItem('medplan_logged','1');localStorage.setItem('medplan_user',u);
+  err.style.display='none';startApp();
+  try{loadDriveFolder(DRIVE_ROOT_ID,'Cursos',false);loadQuestionsBankFromAPI(true);if(typeof fetchRadarMedico==='function')fetchRadarMedico()}catch(_){}}
 function logout(){if(confirm('Sair? Os dados continuam salvos neste dispositivo.')){localStorage.removeItem('medplan_logged');localStorage.removeItem('cuscuz_token');location.reload()}}
 function payload(){return{db:DB,done:[...DONE],fav:[...FAV],quiz:QUIZS,last:lsGet('acv_last',null),days:lsGet('acv_days',[]),sims:SIMS,decks:DECKS,wrong:[...WRONG],resumos:RESUMOS,fc:FCS,fcsrs:FCSRS,plv2:lsGet('planner-v2-plan',null)}}
 function pushCloud(){if(!CLOUD_ON||!SYNC_USER)return;setDot('sync');
