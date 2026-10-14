@@ -510,8 +510,8 @@ app.get('/api/drive/list', async (req, res) => {
         
         const isFolder = effectiveMime === 'application/vnd.google-apps.folder';
         const isVideo = /video|mp4|webm|mkv|mov/i.test(effectiveMime) || /\.(mp4|webm|mkv|mov)(\.(mp4|webm|mkv|mov))?$/i.test(f.name);
-        const isHtml = /html/i.test(effectiveMime) || /\.(html?|htm)$/i.test(f.name);
-        const isPdf = /pdf|document|presentation/i.test(effectiveMime) || /\.(pdf|doc|docx)$/i.test(f.name);
+        const isHtml = /html/i.test(effectiveMime) || /\.(html?|htm)$/i.test(f.name) || (f.name && f.name.toLowerCase().endsWith('.html')) || (f.name && f.name.toLowerCase().endsWith('.htm'));
+        const isPdf = !isHtml && (/pdf|document|presentation/i.test(effectiveMime) || /\.(pdf|doc|docx)$/i.test(f.name));
         const cleanName = isFolder ? f.name.trim() : f.name.replace(/(\.(mp4|webm|mkv|mov|pdf|doc|docx|html?|htm))+$/gi, "").trim();
         return {
           id: effectiveId,

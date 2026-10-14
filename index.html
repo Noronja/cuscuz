@@ -2425,6 +2425,12 @@ mark.exam-highlight {
         <div class="content-list" id="drive-pdfs-grid"></div>
       </div>
 
+      <!-- Apostilas HTML (Leitor MedReader) -->
+      <div id="drive-apostilas-section">
+        <div class="content-list-title" id="drive-apostilas-title" style="display:none"><i class="ph ph-book-open" style="font-size:16px;vertical-align:middle;color:var(--teal)"></i> Apostilas Interativas (HTML)</div>
+        <div class="content-list" id="drive-apostilas-grid"></div>
+      </div>
+
       <!-- Outros Arquivos -->
       <div id="drive-other-section">
         <div class="content-list-title" id="drive-other-title" style="display:none"><i class="ph ph-files" style="font-size:16px;vertical-align:middle"></i> Outros Arquivos</div>
@@ -4376,19 +4382,22 @@ function autoSyncDrive(){
 }
 
 function groupDriveFiles(files) {
-  const folders = [], videos = [], pdfs = [], other = [];
+  const folders = [], videos = [], pdfs = [], apostilas = [], other = [];
   (files || []).forEach(f => {
+    const isHtml = f.isHtml || /html/i.test(f.mimeType || '') || /\.(html?|htm)$/i.test(f.rawName || f.name || '');
     if (f.isFolder || f.mimeType === 'application/vnd.google-apps.folder') {
       folders.push(f);
     } else if (f.isVideo || /video|mp4|webm|mkv|mov/i.test(f.mimeType || '') || /\.(mp4|webm|mkv|mov)$/i.test(f.rawName || f.name || '')) {
       videos.push(f);
+    } else if (isHtml) {
+      apostilas.push(f);
     } else if (f.isPdf || /pdf|document|presentation/i.test(f.mimeType || '') || /\.(pdf|doc|docx)$/i.test(f.rawName || f.name || '')) {
       pdfs.push(f);
     } else {
       other.push(f);
     }
   });
-  return { folders, videos, pdfs, other };
+  return { folders, videos, pdfs, apostilas, other };
 }
 
 async function fetchDriveFolderItems(folderId, forceRefresh = false) {
@@ -4583,6 +4592,7 @@ function renderDriveCurrentItems(items, filterText = '') {
   const folders = (items.folders || []).filter(filterFn);
   const videos = (items.videos || []).filter(filterFn);
   const pdfs = (items.pdfs || []).filter(filterFn);
+  const apostilas = (items.apostilas || []).filter(filterFn);
 
   const foldersTitle = $('drive-folders-title');
   const foldersGrid = $('drive-folders-grid');
@@ -4590,6 +4600,8 @@ function renderDriveCurrentItems(items, filterText = '') {
   const videosGrid = $('drive-videos-grid');
   const pdfsTitle = $('drive-pdfs-title');
   const pdfsGrid = $('drive-pdfs-grid');
+  const apostilasTitle = $('drive-apostilas-title');
+  const apostilasGrid = $('drive-apostilas-grid');
   const emptyNotice = $('drive-empty-notice');
 
   // Render Folders / Courses
@@ -4675,6 +4687,32 @@ function renderDriveCurrentItems(items, filterText = '') {
     if (pdfsGrid) pdfsGrid.innerHTML = '';
   }
 
+  // Render Apostilas HTML (MedReader)
+  if (apostilas.length > 0) {
+    if (apostilasTitle) apostilasTitle.style.display = 'block';
+    if (apostilasGrid) {
+      apostilasGrid.innerHTML = apostilas.map(a => {
+        const k = 'drive:' + a.id;
+        const isDone = DONE.has(k);
+        const isFav = FAV.has(k);
+        return `
+          <div class="content-item${isDone ? ' watched' : ''}" onclick="openDriveItemById('${a.id}')">
+            <div class="content-info">
+              <span class="content-icon" style="color:var(--teal)"><i class="ph ph-book-open"></i></span>
+              <span class="content-title" title="${esc(a.name)}">${esc(a.name)}</span>
+              <span class="content-badge" style="background:var(--teal-dim);color:var(--teal);font-size:10px;padding:2px 8px;border-radius:var(--radius-full);margin-left:8px">Leitor MedReader</span>
+            </div>
+            <i class="ph ph-star fav-btn${isFav ? ' fav-on' : ''}" onclick="event.stopPropagation();toggleDriveFav('${a.id}')" title="Favoritar"></i>
+            <span class="check-icon"><i class="ph ph-check-bold"></i></span>
+          </div>
+        `;
+      }).join('');
+    }
+  } else {
+    if (apostilasTitle) apostilasTitle.style.display = 'none';
+    if (apostilasGrid) apostilasGrid.innerHTML = '';
+  }
+
   // Render Other Files if any
   const otherTitle = $('drive-other-title');
   const otherGrid = $('drive-other-grid');
@@ -4703,7 +4741,7 @@ function renderDriveCurrentItems(items, filterText = '') {
     if (otherGrid) otherGrid.innerHTML = '';
   }
 
-  const isEmpty = folders.length === 0 && videos.length === 0 && pdfs.length === 0 && other.length === 0;
+  const isEmpty = folders.length === 0 && videos.length === 0 && pdfs.length === 0 && apostilas.length === 0 && other.length === 0;
   if (emptyNotice) {
     emptyNotice.style.display = isEmpty ? 'block' : 'none';
     if (driveFilterPinnedOnly && isEmpty) {
@@ -4787,10 +4825,11 @@ function openDriveItemById(fileId) {
   }
 
   const isVideo = item.isVideo || /video|mp4|webm|mkv|mov/i.test(item.mimeType || '');
-    const isHtml = item.mimeType && item.mimeType.includes('text/html');
-  const isHtmlExt = item.name && /\.(html?|htm)(\?.*)?$/i.test(item.name);
-  if ((isHtml || isHtmlExt) && item.id) {
-    openApostilaReader(item.id, item.name);
+  const isHtml = (item.mimeType && item.mimeType.includes('html')) || 
+                 (item.name && /\.(html?|htm)(\?.*)?$/i.test(item.name)) || 
+                 (item.rawName && /\.(html?|htm)(\?.*)?$/i.test(item.rawName));
+  if (isHtml && item.id) {
+    openApostilaReader(item.id, item.name || item.rawName || 'Apostila');
     return;
   }
 const type = isVideo ? 'v' : 'a';
@@ -5100,7 +5139,9 @@ function saveResumo(){const t=cleanStr($('rs-title').value.trim()),c=cleanStr($(
 function delResumo(i){RESUMOS[CUR_MOD.id].splice(i,1);lsSet('acv_resumos',RESUMOS);saveCloud();renderAcervo()}
 function openItem(mid,type,idx){const m=MOD(mid);if(!m)return;const it=type==='v'?m.videos[idx]:m.apostilas[idx];if(!it)return;
   // Se for apostila HTML, abre no Leitor de Apostilas (MedReader)
-  const isHtml = (it.u && /\.(html?|htm)(\?.*)?$/i.test(it.u)) || (it.mimeType && it.mimeType.includes('text/html'));
+  const isHtml = (it.u && /\.(html?|htm)(\?.*)?$/i.test(it.u)) || 
+                 (it.rawName && /\.(html?|htm)(\?.*)?$/i.test(it.rawName)) || 
+                 (it.mimeType && it.mimeType.includes('html'));
   if (type === 'a' && isHtml && it.id) {
     openApostilaReader(it.id, it.t);
     return;
