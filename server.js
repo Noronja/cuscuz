@@ -16,7 +16,7 @@ import { registerPlanner } from './src/planner-routes.js';
 import { registerJarvis } from './src/jarvis.js';
 import { registerAula } from './src/aula.js';
 import { registerApostilaReader } from './src/apostila-reader.js';
-import { registerAuthRoutes, authMiddleware, getUserFilePath, getUserDataDir } from './src/auth-multiuser.js';
+import { registerAuthRoutes, authMiddleware, getUserFilePath, getUserDataDir, validateSession } from './src/auth-multiuser.js';
 import { varrerExtras, juntar as juntarExtras, lerExtra, STATUS as EXTRA_STATUS, EXTRA_IDS } from './src/extra-drive.js';
 import { resetCatalogo } from './src/planner-engine.js';
 import { temConta, emailConta, erroConta, driveFetch, authHeaders, cleanDriveId } from './src/drive-auth.js';
@@ -781,7 +781,7 @@ app.get('/api/health', (req, res) => {
     openaiConfigured: !!openai,
     supabaseConfigured: !!supabase,
     geminiConfigured: !!process.env.GEMINI_API_KEY,
-    authConfigured: !!APP_PASSWORD,
+    authConfigured: true, // multi-user auth active
     drive: driveStatus
   });
 });
@@ -3259,11 +3259,10 @@ app.get(['/', '/index.html'], (req, res, next) => {
 });
 // Catálogo de aulas (traz os IDs do Drive): só com login
 app.get('/acervo-manifest.json', (req, res, next) => {
-  if (APP_PASSWORD) {
-    const h = req.headers.authorization || '';
-    const tk = h.startsWith('Bearer ') ? h.slice(7) : String(req.query.t || '');
-    if (!verifyToken(tk)) return res.status(401).json({ error: 'Faça login.' });
-  }
+  const h = req.headers.authorization || '';
+  const tk = h.startsWith('Bearer ') ? h.slice(7) : String(req.query.t || '');
+  const session = validateSession(tk);
+  if (!session) return res.status(401).json({ error: 'Faça login.' });
   res.setHeader('Cache-Control', 'private, no-cache');
   try {
     const ex = lerExtra();

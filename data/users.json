@@ -1,0 +1,50 @@
+[
+  {
+    "username": "teste2026",
+    "displayName": "Teste",
+    "passwordHash": "599394771444203c85e94c08455bd419607e8d72c6bd418b400f3bbb751c527e5592d71a4114857eb6a23e36a23ac093575e091993d4d5e93a32e4ab84753249",
+    "passwordSalt": "4a9456fa47fed3b2304ae453673106f9",
+    "createdAt": 1792020664436,
+    "lastLoginAt": 1792020664496,
+    "settings": {
+      "theme": "dark",
+      "notifications": true
+    }
+  },
+  {
+    "username": "alexmed2026",
+    "displayName": "Alex Lima",
+    "passwordHash": "32eea3b5fad764f033024a78cd689b4589aab10c4802b7962e464d1a90b8c375bee2fe00958a036ce8f38a7b2e8c01783db6d6756b0cd6e1702b1c36215ede90",
+    "passwordSalt": "8a2af565926f79bcffdc358d7739cb6d",
+    "createdAt": 1792020845882,
+    "lastLoginAt": 1792020845934,
+    "settings": {
+      "theme": "dark",
+      "notifications": true
+    }
+  },
+  {
+    "username": "novousuario123",
+    "displayName": "Alex Lima",
+    "passwordHash": "e27b62de2d1afc32fed0e9cfaaece9f454fdc8efc6fd20dbbb105c228179a24a338427544cae20f2c27eb182b5a4595d16ce43a0544c3807afbbc264972b08fb",
+    "passwordSalt": "7a7b61b90806a5b891528d23bba11ac9",
+    "createdAt": 1792021018665,
+    "lastLoginAt": 1792021018714,
+    "settings": {
+      "theme": "dark",
+      "notifications": true
+    }
+  },
+  {
+    "username": "testefinal123",
+    "displayName": "Teste Final",
+    "passwordHash": "76fc47073ebeb2bc8b207d586c557c130791a4fd34a16453896362c9e5bb72ddb8f9bbbb6cd81ac550646f5a45efd81e3d2b493ac3f6d65e1cbba0522000cd63",
+    "passwordSalt": "53fff92e6d72e275314c6e99545b3489",
+    "createdAt": 1792021068818,
+    "lastLoginAt": 1792021068868,
+    "settings": {
+      "theme": "dark",
+      "notifications": true
+    }
+  }
+]

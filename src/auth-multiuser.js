@@ -129,16 +129,16 @@ function deleteSession(token) {
 
 // Middleware de autenticação para rotas /api/*
 function authMiddleware(req, res, next) {
-  // Rotas públicas
-  if (req.path === '/api/health' || 
-      req.path === '/api/auth/login' || 
-      req.path === '/api/auth/signup' ||
-      req.path === '/api/auth/check-username') {
+  // Rotas públicas (req.path é relativo ao mount point /api)
+  if (req.path === '/health' || 
+      req.path === '/auth/login' || 
+      req.path === '/auth/signup' ||
+      req.path === '/auth/check-username') {
     return next();
   }
 
-  // Rotas de mídia aceitam token na query string
-  if (/^\/api\/drive\/(stream|pdf)\//.test(req.path)) {
+  // Rotas de mídia aceitam token na query string (req.path é relativo a /api)
+  if (/^\/drive\/(stream|pdf)\//.test(req.path)) {
     const token = req.query.t;
     if (token) {
       const session = validateSession(token);
