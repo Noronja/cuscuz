@@ -737,6 +737,82 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);bo
 .modal-title{font-size:18px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;letter-spacing:-0.03em}
 .modal-close{width:32px;height:32px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;color:var(--text-muted);background:var(--bg-hover);border:1px solid var(--border-subtle);transition:all .15s}
 .modal-close:hover{background:var(--bg-active);color:var(--text-primary);transform:scale(1.06)}
+
+/* ═══ APOSTILA READER (MedReader Style - Liquid Glass) ═══ */
+.apostila-reader-overlay{position:fixed;inset:0;background:rgba(3,5,8,0.92);z-index:60;display:none;flex-direction:column;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.apostila-reader-overlay.open{display:flex}
+.apostila-reader{flex:1;display:flex;flex-direction:column;background:var(--bg-surface);border:1px solid var(--border-muted);width:100%;height:100%;max-width:100%;max-height:100%;border-radius:0;box-shadow:var(--shadow-glass-lg);overflow:hidden}
+.apostila-reader-header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--bg-base);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border-bottom:1px solid var(--border-subtle);flex-shrink:0;gap:16px;flex-wrap:wrap}
+.apostila-reader-title{font-size:15px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px;flex:1}
+.apostila-reader-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.apostila-reader-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius-md);border:1px solid var(--border-muted);background:var(--bg-elevated);color:var(--text-primary);font-size:12px;font-weight:600;cursor:pointer;transition:all .18s ease;backdrop-filter:blur(8px);white-space:nowrap}
+.apostila-reader-btn:hover{border-color:var(--teal-border);background:var(--bg-hover);color:var(--teal);transform:translateY(-1px)}
+.apostila-reader-btn.primary{background:linear-gradient(135deg,var(--teal),#0284c7);border-color:transparent;color:#fff;box-shadow:0 4px 14px var(--teal-glow)}
+.apostila-reader-btn.primary:hover{opacity:.95;box-shadow:0 0 24px var(--teal-glow);color:#fff}
+.apostila-reader-btn i{font-size:15px}
+.apostila-reader-close{width:36px;height:36px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;color:var(--text-muted);background:var(--bg-hover);border:1px solid var(--border-subtle);transition:all .15s}
+.apostila-reader-close:hover{background:var(--bg-active);color:var(--rose);border-color:var(--rose-border);transform:scale(1.06)}
+
+.apostila-reader-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px;background:var(--bg-elevated);border-bottom:1px solid var(--border-subtle);flex-shrink:0;flex-wrap:wrap}
+.apostila-toolbar-left,.apostila-toolbar-center,.apostila-toolbar-right{display:flex;align-items:center;gap:8px}
+.apostila-toolbar-center{margin:0 auto}
+.apostila-toolbar-right{margin-left:auto}
+.apostila-zoom-control{display:inline-flex;align-items:center;gap:6px;background:var(--bg-surface);border:1px solid var(--border-muted);border-radius:var(--radius-full);padding:4px 10px}
+.apostila-zoom-btn{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);background:transparent;border:0;cursor:pointer;transition:all .15s;font-size:14px}
+.apostila-zoom-btn:hover{background:var(--bg-hover);color:var(--teal)}
+.apostila-zoom-value{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--teal);min-width:42px;text-align:center}
+.apostila-theme-toggle{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-full);background:var(--bg-surface);border:1px solid var(--border-muted);font-size:11px;font-weight:600;color:var(--text-secondary);cursor:pointer;transition:all .18s}
+.apostila-theme-toggle:hover{border-color:var(--teal-border);color:var(--teal)}
+.apostila-theme-toggle.active{background:var(--teal-dim);border-color:var(--teal);color:var(--teal)}
+.apostila-progress-bar{position:relative;height:4px;background:var(--border-muted);flex:1;max-width:300px;border-radius:99px;overflow:hidden}
+.apostila-progress-fill{height:100%;background:linear-gradient(90deg,var(--teal),#38bdf8);border-radius:99px;transition:width .3s ease;box-shadow:0 0 8px var(--teal-glow);width:0%}
+
+.apostila-reader-content{flex:1;overflow:auto;position:relative;background:var(--bg-base)}
+.apostila-reader-frame{width:100%;height:100%;border:0;background:var(--bg-base);display:block}
+.apostila-reader-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--text-muted);font-size:14px;background:var(--bg-base);z-index:5}
+.apostila-reader-loading i{font-size:40px;color:var(--teal);animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.1)}}
+
+.apostila-reader-sidebar{position:fixed;top:0;right:0;height:100%;width:320px;max-width:90vw;background:var(--bg-surface);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border-left:1px solid var(--border-muted);box-shadow:var(--shadow-glass-lg);z-index:55;transform:translateX(100%);transition:transform .3s cubic-bezier(0.16,1,0.3,1);display:flex;flex-direction:column}
+.apostila-reader-sidebar.open{transform:translateX(0)}
+.apostila-sidebar-header{padding:16px 18px;border-bottom:1px solid var(--border-muted);background:var(--bg-base);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.apostila-sidebar-title{font-size:14px;font-weight:700;color:var(--text-primary)}
+.apostila-sidebar-close{width:32px;height:32px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;color:var(--text-muted);background:var(--bg-hover);border:1px solid var(--border-subtle);transition:all .15s}
+.apostila-sidebar-close:hover{background:var(--bg-active);color:var(--text-primary)}
+.apostila-sidebar-search{padding:12px 14px;border-bottom:1px solid var(--border-muted);position:relative}
+.apostila-sidebar-search input{width:100%;padding:10px 36px 10px 14px;border-radius:var(--radius-md);border:1px solid var(--border-muted);background:var(--bg-elevated);color:var(--text-primary);font-size:13px;outline:none}
+.apostila-sidebar-search input:focus{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-dim)}
+.apostila-sidebar-search i{position:absolute;right:28px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:16px;pointer-events:none}
+.apostila-sidebar-tree{flex:1;overflow-y:auto;padding:12px;scrollbar-width:thin}
+.apostila-sidebar-tree::-webkit-scrollbar{width:5px}
+.apostila-sidebar-tree::-webkit-scrollbar-thumb{background:var(--border-muted);border-radius:99px}
+.apostila-toc-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-md);cursor:pointer;transition:all .15s;font-size:13px;color:var(--text-secondary);border:1px solid transparent}
+.apostila-toc-item:hover{background:var(--bg-hover);color:var(--text-primary);border-color:var(--border-subtle)}
+.apostila-toc-item.active{background:var(--teal-dim);color:var(--teal);border-color:var(--teal-border);font-weight:600}
+.apostila-toc-item i{font-size:15px;color:var(--text-muted);flex-shrink:0}
+.apostila-toc-item.active i{color:var(--teal)}
+.apostila-toc-children{margin-left:20px;border-left:1px solid var(--border-subtle);padding-left:8px}
+.apostila-toc-toggle{width:24px;height:24px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);cursor:pointer;border-radius:var(--radius-sm);transition:all .15s}
+.apostila-toc-toggle:hover{background:var(--bg-hover);color:var(--teal)}
+.apostila-toc-toggle i{transition:transform .2s}
+.apostila-toc-toggle.open i{transform:rotate(90deg)}
+
+@media (max-width:1024px){
+  .apostila-reader-sidebar{width:280px}
+  .apostila-reader-title{max-width:200px;font-size:13px}
+  .apostila-toolbar-center{order:3;width:100%;justify-content:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-subtle)}
+  .apostila-progress-bar{max-width:180px}
+}
+@media (max-width:640px){
+  .apostila-reader-sidebar{width:100%}
+  .apostila-reader-header{padding:10px 14px}
+  .apostila-reader-toolbar{padding:6px 12px;gap:8px}
+  .apostila-reader-btn span{display:none}
+  .apostila-reader-btn{padding:8px 10px}
+  .apostila-zoom-control{padding:4px 8px}
+  .apostila-zoom-value{min-width:36px;font-size:11px}
+}
+
 .form-group{margin-bottom:15px}
 .form-label{display:block;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px;font-family:var(--font-mono)}
 .form-group input,.form-group select{width:100%}
@@ -2850,6 +2926,76 @@ mark.exam-highlight {
   </div>
 </aside>
 
+<!-- APOSTILA READER (MedReader Style - Liquid Glass Fullscreen) -->
+<div class="apostila-reader-overlay" id="apostila-reader-overlay">
+  <div class="apostila-reader" id="apostila-reader">
+    <!-- Header -->
+    <header class="apostila-reader-header">
+      <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+        <i class="ph ph-book-open" style="font-size:20px;color:var(--teal)"></i>
+        <h1 class="apostila-reader-title" id="apostila-reader-title">Carregando apostila...</h1>
+      </div>
+      <div class="apostila-reader-actions">
+        <button class="apostila-reader-btn" id="apostila-btn-toc" title="Sumário (T)" onclick="toggleApostilaSidebar()"><i class="ph ph-list"></i><span> Sumário</span></button>
+        <button class="apostila-reader-btn" id="apostila-btn-search" title="Buscar no texto (F)" onclick="openApostilaSearch()"><i class="ph ph-magnifying-glass"></i><span> Buscar</span></button>
+        <button class="apostila-reader-btn primary" id="apostila-btn-download" title="Baixar PDF" onclick="downloadApostilaPdf()"><i class="ph ph-download"></i><span> Baixar</span></button>
+        <button class="apostila-reader-close" onclick="closeApostilaReader()" title="Fechar leitor (Esc)"><i class="ph ph-x"></i></button>
+      </div>
+    </header>
+    
+    <!-- Toolbar -->
+    <div class="apostila-reader-toolbar">
+      <div class="apostila-toolbar-left">
+        <button class="apostila-reader-btn" onclick="apostilaNavigate(-1)" title="Anterior (←)"><i class="ph ph-caret-left"></i></button>
+        <button class="apostila-reader-btn" onclick="apostilaNavigate(1)" title="Próximo (→)"><i class="ph ph-caret-right"></i></button>
+        <div class="apostila-zoom-control">
+          <button class="apostila-zoom-btn" onclick="apostilaZoom(-0.1)" aria-label="Diminuir zoom"><i class="ph ph-minus"></i></button>
+          <span class="apostila-zoom-value" id="apostila-zoom-value">100%</span>
+          <button class="apostila-zoom-btn" onclick="apostilaZoom(0.1)" aria-label="Aumentar zoom"><i class="ph ph-plus"></i></button>
+        </div>
+      </div>
+      <div class="apostila-toolbar-center">
+        <div class="apostila-progress-bar" id="apostila-progress-bar" title="Progresso de leitura">
+          <div class="apostila-progress-fill" id="apostila-progress-fill"></div>
+        </div>
+        <span class="apostila-progress-text" id="apostila-progress-text" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);min-width:50px;text-align:right">0%</span>
+      </div>
+      <div class="apostila-toolbar-right">
+        <button class="apostila-theme-toggle" id="apostila-theme-toggle" onclick="toggleApostilaTheme()" title="Tema de leitura"><i class="ph ph-moon"></i><span>Escuro</span></button>
+        <button class="apostila-reader-btn" onclick="toggleApostilaFont()" title="Fonte"><i class="ph ph-type"></i></button>
+        <button class="apostila-reader-btn" onclick="printApostila()" title="Imprimir"><i class="ph ph-printer"></i></button>
+      </div>
+    </div>
+    
+    <!-- Content Area -->
+    <div class="apostila-reader-content" id="apostila-reader-content">
+      <div class="apostila-reader-loading" id="apostila-loading">
+        <i class="ph ph-book-open"></i>
+        <span>Carregando conteúdo da apostila...</span>
+      </div>
+      <iframe class="apostila-reader-frame" id="apostila-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock" style="display:none"></iframe>
+    </div>
+  </div>
+  
+  <!-- Sidebar (Sumário/TOC) -->
+  <aside class="apostila-reader-sidebar" id="apostila-sidebar">
+    <div class="apostila-sidebar-header">
+      <span class="apostila-sidebar-title"><i class="ph ph-list"></i> Sumário</span>
+      <button class="apostila-sidebar-close" onclick="toggleApostilaSidebar()"><i class="ph ph-x"></i></button>
+    </div>
+    <div class="apostila-sidebar-search">
+      <input type="text" id="apostila-search-input" placeholder="Buscar no sumário..." oninput="filterApostilaToc(this.value)">
+      <i class="ph ph-magnifying-glass"></i>
+    </div>
+    <div class="apostila-sidebar-tree" id="apostila-toc-tree">
+      <!-- TOC items serão inseridos aqui via JS -->
+    </div>
+  </aside>
+  
+  <!-- Sidebar Backdrop -->
+  <div class="apostila-sidebar-backdrop" id="apostila-sidebar-backdrop" onclick="toggleApostilaSidebar()"></div>
+</div>
+
 <script>
 /* ═══ HELPERS ═══ */
 const $=id=>document.getElementById(id),$$=s=>[...document.querySelectorAll(s)];
@@ -2872,7 +3018,460 @@ function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){toast
 function toast(msg,type=''){const t=document.createElement('div');t.className='toast '+type;t.innerHTML=msg;$('toasts').appendChild(t);setTimeout(()=>{t.style.transition='opacity .3s';t.style.opacity='0';setTimeout(()=>t.remove(),300)},2800)}
 function closeModals(){$$('.modal-overlay:not(#mobile-sidebar-backdrop)').forEach(o=>o.remove())}
 function openModal(html){const o=document.createElement('div');o.className='modal-overlay open';o.innerHTML='<div class="modal">'+html+'</div>';o.addEventListener('click',e=>{if(e.target===o||e.target.closest('.modal-close'))o.remove()});$('modal-container').appendChild(o);return o}
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModals();const p=$('player-overlay');if(p&&p.classList.contains('show'))closePlayer();if($('task-modal').classList.contains('show'))closeTaskModal()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModals();const p=$('player-overlay');if(p&&p.classList.contains('show'))closePlayer();if($('task-modal').classList.contains('show'))closeTaskModal();closeApostilaReader();closeApostilaSidebar()}});
+
+/* ═══ APOSTILA READER (MedReader Style) ═══ */
+let apostilaState = {
+  currentId: null,
+  currentName: null,
+  zoom: 1,
+  theme: 'dark', // 'dark' | 'light' | 'sepia'
+  font: 'system', // 'system' | 'serif' | 'mono'
+  toc: [],
+  history: [], // para navegação anterior/próximo
+  historyIndex: -1
+};
+
+function openApostilaReader(fileId, fileName) {
+  const overlay = $('apostila-reader-overlay');
+  const frame = $('apostila-frame');
+  const loading = $('apostila-loading');
+  const titleEl = $('apostila-reader-title');
+  
+  apostilaState.currentId = fileId;
+  apostilaState.currentName = fileName;
+  apostilaState.zoom = 1;
+  apostilaState.history = [fileId];
+  apostilaState.historyIndex = 0;
+  
+  titleEl.textContent = fileName || 'Apostila';
+  overlay.classList.add('open');
+  loading.style.display = 'flex';
+  frame.style.display = 'none';
+  
+  // Reset zoom UI
+  updateApostilaZoomUI();
+  
+  // Carrega o HTML processado do backend
+  fetch(`/api/apostila/html/${encodeURIComponent(fileId)}`, {
+    headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('cuscuz_token') || '') }
+  })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(html => {
+      // Injeta no iframe
+      frame.style.display = 'block';
+      loading.style.display = 'none';
+      
+      const doc = frame.contentDocument || frame.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
+      
+      // Aguarda carregar e extrai TOC
+      frame.onload = () => {
+        extractApostilaToc(frame);
+        applyApostilaTheme();
+        applyApostilaFont();
+        restoreApostilaProgress(fileId);
+        trackApostilaScroll(frame);
+      };
+    })
+    .catch(err => {
+      console.error('[Apostila Reader]', err);
+      loading.innerHTML = `<i class="ph ph-warning-circle" style="font-size:40px;color:var(--rose)"></i><span>Erro ao carregar: ${err.message}</span><button class="btn-primary" style="margin-top:16px" onclick="closeApostilaReader()">Fechar</button>`;
+    });
+  
+  // Previne scroll do body
+  document.body.style.overflow = 'hidden';
+}
+
+function closeApostilaReader() {
+  const overlay = $('apostila-reader-overlay');
+  const frame = $('apostila-frame');
+  overlay.classList.remove('open');
+  frame.src = 'about:blank';
+  apostilaState.currentId = null;
+  apostilaState.currentName = null;
+  apostilaState.toc = [];
+  closeApostilaSidebar();
+  document.body.style.overflow = '';
+}
+
+function toggleApostilaSidebar() {
+  const sidebar = $('apostila-sidebar');
+  const backdrop = $('apostila-sidebar-backdrop');
+  const isOpen = sidebar.classList.toggle('open');
+  backdrop.style.display = isOpen ? 'block' : 'none';
+}
+
+function closeApostilaSidebar() {
+  $('apostila-sidebar').classList.remove('open');
+  $('apostila-sidebar-backdrop').style.display = 'none';
+}
+
+function extractApostilaToc(frame) {
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const toc = [];
+    let currentLevel = 0;
+    let parents = [];
+    
+    headings.forEach((h, idx) => {
+      const level = parseInt(h.tagName[1]);
+      const id = `apostila-heading-${idx}`;
+      h.id = id;
+      h.setAttribute('data-apostila-heading', 'true');
+      
+      const item = {
+        id,
+        text: h.textContent.trim(),
+        level,
+        element: h
+      };
+      
+      // Build hierarchy
+      while (parents.length >= level) {
+        parents.pop();
+      }
+      if (parents.length > 0) {
+        const parent = parents[parents.length - 1];
+        parent.children = parent.children || [];
+        parent.children.push(item);
+      } else {
+        toc.push(item);
+      }
+      parents.push(item);
+    });
+    
+    apostilaState.toc = toc;
+    renderApostilaToc();
+  } catch (err) {
+    console.warn('[Apostila] Falha ao extrair TOC:', err);
+  }
+}
+
+function renderApostilaToc() {
+  const container = $('apostila-toc-tree');
+  if (!container) return;
+  
+  function renderItems(items, depth = 0) {
+    let html = '';
+    items.forEach(item => {
+      const hasChildren = item.children && item.children.length > 0;
+      const indent = depth * 16;
+      html += `
+        <div class="apostila-toc-item" style="padding-left:${8 + indent}px" data-heading-id="${item.id}" onclick="scrollToApostilaHeading('${item.id}')">
+          ${hasChildren ? `<button class="apostila-toc-toggle" onclick="event.stopPropagation();toggleTocItem(this)"><i class="ph ph-caret-right"></i></button>` : '<span style="width:24px"></span>'}
+          <i class="ph ph-${item.level <= 2 ? 'heading-' + item.level : 'text-t'}" style="font-size:${16 - depth}px"></i>
+          <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:${14 - depth * 0.5}px">${esc(item.text)}</span>
+        </div>
+        ${hasChildren ? `<div class="apostila-toc-children" style="display:none">${renderItems(item.children, depth + 1)}</div>` : ''}
+      `;
+    });
+    return html;
+  }
+  
+  container.innerHTML = renderItems(apostilaState.toc) || '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">Sem sumário detectado</div>';
+}
+
+function toggleTocItem(btn) {
+  const children = btn.closest('.apostila-toc-item').nextElementSibling;
+  const isOpen = btn.classList.toggle('open');
+  if (children && children.classList.contains('apostila-toc-children')) {
+    children.style.display = isOpen ? 'block' : 'none';
+  }
+}
+
+function scrollToApostilaHeading(headingId) {
+  const frame = $('apostila-frame');
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    const el = doc.getElementById(headingId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Atualiza active state
+      $$('.apostila-toc-item').forEach(i => i.classList.remove('active'));
+      const activeItem = $(`[data-heading-id="${headingId}"]`);
+      if (activeItem) activeItem.classList.add('active');
+      closeApostilaSidebar();
+    }
+  } catch (err) {
+    console.warn('[Apostila] Falha ao rolar para heading:', err);
+  }
+}
+
+function filterApostilaToc(query) {
+  const items = $$('.apostila-toc-item');
+  const q = query.toLowerCase().trim();
+  items.forEach(item => {
+    const text = item.textContent.toLowerCase();
+    const match = !q || text.includes(q);
+    item.style.display = match ? 'flex' : 'none';
+    // Se tem filhos, mostra o pai se algum filho match
+    const children = item.nextElementSibling;
+    if (children && children.classList.contains('apostila-toc-children')) {
+      const childItems = children.querySelectorAll('.apostila-toc-item');
+      const hasVisibleChild = Array.from(childItems).some(c => c.style.display !== 'none');
+      if (hasVisibleChild) {
+        item.style.display = 'flex';
+        children.style.display = 'block';
+        item.querySelector('.apostila-toc-toggle')?.classList.add('open');
+      }
+    }
+  });
+}
+
+function openApostilaSearch() {
+  const frame = $('apostila-frame');
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    if (doc && typeof doc.execCommand === 'function') {
+      // Tenta usar find nativo do browser
+      if (window.find) {
+        const term = prompt('Buscar no texto:');
+        if (term) {
+          let found = false;
+          for (let i = 0; i < 3; i++) {
+            if (window.find(term, false, false, true, false, false, false)) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) toast('Termo não encontrado', 'error');
+        }
+      } else {
+        // Fallback: injeta script de busca
+        const searchScript = `
+          (function() {
+            const term = prompt('Buscar no texto:');
+            if (!term) return;
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+            let found = false;
+            while (walker.nextNode()) {
+              const node = walker.currentNode;
+              if (node.textContent.toLowerCase().includes(term.toLowerCase())) {
+                const range = document.createRange();
+                range.selectNodeContents(node.parentElement);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                node.parentElement.scrollIntoView({behavior:'smooth', block:'center'});
+                node.parentElement.style.background = 'rgba(251,191,36,0.3)';
+                setTimeout(() => node.parentElement.style.background = '', 3000);
+                found = true;
+                break;
+              }
+            }
+            if (!found) alert('Termo não encontrado');
+          })();
+        `;
+        frame.contentWindow.eval(searchScript);
+      }
+    }
+  } catch (err) {
+    console.warn('[Apostila] Busca falhou:', err);
+    toast('Busca indisponível neste momento', 'error');
+  }
+}
+
+function apostilaNavigate(dir) {
+  // Navegação anterior/próximo - por enquanto usa histórico local
+  if (dir === -1 && apostilaState.historyIndex > 0) {
+    apostilaState.historyIndex--;
+    openApostilaReader(apostilaState.history[apostilaState.historyIndex], apostilaState.currentName);
+  } else if (dir === 1 && apostilaState.historyIndex < apostilaState.history.length - 1) {
+    apostilaState.historyIndex++;
+    openApostilaReader(apostilaState.history[apostilaState.historyIndex], apostilaState.currentName);
+  }
+}
+
+function apostilaZoom(delta) {
+  apostilaState.zoom = Math.max(0.5, Math.min(3, apostilaState.zoom + delta));
+  updateApostilaZoomUI();
+  applyApostilaZoom();
+}
+
+function updateApostilaZoomUI() {
+  const val = Math.round(apostilaState.zoom * 100) + '%';
+  $('apostila-zoom-value').textContent = val;
+}
+
+function applyApostilaZoom() {
+  const frame = $('apostila-frame');
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    if (doc.body) {
+      doc.body.style.zoom = apostilaState.zoom;
+      doc.body.style.transformOrigin = 'top center';
+    }
+  } catch (err) {
+    console.warn('[Apostila] Zoom falhou:', err);
+  }
+}
+
+function toggleApostilaTheme() {
+  const themes = ['dark', 'light', 'sepia'];
+  const currentIdx = themes.indexOf(apostilaState.theme);
+  apostilaState.theme = themes[(currentIdx + 1) % themes.length];
+  applyApostilaTheme();
+}
+
+function applyApostilaTheme() {
+  const frame = $('apostila-frame');
+  const btn = $('apostila-theme-toggle');
+  const theme = apostilaState.theme;
+  
+  const icons = { dark: 'ph-moon', light: 'ph-sun', sepia: 'ph-contrast' };
+  const labels = { dark: 'Escuro', light: 'Claro', sepia: 'Sépia' };
+  
+  btn.querySelector('i').className = `ph ${icons[theme]}`;
+  btn.querySelector('span').textContent = labels[theme];
+  btn.classList.toggle('active', theme !== 'dark');
+  
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    doc.documentElement.classList.remove('theme-dark', 'theme-light', 'theme-sepia');
+    doc.documentElement.classList.add('theme-' + theme);
+    
+    // CSS variables para o iframe
+    const style = doc.createElement('style');
+    style.id = 'apostila-theme-style';
+    const existing = doc.getElementById('apostila-theme-style');
+    if (existing) existing.remove();
+    
+    const themeCss = {
+      dark: `
+        .medreader-body { background: var(--bg-base) !important; color: var(--text-primary) !important; }
+        .medreader-html { background: var(--bg-void) !important; }
+      `,
+      light: `
+        .medreader-body { background: #fefefe !important; color: #1a1a2e !important; }
+        .medreader-html { background: #fafafa !important; }
+        .medreader-body * { color: inherit !important; }
+        .medreader-body img { filter: none !important; }
+      `,
+      sepia: `
+        .medreader-body { background: #fdf6e3 !important; color: #3c2e1e !important; }
+        .medreader-html { background: #fdf6e3 !important; }
+        .medreader-body * { color: inherit !important; }
+        .medreader-body img { filter: sepia(0.3) contrast(0.9) !important; }
+      `
+    };
+    
+    style.textContent = themeCss[theme];
+    doc.head.appendChild(style);
+  } catch (err) {
+    console.warn('[Apostila] Tema falhou:', err);
+  }
+}
+
+function toggleApostilaFont() {
+  const fonts = ['system', 'serif', 'mono'];
+  const currentIdx = fonts.indexOf(apostilaState.font);
+  apostilaState.font = fonts[(currentIdx + 1) % fonts.length];
+  applyApostilaFont();
+}
+
+function applyApostilaFont() {
+  const frame = $('apostila-frame');
+  const fontFamilies = {
+    system: 'var(--font-ui), system-ui, sans-serif',
+    serif: 'var(--font-serif), Georgia, serif',
+    mono: 'var(--font-mono), monospace'
+  };
+  
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    const style = doc.createElement('style');
+    style.id = 'apostila-font-style';
+    const existing = doc.getElementById('apostila-font-style');
+    if (existing) existing.remove();
+    
+    style.textContent = `
+      .medreader-body { font-family: ${fontFamilies[apostilaState.font]} !important; }
+      .medreader-body h1, .medreader-body h2, .medreader-body h3, 
+      .medreader-body h4, .medreader-body h5, .medreader-body h6 { 
+        font-family: ${fontFamilies[apostilaState.font]} !important; 
+      }
+    `;
+    doc.head.appendChild(style);
+  } catch (err) {
+    console.warn('[Apostila] Fonte falhou:', err);
+  }
+}
+
+function printApostila() {
+  const frame = $('apostila-frame');
+  try {
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+  } catch (err) {
+    toast('Erro ao imprimir', 'error');
+  }
+}
+
+function downloadApostilaPdf() {
+  if (!apostilaState.currentId) return;
+  // Usa o endpoint de PDF do Drive
+  const url = `/api/drive/pdf/${encodeURIComponent(apostilaState.currentId)}?t=${encodeURIComponent(localStorage.getItem('cuscuz_token') || '')}`;
+  window.open(url, '_blank');
+}
+
+function trackApostilaScroll(frame) {
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    const saveProgress = debounce(() => {
+      if (!apostilaState.currentId) return;
+      const scrollTop = doc.documentElement.scrollTop || doc.body.scrollTop;
+      const scrollHeight = doc.documentElement.scrollHeight - doc.documentElement.clientHeight;
+      const progress = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
+      
+      localStorage.setItem(`apostila_progress_${apostilaState.currentId}`, JSON.stringify({
+        progress,
+        scrollTop,
+        timestamp: Date.now()
+      }));
+      
+      updateApostilaProgressUI(progress);
+    }, 1000);
+    
+    doc.addEventListener('scroll', saveProgress, { passive: true });
+  } catch (err) {
+    console.warn('[Apostila] Scroll tracking falhou:', err);
+  }
+}
+
+function restoreApostilaProgress(fileId) {
+  try {
+    const saved = localStorage.getItem(`apostila_progress_${fileId}`);
+    if (saved) {
+      const { progress, scrollTop } = JSON.parse(saved);
+      const frame = $('apostila-frame');
+      const doc = frame.contentDocument || frame.contentWindow.document;
+      if (doc.body) {
+        // Aguarda renderizar
+        setTimeout(() => {
+          doc.documentElement.scrollTop = scrollTop;
+          doc.body.scrollTop = scrollTop;
+          updateApostilaProgressUI(progress);
+        }, 500);
+      }
+    }
+  } catch (err) {
+    console.warn('[Apostila] Restore progress falhou:', err);
+  }
+}
+
+function updateApostilaProgressUI(progress) {
+  const fill = $('apostila-progress-fill');
+  const text = $('apostila-progress-text');
+  if (fill) fill.style.width = (progress * 100).toFixed(1) + '%';
+  if (text) text.textContent = Math.round(progress * 100) + '%';
+}
 
 /* ═══ CONTEÚDO ═══ */
 const MODULES=[
@@ -4188,7 +4787,13 @@ function openDriveItemById(fileId) {
   }
 
   const isVideo = item.isVideo || /video|mp4|webm|mkv|mov/i.test(item.mimeType || '');
-  const type = isVideo ? 'v' : 'a';
+    const isHtml = item.mimeType && item.mimeType.includes('text/html');
+  const isHtmlExt = item.name && /\.(html?|htm)(\?.*)?$/i.test(item.name);
+  if ((isHtml || isHtmlExt) && item.id) {
+    openApostilaReader(item.id, item.name);
+    return;
+  }
+const type = isVideo ? 'v' : 'a';
   const u = '';
   const k = 'drive:' + item.id;
 
@@ -4494,30 +5099,13 @@ function saveResumo(){const t=cleanStr($('rs-title').value.trim()),c=cleanStr($(
  lsSet('acv_resumos',RESUMOS);saveCloud();closeModals();renderAcervo();addXP(3,'resumo arquivado');toast('Resumo salvo','success')}
 function delResumo(i){RESUMOS[CUR_MOD.id].splice(i,1);lsSet('acv_resumos',RESUMOS);saveCloud();renderAcervo()}
 function openItem(mid,type,idx){const m=MOD(mid);if(!m)return;const it=type==='v'?m.videos[idx]:m.apostilas[idx];if(!it)return;
- lsSet('acv_last',{m:mid,type,idx});renderHome();
- $('player-overlay').classList.add('show');$('player-title').textContent=it.t;
- const fr=$('player-frame'),vd=$('player-video');
- vd.oncanplay=vd.onerror=null;vd.pause();vd.removeAttribute('src');vd.load();
- vd.style.display='none';fr.style.display='';
- $('player-meta').textContent=m.n+(type==='v'?' · Videoaula':' · Material')+' ↗';
- $('player-meta').onclick=()=>window.open(it.y?'https://youtu.be/'+it.y:(it.u||'#'),'_blank');
- fr.onload=()=>showPLoading(false);
- if(type==='v'&&it.y){showPLoading(true);fr.src='https://www.youtube.com/embed/'+it.y}
- else if(type==='v'&&VIDEO_FILE_RE.test(it.u||'')){
-  fr.style.display='none';vd.style.display='block';showPLoading(true);
-  vd.oncanplay=()=>showPLoading(false);
-  vd.onerror=()=>{showPLoading(false);toast('Não foi possível carregar o vídeo','error')};
-  vd.src=it.u;vd.play().catch(()=>{});
- }else{
-  let u=String(it.u||'');const gd=u.match(/drive\.google\.com\/file\/d\/([^/?]+)/)||(it.id&&/^[A-Za-z0-9_-]{20,}$/.test(it.id)?[0,it.id]:null);
-  showPLoading(true);
-  if(gd)cuscuzTicket(gd[1],'p').then(tu=>{fr.src=tu}).catch(()=>showPLoading(false));
-  else fr.src=u;
- }
- $('mark-btn').innerHTML='<i class="ph ph-check-circle"></i> Marcar como concluído';
- $('mark-btn').onclick=()=>{const k=itemKey(it);
-  if(!DONE.has(k)){DONE.add(k);lsSet('acv_done',[...DONE]);addXP(2,type==='v'?'video assistido':'material lido');touchStreak();checkBadges()}
-  $('mark-btn').innerHTML='✅ Concluído';toast('Marcado como concluído','success')}}
+  // Se for apostila HTML, abre no Leitor de Apostilas (MedReader)
+  const isHtml = (it.u && /\.(html?|htm)(\?.*)?$/i.test(it.u)) || (it.mimeType && it.mimeType.includes('text/html'));
+  if (type === 'a' && isHtml && it.id) {
+    openApostilaReader(it.id, it.t);
+    return;
+  }
+}
 function closePlayer(){
  $('player-overlay').classList.remove('show');
  const fr=$('player-frame'),vd=$('player-video');

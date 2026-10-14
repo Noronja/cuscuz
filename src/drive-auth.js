@@ -46,3 +46,14 @@ export async function driveFetch(url, opts = {}) {
   const k = (process.env.GOOGLE_DRIVE_API_KEY || '').trim();
   return fetch(k && !/[?&]key=/.test(url) ? url + (url.includes('?') ? '&' : '?') + 'key=' + k : url, opts);
 }
+
+/* Helper para sanitizar IDs do Google Drive (remove parâmetros de URL como ?hl=pt-br, prefixos de path, etc.) */
+export function cleanDriveId(raw) {
+  if (!raw) return '';
+  let id = String(raw).trim();
+  if (id.includes('folders/')) id = id.split('folders/')[1];
+  if (id.includes('file/d/')) id = id.split('file/d/')[1];
+  if (id.includes('/')) id = id.split('/')[0];
+  if (id.includes('?')) id = id.split('?')[0];
+  return id.trim();
+}

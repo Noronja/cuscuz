@@ -15,9 +15,10 @@ import { plGerarPlanSinergia as plEngineGerarPlan } from './smart_scheduler.js';
 import { registerPlanner } from './src/planner-routes.js';
 import { registerJarvis } from './src/jarvis.js';
 import { registerAula } from './src/aula.js';
+import { registerApostilaReader } from './src/apostila-reader.js';
 import { varrerExtras, juntar as juntarExtras, lerExtra, STATUS as EXTRA_STATUS, EXTRA_IDS } from './src/extra-drive.js';
 import { resetCatalogo } from './src/planner-engine.js';
-import { temConta, emailConta, erroConta, driveFetch, authHeaders } from './src/drive-auth.js';
+import { temConta, emailConta, erroConta, driveFetch, authHeaders, cleanDriveId } from './src/drive-auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -325,17 +326,6 @@ function handleToolExecution(name, args) {
   return { status: 'executed' };
 }
 
-// Helper para sanitizar IDs do Google Drive (remove parâmetros de URL como ?hl=pt-br, prefixos de path, etc.)
-function cleanDriveId(raw) {
-  if (!raw) return '';
-  let id = String(raw).trim();
-  if (id.includes('folders/')) id = id.split('folders/')[1];
-  if (id.includes('file/d/')) id = id.split('file/d/')[1];
-  if (id.includes('/')) id = id.split('/')[0];
-  if (id.includes('?')) id = id.split('?')[0];
-  return id.trim();
-}
-
 // Google Drive Proxy & In-Memory Cache
 const DRIVE_API_KEY = (process.env.GOOGLE_DRIVE_API_KEY || '').trim();
 // Acesso ao Drive: conta de serviço (pasta privada) ou chave de API (pasta com link público)
@@ -520,8 +510,9 @@ app.get('/api/drive/list', async (req, res) => {
         
         const isFolder = effectiveMime === 'application/vnd.google-apps.folder';
         const isVideo = /video|mp4|webm|mkv|mov/i.test(effectiveMime) || /\.(mp4|webm|mkv|mov)(\.(mp4|webm|mkv|mov))?$/i.test(f.name);
+        const isHtml = /html/i.test(effectiveMime) || /\.(html?|htm)$/i.test(f.name);
         const isPdf = /pdf|document|presentation/i.test(effectiveMime) || /\.(pdf|doc|docx)$/i.test(f.name);
-        const cleanName = isFolder ? f.name.trim() : f.name.replace(/(\.(mp4|webm|mkv|mov|pdf|doc|docx))+$/gi, "").trim();
+        const cleanName = isFolder ? f.name.trim() : f.name.replace(/(\.(mp4|webm|mkv|mov|pdf|doc|docx|html?|htm))+$/gi, "").trim();
         return {
           id: effectiveId,
           name: cleanName,
@@ -530,6 +521,7 @@ app.get('/api/drive/list', async (req, res) => {
           isFolder,
           isVideo,
           isPdf,
+          isHtml,
           webViewLink: f.webViewLink || `https://drive.google.com/file/d/${effectiveId}/preview`,
           previewUrl: `https://drive.google.com/file/d/${effectiveId}/preview`
         };
@@ -3245,6 +3237,7 @@ app.get('/api/planner/deck', async (req, res) => {
 registerPlanner(app, { generateWithGemini, getGeminiClient, getBank: () => readQuestionsBank() });
 registerJarvis(app, { generateWithGemini, getGeminiClient });
 registerAula(app, { generateWithGemini, getGeminiClient });
+registerApostilaReader(app);
 
 // Arquivos internos nunca saem pelo site (código, dados, catálogo bruto, segredos)
 app.use((req, res, next) => {
