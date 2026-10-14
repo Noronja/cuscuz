@@ -4325,7 +4325,7 @@ const HARDCODED_DRIVE_CONFIG = {
 const DRIVE_ROOT_ID = HARDCODED_DRIVE_CONFIG.folderId;
 let currentDriveFolderId = DRIVE_ROOT_ID;
 let currentDrivePath = [{ id: DRIVE_ROOT_ID, name: 'Cursos' }];
-let currentFolderItems = { folders: [], videos: [], pdfs: [], other: [] };
+let currentFolderItems = { folders: [], videos: [], pdfs: [], apostilas: [], other: [] };
 const driveFolderMemoryCache = new Map();
 
 const KNOWN_DRIVE_COURSES = [
@@ -4809,12 +4809,12 @@ function openDriveItemById(fileId) {
   if (window.AC2 && AC2.indice && AC2.indice.has(fileId)) { go('view-acervo'); ac2Abrir(fileId); return; }
   let item = null;
   // Look in currentFolderItems first
-  item = [...(currentFolderItems.videos || []), ...(currentFolderItems.pdfs || []), ...(currentFolderItems.other || [])].find(f => f.id === fileId);
+  item = [...(currentFolderItems.videos || []), ...(currentFolderItems.pdfs || []), ...(currentFolderItems.apostilas || []), ...(currentFolderItems.other || [])].find(f => f.id === fileId);
 
   // If not found in current folder, search across memory cache
   if (!item) {
     for (const [_, grp] of driveFolderMemoryCache.entries()) {
-      item = [...(grp.videos || []), ...(grp.pdfs || []), ...(grp.other || [])].find(f => f.id === fileId);
+      item = [...(grp.videos || []), ...(grp.pdfs || []), ...(grp.apostilas || []), ...(grp.other || [])].find(f => f.id === fileId);
       if (item) break;
     }
   }
@@ -5380,10 +5380,10 @@ async function togglePinDrivePdf(fileId, ev) {
   }
 
   // Encontra o item
-  let item = [...(currentFolderItems.pdfs || []), ...(currentFolderItems.videos || []), ...(currentFolderItems.other || [])].find(f => f.id === fileId);
+  let item = [...(currentFolderItems.pdfs || []), ...(currentFolderItems.videos || []), ...(currentFolderItems.apostilas || []), ...(currentFolderItems.other || [])].find(f => f.id === fileId);
   if (!item) {
     for (const [_, grp] of driveFolderMemoryCache.entries()) {
-      item = [...(grp.pdfs || []), ...(grp.other || [])].find(f => f.id === fileId);
+      item = [...(grp.pdfs || []), ...(grp.apostilas || []), ...(grp.other || [])].find(f => f.id === fileId);
       if (item) break;
     }
   }
