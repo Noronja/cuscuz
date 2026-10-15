@@ -53,6 +53,9 @@ const HOST = '0.0.0.0';
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Secret for media ticket encryption (links /m/...)
+const AUTH_SECRET = crypto.createHash('sha256').update('cuscuz-media-ticket|' + (process.env.APP_PASSWORD || 'default-secret-change-me')).digest();
+
 /* ═══ AUTENTICAÇÃO MULTI-USUÁRIO (scrypt + sessões) ═══ */
 app.set('trust proxy', 1);
 
