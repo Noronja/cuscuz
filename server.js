@@ -3252,6 +3252,10 @@ app.get(['/', '/index.html'], (req, res, next) => {
   const raiz = DRIVE_ROOT_FOLDER_ID;
   if (!raiz) return next();
   try {
+    if (!_indexRaiz) _indexRaiz = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    return res.send(_indexRaiz);
   } catch (_) { next(); }
 });
 // Catálogo de aulas (traz os IDs do Drive): só com login
