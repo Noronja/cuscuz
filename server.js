@@ -532,7 +532,33 @@ app.get('/api/drive/list', async (req, res) => {
 });
 
 // Metadados de vídeo do Drive (tamanho/duração/resolução) — base do buffer inteligente da página de aula
-const driveInfoCache = new Map();
+const DRIVE_INFO_CACHE_FILE = path.join(__dirname, 'data', 'drive-info-cache.json');
+let driveInfoCache = new Map();
+try {
+  if (fs.existsSync(DRIVE_INFO_CACHE_FILE)) {
+    const raw = fs.readFileSync(DRIVE_INFO_CACHE_FILE, 'utf8');
+    const obj = JSON.parse(raw);
+    for (const [k, v] of Object.entries(obj)) {
+      driveInfoCache.set(k, v);
+    }
+    console.log(`📹 Cache de info de vídeos carregado (${driveInfoCache.size} itens).`);
+  }
+} catch (e) {
+  console.warn('⚠️ Falha ao carregar cache de info de vídeos:', e.message);
+}
+
+function saveDriveInfoCache() {
+  try {
+    if (!fs.existsSync(path.dirname(DRIVE_INFO_CACHE_FILE))) fs.mkdirSync(path.dirname(DRIVE_INFO_CACHE_FILE), { recursive: true });
+    const obj = {};
+    for (const [k, v] of driveInfoCache.entries()) obj[k] = v;
+    fs.writeFileSync(DRIVE_INFO_CACHE_FILE, JSON.stringify(obj), 'utf8');
+  } catch (e) {
+    console.warn('⚠️ Falha ao salvar cache de info de vídeos:', e.message);
+  }
+}
+
+// Metadados de vídeo do Drive (tamanho/duração/resolução) — base do buffer inteligente da página de aula
 app.get('/api/drive/video-info', async (req, res) => {
   const ids = String(req.query.ids || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 6);
   if (!ids.length) return res.status(400).json({ error: 'Informe ids separados por vírgula' });
@@ -551,6 +577,7 @@ app.get('/api/drive/video-info', async (req, res) => {
           res: j.videoMediaMetadata ? (j.videoMediaMetadata.height || 0) + 'p' : ''
         };
         driveInfoCache.set(id, info);
+        saveDriveInfoCache();
         out[id] = info;
       })
       .catch(err => { out[id] = { erro: String(err.message || err).slice(0, 60) }; })
@@ -564,9 +591,10 @@ app.get('/api/drive/video-info', async (req, res) => {
 // (um AbortSignal.timeout normal também cortaria o corpo do vídeo depois de alguns segundos).
 function driveCandidates(fileId) {
   const c = [];
-  if (DRIVE_OK) c.push(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true${temConta() ? '' : '&key=' + DRIVE_API_KEY}`);
+  // Ordem otimizada: usercontent (CDN rápido) → uc (fallback) → API (mais lento, autenticado)
   c.push(`https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`);
   c.push(`https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}&confirm=t`);
+  if (DRIVE_OK) c.push(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true${temConta() ? '' : '&key=' + DRIVE_API_KEY}`);
   return c;
 }
 async function driveOpen(fileId, start, end, method, client) {
@@ -576,7 +604,7 @@ async function driveOpen(fileId, start, end, method, client) {
     const ac = new AbortController();
     const onAbort = () => ac.abort();
     client.signal.addEventListener('abort', onAbort, { once: true });
-    const timer = setTimeout(() => ac.abort(), 12000);
+    const timer = setTimeout(() => ac.abort(), 6000); // reduzido de 12s para 6s
     try {
       const headers = {};
       if (temConta() && url.startsWith('https://www.googleapis.com/')) Object.assign(headers, await authHeaders());
@@ -681,10 +709,10 @@ async function driveStreamHandler(req, res) {
   res.setHeader('Content-Length', outEnd - outStart + 1);
   if (isHead) { try { up.ac.abort(); } catch (_) {} return res.end(); }
 
-  // Read-ahead: lê do Drive numa fila (até ~24 MB) enquanto o cliente consome, suavizando as oscilações de velocidade
+  // Read-ahead: lê do Drive numa fila (até ~8 MB) enquanto o cliente consome, suavizando as oscilações de velocidade
   res.setHeader('Cache-Control', 'private, max-age=3600');
   if (res.flushHeaders) res.flushHeaders();
-  const MAX_Q = 24 * 1024 * 1024;
+  const MAX_Q = 8 * 1024 * 1024; // reduzido de 24MB para 8MB
   let pos = outStart; // próximo byte absoluto a enviar
   let tentativas = 0;
   const fila = []; let filaBytes = 0, fim = false, falha = null, aviso = null;

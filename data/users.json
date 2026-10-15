@@ -82,5 +82,17 @@
       "theme": "dark",
       "notifications": true
     }
+  },
+  {
+    "username": "testvideo",
+    "displayName": "Test Video",
+    "passwordHash": "f54909fc9c0210b8ed65bd49c23c7df572334401273e2f67b4c624fb0dd744a95a63dc3a5f200f74f469945a617159f6cda17098631cb8429f252b1c7d25412e",
+    "passwordSalt": "7b10f667237d86b81861a49d8b389dd2",
+    "createdAt": 1792024183216,
+    "lastLoginAt": null,
+    "settings": {
+      "theme": "dark",
+      "notifications": true
+    }
   }
 ]
