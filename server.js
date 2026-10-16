@@ -544,6 +544,130 @@ app.get('/api/drive/list', async (req, res) => {
   return res.json({ files: [], cached: false, total: 0 });
 });
 
+// Busca materiais (PDFs e apostilas HTML) diretamente no Drive por curso e disciplina
+// Usado como fallback quando o acervo-manifest.json não tem os materiais
+app.get('/api/drive/materials', async (req, res) => {
+  const course = (req.query.course || '').trim();
+  const disc = (req.query.disc || '').trim();
+  if (!course || !disc) return res.status(400).json({ error: 'course e disc são obrigatórios', materials: [] });
+  if (!DRIVE_OK) return res.status(503).json({ error: 'GOOGLE_DRIVE_API_KEY ausente', materials: [] });
+
+  // Normaliza texto (remove acentos, caixa baixa)
+  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  const limpaTnome = n => norm(String(n || ''));
+
+  try {
+    const rootId = process.env.GOOGLE_DRIVE_FOLDER_ID || DRIVE_ROOT_FOLDER_ID;
+    const cleanRoot = cleanDriveId(rootId);
+    if (!cleanRoot) return res.json({ materials: [], hint: 'GOOGLE_DRIVE_FOLDER_ID não configurado' });
+
+    // Helper para listar filhos de uma pasta
+    async function listFolder(folderId) {
+      const files = [];
+      let pageToken = '';
+      do {
+        const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+        const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,shortcutDetails,webViewLink)');
+        const pageParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
+        const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&orderBy=folder,name_natural&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true${pageParam}`;
+        const r = await driveFetch(url, { signal: AbortSignal.timeout(10000) });
+        if (!r.ok) break;
+        const data = await r.json();
+        if (data.files) files.push(...data.files);
+        pageToken = data.nextPageToken || '';
+      } while (pageToken);
+      return files;
+    }
+
+    // 1. Encontrar a pasta do curso na raiz do Drive
+    const rootFiles = await listFolder(cleanRoot);
+    const cursoPasta = rootFiles.find(f => {
+      const nome = String(f.name || '').toLowerCase();
+      const c = String(course || '').toLowerCase();
+      return nome.includes(c) || c.includes(nome) || limpaTnome(f.name) === limpaTnome(course);
+    });
+
+    if (!cursoPasta) return res.json({ materials: [], hint: 'Pasta do curso não encontrada no Drive' });
+
+    const cursoId = cursoPasta.shortcutDetails?.targetId || cursoPasta.id;
+
+    // 2. Listar arquivos dentro da pasta do curso (incluindo subpastas rasas)
+    const cursoFiles = await listFolder(cursoId);
+
+    const materials = [];
+    const discNorm = norm(disc);
+    const pdfExt = /\.(pdf|doc|docx)$/i;
+    const htmlExt = /\.(html?|htm)$/i;
+
+    for (const f of cursoFiles) {
+      const nome = String(f.name || '');
+      const nomeNorm = norm(nome);
+      const isShortcut = f.mimeType === 'application/vnd.google-apps.shortcut';
+      const effectiveId = isShortcut && f.shortcutDetails?.targetId ? f.shortcutDetails.targetId : f.id;
+      const effectiveMime = isShortcut && f.shortcutDetails?.targetMimeType ? f.shortcutDetails.targetMimeType : f.mimeType;
+      const isFolder = effectiveMime === 'application/vnd.google-apps.folder';
+
+      // Se for uma subpasta, vasculhar dentro dela também (1 nível)
+      if (isFolder) {
+        try {
+          const subFiles = await listFolder(effectiveId);
+          for (const sf of subFiles) {
+            const sNome = String(sf.name || '');
+            const sNomeNorm = norm(sNome);
+            const sIsShortcut = sf.mimeType === 'application/vnd.google-apps.shortcut';
+            const sEffectiveId = sIsShortcut && sf.shortcutDetails?.targetId ? sf.shortcutDetails.targetId : sf.id;
+            const sEffectiveMime = sIsShortcut && sf.shortcutDetails?.targetMimeType ? sf.shortcutDetails.targetMimeType : sf.mimeType;
+            const sIsPdf = !sNomeNorm.match(htmlExt) && (pdfExt.test(sNome) || /pdf|document|presentation/i.test(sEffectiveMime));
+            const sIsHtml = htmlExt.test(sNome) || /html/i.test(sEffectiveMime);
+
+            // Verifica se o nome do arquivo corresponde à disciplina
+            if ((sIsPdf || sIsHtml) && (sNomeNorm.includes(discNorm) || discNorm.includes(sNomeNorm.replace(/\.(pdf|html?|htm|doc|docx)$/i, '')))) {
+              materials.push({
+                id: sEffectiveId,
+                nome: sNome.replace(/\.(pdf|html?|htm|doc|docx)$/i, '').trim(),
+                rawName: sNome,
+                mimeType: sEffectiveMime,
+                isFolder: false,
+                isPdf: sIsPdf,
+                isHtml: sIsHtml,
+                curso,
+                disc,
+                webViewLink: sf.webViewLink || `https://drive.google.com/file/d/${sEffectiveId}/preview`
+              });
+            }
+          }
+        } catch (_) { /* ignora erro de subpasta */ }
+        continue;
+      }
+
+      const isPdf = !nomeNorm.match(htmlExt) && (pdfExt.test(nome) || /pdf|document|presentation/i.test(effectiveMime));
+      const isHtml = htmlExt.test(nome) || /html/i.test(effectiveMime);
+
+      if ((isPdf || isHtml) && (nomeNorm.includes(discNorm) || discNorm.includes(nomeNorm.replace(/\.(pdf|html?|htm|doc|docx)$/i, '')))) {
+        materials.push({
+          id: effectiveId,
+          nome: nome.replace(/\.(pdf|html?|htm|doc|docx)$/i, '').trim(),
+          rawName: nome,
+          mimeType: effectiveMime,
+          isFolder: false,
+          isPdf,
+          isHtml,
+          curso,
+          disc,
+          webViewLink: f.webViewLink || `https://drive.google.com/file/d/${effectiveId}/preview`
+        });
+      }
+    }
+
+    // Remove duplicados por id
+    const uniq = materials.filter((m, idx, self) => idx === self.findIndex(m2 => m2.id === m.id));
+    return res.json({ materials: uniq, total: uniq.length, course, disc });
+  } catch (err) {
+    console.error('[Drive Materials]', err.message);
+    return res.status(500).json({ error: err.message, materials: [] });
+  }
+});
+
 // Metadados de vídeo do Drive (tamanho/duração/resolução) — base do buffer inteligente da página de aula
 const DRIVE_INFO_CACHE_FILE = path.join(__dirname, 'data', 'drive-info-cache.json');
 let driveInfoCache = new Map();

@@ -10919,7 +10919,7 @@ function ac2AtualizarItens() {
   });
 }
 
-function ac2Materiais(v) {
+async function ac2Materiais(v) {
   const boxPdf = $('ac2-materiais-pdf');
   const boxApo = $('ac2-materiais-apostila');
   const badge = $('ac2-mat-badge');
@@ -10935,8 +10935,32 @@ function ac2Materiais(v) {
       }
     }
   }
+
   let origem = v.disc;
-  if (!mats.length) origem = 'Geral';
+  let driveFetched = false;
+
+  // Se não encontrou nada no cache local, busca diretamente no Google Drive
+  if (!mats.length) {
+    origem = 'Drive';
+    driveFetched = true;
+    // Mostra carregando enquanto busca no Drive
+    if (boxPdf) boxPdf.innerHTML = '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Buscando materiais no Drive…</span>';
+    if (boxApo) boxApo.innerHTML = '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Buscando apostilas no Drive…</span>';
+    if (badge) badge.textContent = 'Buscando no Drive…';
+
+    try {
+      const res = await fetch('/api/drive/materials?course=' + encodeURIComponent(v.curso) + '&disc=' + encodeURIComponent(v.disc));
+      if (res.ok) {
+        const data = await res.json();
+        if (data.materials && data.materials.length) {
+          mats = data.materials;
+          origem = 'Drive';
+        }
+      }
+    } catch (e) {
+      console.warn('[ac2Materiais] Falha ao buscar materiais no Drive:', e.message);
+    }
+  }
 
   const defaultMats = [];
 
@@ -10946,12 +10970,13 @@ function ac2Materiais(v) {
   (mats || []).forEach(m => {
     const nome = String(m.nome || '');
     const ext = nome.split('.').pop() || '';
-    const isApostila = /^(html|htm)$/i.test(ext) || nome.toLowerCase().includes('apostila');
+    const isApostila = m.isHtml || /^(html|htm)$/i.test(ext) || nome.toLowerCase().includes('apostila');
     const entry = {
       id: m.id,
       nome: nome.endsWith('.pdf') || nome.endsWith('.html') || nome.endsWith('.htm') ? nome : nome + '.pdf',
       sub: 'PDF Oficial · ' + v.curso,
-      url: ''
+      url: '',
+      isHtml: m.isHtml || isApostila
     };
     if (isApostila) apostilas.push(entry);
     else pdfs.push(entry);
@@ -10962,7 +10987,7 @@ function ac2Materiais(v) {
 
   // Badge total
   const total = pdfs.length + apostilas.length;
-  if (badge) badge.textContent = total + (total === 1 ? ' arquivo disponível' : ' arquivos disponíveis');
+  if (badge) badge.textContent = total + (total === 1 ? ' arquivo disponível' : ' arquivos disponíveis') + (driveFetched ? ' (Drive)' : '');
 
   // Renderiza PDFs
   if (boxPdf) {
@@ -10975,7 +11000,7 @@ function ac2Materiais(v) {
         '</div>' +
         '<i class="ph ph-download-simple mat-dl" title="Baixar"></i>' +
       '</a>'
-    ).join('') || '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhum PDF disponível</span>';
+    ).join('') || (driveFetched ? '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhum PDF encontrado no Drive para esta disciplina</span>' : '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhum PDF disponível</span>');
   }
 
   // Renderiza Apostilas (lista clicável para abrir no leitor embutido)
@@ -10989,7 +11014,7 @@ function ac2Materiais(v) {
         '</div>' +
         '<i class="ph ph-arrow-right mat-dl" style="color:var(--teal)"></i>' +
       '</div>'
-    ).join('') || '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhuma apostila disponível</span>';
+    ).join('') || (driveFetched ? '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhuma apostila encontrada no Drive para esta disciplina</span>' : '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhuma apostila disponível</span>');
   }
 }
 
