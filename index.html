@@ -355,6 +355,18 @@
 .ac2-mat-sub{font-size:12px;color:var(--text-muted);margin-top:2px}
 .ac2-mat-badge{font-size:11.5px;color:var(--text-muted);font-weight:600;background:var(--bg-elevated);border:1px solid var(--border-muted);padding:3px 10px;border-radius:99px}
 .ac2-mat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+
+/* Abas PDFs / Apostilas */
+.ac2-mat-tabs{display:flex;gap:4px;margin:10px 0 8px 0;background:var(--bg-elevated);border:1px solid var(--border-muted);border-radius:12px;padding:4px}
+.ac2-mat-tab{flex:1;padding:8px 12px;border:0;background:transparent;color:var(--text-muted);font-size:12.5px;font-weight:700;cursor:pointer;border-radius:8px;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px}
+.ac2-mat-tab:hover{color:var(--text-primary);background:var(--bg-hover)}
+.ac2-mat-tab.active{background:var(--teal-dim);color:var(--teal);border-color:transparent}
+.ac2-mat-tab i{font-size:14px}
+.ac2-mat-content{display:none}
+.ac2-mat-content.active{display:block}
+
+/* Leitor inline - ajustes para iframe */
+.apostila-reader-inline .apostila-reader-frame{min-height:500px}
 .material-chip{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:var(--bg-elevated);border:1px solid var(--border-muted);text-decoration:none;color:var(--text-primary);transition:all .2s ease;cursor:pointer}
 .material-chip:hover{border-color:var(--teal);background:var(--bg-hover);transform:translateY(-1px);box-shadow:var(--shadow-sm)}
 .material-chip .pdf-icon{width:36px;height:36px;border-radius:10px;background:rgba(244,63,94,.14);color:var(--rose);display:inline-flex;align-items:center;justify-content:center;font-size:19px;flex:none}
@@ -2376,17 +2388,52 @@ mark.exam-highlight {
             </div>
           </div>
 
-          <!-- 4. Seção de Materiais desta aula (Chips/Botões de download com ícone de PDF) -->
+          <!-- 4. Seção de Materiais desta aula (PDFs + Apostilas com leitor embutido) -->
           <div class="ac2-mat-card">
             <div class="ac2-mat-head">
               <div>
-                <h3><i class="ph ph-file-pdf"></i> Materiais desta aula</h3>
+                <h3><i class="ph ph-book-open"></i> Materiais desta aula</h3>
                 <div class="ac2-mat-sub">Arquivos complementares em PDF, resumos esquematizados, apostilas e cronogramas de estudo.</div>
               </div>
               <span class="ac2-mat-badge" id="ac2-mat-badge">3 arquivos disponíveis</span>
             </div>
-            <div id="ac2-materiais" class="ac2-mat-grid">
-              <span style="font-size:13px;color:var(--text-muted)">Carregando materiais complementares…</span>
+
+            <!-- Abas: PDFs | Apostilas -->
+            <div class="ac2-mat-tabs">
+              <button class="ac2-mat-tab active" id="mat-tab-pdf" onclick="matSwitchTab('pdf')"><i class="ph ph-file-pdf"></i> PDFs</button>
+              <button class="ac2-mat-tab" id="mat-tab-apostila" onclick="matSwitchTab('apostila')"><i class="ph ph-book-open"></i> Apostilas</button>
+            </div>
+
+            <!-- Conteúdo PDFs -->
+            <div id="mat-content-pdf" class="ac2-mat-content active">
+              <div id="ac2-materiais-pdf" class="ac2-mat-grid">
+                <span style="font-size:13px;color:var(--text-muted)">Carregando PDFs…</span>
+              </div>
+            </div>
+
+            <!-- Conteúdo Apostilas (leitor embutido) -->
+            <div id="mat-content-apostila" class="ac2-mat-content" style="display:none">
+              <div id="ac2-materiais-apostila" class="ac2-mat-grid">
+                <span style="font-size:13px;color:var(--text-muted)">Carregando apostilas…</span>
+              </div>
+
+              <!-- Leitor de Apostilas embutido (MedReader inline) -->
+              <div class="apostila-reader-inline" id="apostila-reader-inline" style="display:none;margin-top:16px;border:1px solid var(--border-muted);border-radius:16px;overflow:hidden;background:var(--bg-surface);box-shadow:var(--shadow-glass)">
+                <div class="apostila-reader-inline-header" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg-base);border-bottom:1px solid var(--border-subtle);flex-shrink:0">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <i class="ph ph-book-open" style="font-size:18px;color:var(--teal)"></i>
+                    <span id="apostila-inline-title" style="font-weight:700;color:var(--text-primary);font-size:14px">Apostila</span>
+                  </div>
+                  <button class="apostila-reader-close" onclick="apostilaInlineClose()" style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);background:var(--bg-hover);border:1px solid var(--border-subtle)"><i class="ph ph-x"></i></button>
+                </div>
+                <div class="apostila-reader-inline-content" id="apostila-reader-inline-content" style="flex:1;overflow:auto;background:var(--bg-base);min-height:400px">
+                  <div class="apostila-reader-loading" id="apostila-inline-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--text-muted);font-size:14px;padding:40px">
+                    <i class="ph ph-book-open" style="font-size:40px;color:var(--teal);animation:pulse 1.5s ease-in-out infinite"></i>
+                    <span>Carregando apostila…</span>
+                  </div>
+                  <iframe class="apostila-reader-frame" id="apostila-inline-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock" style="width:100%;height:100%;border:0;background:var(--bg-base);display:none"></iframe>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -3185,6 +3232,64 @@ function toggleApostilaSidebar() {
 function closeApostilaSidebar() {
   $('apostila-sidebar').classList.remove('open');
   $('apostila-sidebar-backdrop').style.display = 'none';
+}
+
+// ═══ MATERIAIS: ABAS PDFs / APOSTILAS ═══
+function matSwitchTab(tab) {
+  // Aba visual
+  $('mat-tab-pdf').classList.toggle('active', tab === 'pdf');
+  $('mat-tab-apostila').classList.toggle('active', tab === 'apostila');
+  // Conteúdo
+  $('mat-content-pdf').style.display = tab === 'pdf' ? 'block' : 'none';
+  $('mat-content-apostila').style.display = tab === 'apostila' ? 'block' : 'none';
+  // Fecha leitor inline se estiver aberto ao mudar de aba
+  if (tab === 'pdf') apostilaInlineClose();
+}
+
+// ═══ LEITOR DE APOSTILAS EMBUTIDO (inline) ═══
+function apostilaInlineOpen(fileId, fileName) {
+  const container = $('apostila-reader-inline');
+  const frame = $('apostila-inline-frame');
+  const loading = $('apostila-inline-loading');
+  const titleEl = $('apostila-inline-title');
+
+  container.style.display = 'block';
+  titleEl.textContent = fileName || 'Apostila';
+  loading.style.display = 'flex';
+  frame.style.display = 'none';
+
+  // Carrega o HTML processado do backend
+  fetch(`/api/apostila/html/${encodeURIComponent(fileId)}`, {
+    headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('cuscuz_token') || '') }
+  })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(html => {
+      frame.style.display = 'block';
+      loading.style.display = 'none';
+      const doc = frame.contentDocument || frame.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
+      frame.onload = () => {
+        // Aplica tema e fonte do medreader
+        applyApostilaTheme();
+        applyApostilaFont();
+      };
+    })
+    .catch(err => {
+      console.error('[Apostila Inline]', err);
+      loading.innerHTML = `<i class="ph ph-warning-circle" style="font-size:40px;color:var(--rose)"></i><span>Erro ao carregar: ${err.message}</span>`;
+    });
+}
+
+function apostilaInlineClose() {
+  const container = $('apostila-reader-inline');
+  const frame = $('apostila-inline-frame');
+  container.style.display = 'none';
+  frame.src = 'about:blank';
 }
 
 function extractApostilaToc(frame) {
@@ -10676,7 +10781,8 @@ function ac2AtualizarItens() {
 }
 
 function ac2Materiais(v) {
-  const box = $('ac2-materiais');
+  const boxPdf = $('ac2-materiais-pdf');
+  const boxApo = $('ac2-materiais-apostila');
   const badge = $('ac2-mat-badge');
   let mats = AC2.MAT.get(v.curso + '||' + v.disc) || [];
   let origem = v.disc;
@@ -10684,30 +10790,57 @@ function ac2Materiais(v) {
 
   const defaultMats = [];
 
-  let displayMats = [];
-  if (mats.length) {
-    displayMats = mats.slice(0, 6).map(m => ({
+  // Separa PDFs de Apostilas (arquivos .html/.htm são apostilas para o MedReader)
+  const pdfs = [];
+  const apostilas = [];
+  (mats || []).forEach(m => {
+    const nome = String(m.nome || '');
+    const ext = nome.split('.').pop() || '';
+    const isApostila = /^(html|htm)$/i.test(ext) || nome.toLowerCase().includes('apostila');
+    const entry = {
       id: m.id,
-      nome: m.nome.endsWith('.pdf') ? m.nome : m.nome + '.pdf',
+      nome: nome.endsWith('.pdf') || nome.endsWith('.html') || nome.endsWith('.htm') ? nome : nome + '.pdf',
       sub: 'PDF Oficial · ' + v.curso,
       url: ''
-    }));
-  } else {
-    displayMats = defaultMats;
+    };
+    if (isApostila) apostilas.push(entry);
+    else pdfs.push(entry);
+  });
+
+  const displayPdfs = pdfs.length ? pdfs : defaultMats;
+  const displayApos = apostilas.length ? apostilas : defaultMats;
+
+  // Badge total
+  const total = pdfs.length + apostilas.length;
+  if (badge) badge.textContent = total + (total === 1 ? ' arquivo disponível' : ' arquivos disponíveis');
+
+  // Renderiza PDFs
+  if (boxPdf) {
+    boxPdf.innerHTML = displayPdfs.map(m =>
+      '<a class="material-chip" href="#" onclick="cuscuzAbrirPdf(\'' + esc(m.id) + '\');return false" title="Abrir ' + esc(m.nome) + '">' +
+        '<span class="pdf-icon"><i class="ph ph-file-pdf"></i></span>' +
+        '<div class="mat-info">' +
+          '<span class="mat-title">' + esc(m.nome) + '</span>' +
+          '<span class="mat-sub">' + esc(m.sub) + '</span>' +
+        '</div>' +
+        '<i class="ph ph-download-simple mat-dl" title="Baixar"></i>' +
+      '</a>'
+    ).join('') || '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhum PDF disponível</span>';
   }
 
-  if (badge) badge.textContent = displayMats.length + (displayMats.length === 1 ? ' arquivo disponível' : ' arquivos disponíveis');
-
-  box.innerHTML = displayMats.map(m =>
-    '<a class="material-chip" href="#" onclick="cuscuzAbrirPdf(\'' + esc(m.id) + '\');return false" title="Abrir ' + esc(m.nome) + '">' +
-      '<span class="pdf-icon"><i class="ph ph-file-pdf"></i></span>' +
-      '<div class="mat-info">' +
-        '<span class="mat-title">' + esc(m.nome) + '</span>' +
-        '<span class="mat-sub">' + esc(m.sub) + '</span>' +
-      '</div>' +
-      '<i class="ph ph-download-simple mat-dl" title="Baixar"></i>' +
-    '</a>'
-  ).join('');
+  // Renderiza Apostilas (lista clicável para abrir no leitor embutido)
+  if (boxApo) {
+    boxApo.innerHTML = displayApos.map(m =>
+      '<div class="material-chip" style="cursor:pointer" onclick="apostilaInlineOpen(\'' + esc(m.id) + '\', \'' + esc(m.nome) + '\')" title="Ler ' + esc(m.nome) + '">' +
+        '<span class="pdf-icon" style="background:rgba(99,102,241,.14);color:#6366f1"><i class="ph ph-book-open"></i></span>' +
+        '<div class="mat-info">' +
+          '<span class="mat-title">' + esc(m.nome) + '</span>' +
+          '<span class="mat-sub">Apostila · ' + esc(v.curso) + '</span>' +
+        '</div>' +
+        '<i class="ph ph-arrow-right mat-dl" style="color:var(--teal)"></i>' +
+      '</div>'
+    ).join('') || '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhuma apostila disponível</span>';
+  }
 }
 
 function ac2Progresso() {
