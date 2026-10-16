@@ -604,9 +604,13 @@ app.get('/api/drive/materials', async (req, res) => {
     });
 
     // 3. Se encontrou a pasta da disciplina, lista os arquivos dentro dela
-    // Se não encontrou, faz busca ampla na pasta do curso como fallback
-    const targetFolderId = discPasta ? (discPasta.shortcutDetails?.targetId || discPasta.id) : cursoId;
-    const targetFiles = await listFolder(targetFolderId);
+    // Se não encontrou, retorna vazio (não faz busca ampla para evitar carregar tudo)
+    if (!discPasta) {
+      return res.json({ materials: [], hint: `Pasta da disciplina "${disc}" não encontrada dentro do curso "${course}"`, total: 0, fromDiscFolder: false });
+    }
+
+    const discFolderId = discPasta.shortcutDetails?.targetId || discPasta.id;
+    const targetFiles = await listFolder(discFolderId);
 
     const materials = [];
     const pdfExt = /\.(pdf|doc|docx)$/i;
@@ -620,10 +624,13 @@ app.get('/api/drive/materials', async (req, res) => {
       const effectiveMime = isShortcut && f.shortcutDetails?.targetMimeType ? f.shortcutDetails.targetMimeType : f.mimeType;
       const isFolder = effectiveMime === 'application/vnd.google-apps.folder';
 
+      // Só aceita arquivos (não pastas) que sejam PDF ou HTML
+      if (isFolder) continue;
+
       const isPdf = !nomeNorm.match(htmlExt) && (pdfExt.test(nome) || /pdf|document|presentation/i.test(effectiveMime));
       const isHtml = htmlExt.test(nome) || /html/i.test(effectiveMime);
 
-      if ((isPdf || isHtml) && !isFolder) {
+      if (isPdf || isHtml) {
         materials.push({
           id: effectiveId,
           nome: nome.replace(/\.(pdf|html?|htm|doc|docx)$/i, '').trim(),
@@ -641,10 +648,38 @@ app.get('/api/drive/materials', async (req, res) => {
 
     // Remove duplicados por id
     const uniq = materials.filter((m, idx, self) => idx === self.findIndex(m2 => m2.id === m.id));
-    return res.json({ materials: uniq, total: uniq.length, course, disc, fromDiscFolder: !!discPasta });
+    return res.json({ materials: uniq, total: uniq.length, course, disc, fromDiscFolder: true });
   } catch (err) {
     console.error('[Drive Materials]', err.message);
     return res.status(500).json({ error: err.message, materials: [] });
+  }
+});
+
+// Endpoint para alterar nome de exibição do usuário
+app.post('/api/auth/update-profile', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : req.body?.token;
+    if (!token) return res.status(401).json({ success: false, error: 'Token não fornecido' });
+
+    const username = await validateSession(token);
+    if (!username) return res.status(401).json({ success: false, error: 'Sessão expirada' });
+
+    const user = usersDb.get(username);
+    if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+
+    const { displayName } = req.body;
+    if (!displayName || !displayName.trim()) {
+      return res.status(400).json({ success: false, error: 'Nome inválido' });
+    }
+
+    user.displayName = displayName.trim();
+    await saveUser(user);
+
+    res.json({ success: true, displayName: user.displayName, message: 'Nome atualizado com sucesso' });
+  } catch (e) {
+    console.error('Erro ao atualizar perfil:', e);
+    res.status(500).json({ success: false, error: 'Erro interno' });
   }
 });
 
