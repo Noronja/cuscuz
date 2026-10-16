@@ -62,6 +62,19 @@ app.set('trust proxy', 1);
 // Registra rotas de auth (signup, login, logout, me, change-password)
 registerAuthRoutes(app);
 
+// Health check endpoint (sempre acessível, sem autenticação)
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    openaiConfigured: !!openai,
+    supabaseConfigured: !!supabase,
+    geminiConfigured: !!process.env.GEMINI_API_KEY,
+    authConfigured: true,
+    drive: driveStatus
+  });
+});
+
 // Middleware de autenticação para todas as rotas /api/*
 app.use('/api', authMiddleware);
 
@@ -803,19 +816,6 @@ async function drivePdfHandler(req, res) {
   }
 }
 app.get('/api/drive/pdf/:id', drivePdfHandler);
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    openaiConfigured: !!openai,
-    supabaseConfigured: !!supabase,
-    geminiConfigured: !!process.env.GEMINI_API_KEY,
-    authConfigured: true, // multi-user auth active
-    drive: driveStatus
-  });
-});
 
 // Configuração pública para o frontend (não expõe segredos do servidor, apenas chaves anônimas do Supabase)
 app.get('/api/config', (req, res) => {
