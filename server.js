@@ -552,7 +552,7 @@ app.get('/api/drive/materials', async (req, res) => {
   if (!course || !disc) return res.status(400).json({ error: 'course e disc são obrigatórios', materials: [] });
   if (!DRIVE_OK) return res.status(503).json({ error: 'GOOGLE_DRIVE_API_KEY ausente', materials: [] });
 
-  // Normaliza texto (remove acentos, caixa baixa)
+  // Normaliza texto (remove acentos, caixa baixa, caracteres especiais)
   const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
   const limpaTnome = n => norm(String(n || ''));
 
@@ -591,15 +591,28 @@ app.get('/api/drive/materials', async (req, res) => {
 
     const cursoId = cursoPasta.shortcutDetails?.targetId || cursoPasta.id;
 
-    // 2. Listar arquivos dentro da pasta do curso (incluindo subpastas rasas)
+    // 2. Listar subpastas da pasta do curso para encontrar a pasta da disciplina
     const cursoFiles = await listFolder(cursoId);
+    const discNorm = norm(disc);
+
+    // Busca subpasta que corresponda à disciplina
+    const discPasta = cursoFiles.find(f => {
+      if (!f.isFolder && f.mimeType !== 'application/vnd.google-apps.folder') return false;
+      const nome = String(f.name || '').toLowerCase();
+      const nNorm = norm(nome);
+      return nNorm.includes(discNorm) || discNorm.includes(nNome.replace(/\.(pdf|html?|htm|doc|docx)$/i, '')) || limpaTnome(f.name) === limpaTnome(disc);
+    });
+
+    // 3. Se encontrou a pasta da disciplina, lista os arquivos dentro dela
+    // Se não encontrou, faz busca ampla na pasta do curso como fallback
+    const targetFolderId = discPasta ? (discPasta.shortcutDetails?.targetId || discPasta.id) : cursoId;
+    const targetFiles = await listFolder(targetFolderId);
 
     const materials = [];
-    const discNorm = norm(disc);
     const pdfExt = /\.(pdf|doc|docx)$/i;
     const htmlExt = /\.(html?|htm)$/i;
 
-    for (const f of cursoFiles) {
+    for (const f of targetFiles) {
       const nome = String(f.name || '');
       const nomeNorm = norm(nome);
       const isShortcut = f.mimeType === 'application/vnd.google-apps.shortcut';
@@ -607,43 +620,10 @@ app.get('/api/drive/materials', async (req, res) => {
       const effectiveMime = isShortcut && f.shortcutDetails?.targetMimeType ? f.shortcutDetails.targetMimeType : f.mimeType;
       const isFolder = effectiveMime === 'application/vnd.google-apps.folder';
 
-      // Se for uma subpasta, vasculhar dentro dela também (1 nível)
-      if (isFolder) {
-        try {
-          const subFiles = await listFolder(effectiveId);
-          for (const sf of subFiles) {
-            const sNome = String(sf.name || '');
-            const sNomeNorm = norm(sNome);
-            const sIsShortcut = sf.mimeType === 'application/vnd.google-apps.shortcut';
-            const sEffectiveId = sIsShortcut && sf.shortcutDetails?.targetId ? sf.shortcutDetails.targetId : sf.id;
-            const sEffectiveMime = sIsShortcut && sf.shortcutDetails?.targetMimeType ? sf.shortcutDetails.targetMimeType : sf.mimeType;
-            const sIsPdf = !sNomeNorm.match(htmlExt) && (pdfExt.test(sNome) || /pdf|document|presentation/i.test(sEffectiveMime));
-            const sIsHtml = htmlExt.test(sNome) || /html/i.test(sEffectiveMime);
-
-            // Verifica se o nome do arquivo corresponde à disciplina
-            if ((sIsPdf || sIsHtml) && (sNomeNorm.includes(discNorm) || discNorm.includes(sNomeNorm.replace(/\.(pdf|html?|htm|doc|docx)$/i, '')))) {
-              materials.push({
-                id: sEffectiveId,
-                nome: sNome.replace(/\.(pdf|html?|htm|doc|docx)$/i, '').trim(),
-                rawName: sNome,
-                mimeType: sEffectiveMime,
-                isFolder: false,
-                isPdf: sIsPdf,
-                isHtml: sIsHtml,
-                curso,
-                disc,
-                webViewLink: sf.webViewLink || `https://drive.google.com/file/d/${sEffectiveId}/preview`
-              });
-            }
-          }
-        } catch (_) { /* ignora erro de subpasta */ }
-        continue;
-      }
-
       const isPdf = !nomeNorm.match(htmlExt) && (pdfExt.test(nome) || /pdf|document|presentation/i.test(effectiveMime));
       const isHtml = htmlExt.test(nome) || /html/i.test(effectiveMime);
 
-      if ((isPdf || isHtml) && (nomeNorm.includes(discNorm) || discNorm.includes(nomeNorm.replace(/\.(pdf|html?|htm|doc|docx)$/i, '')))) {
+      if ((isPdf || isHtml) && !isFolder) {
         materials.push({
           id: effectiveId,
           nome: nome.replace(/\.(pdf|html?|htm|doc|docx)$/i, '').trim(),
@@ -661,7 +641,7 @@ app.get('/api/drive/materials', async (req, res) => {
 
     // Remove duplicados por id
     const uniq = materials.filter((m, idx, self) => idx === self.findIndex(m2 => m2.id === m.id));
-    return res.json({ materials: uniq, total: uniq.length, course, disc });
+    return res.json({ materials: uniq, total: uniq.length, course, disc, fromDiscFolder: !!discPasta });
   } catch (err) {
     console.error('[Drive Materials]', err.message);
     return res.status(500).json({ error: err.message, materials: [] });
