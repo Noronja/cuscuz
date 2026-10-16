@@ -10973,8 +10973,8 @@ async function ac2Materiais(v) {
   const defaultMats = [];
 
   // ============================================================
-  // FONTE PRIMÁRIA: Buscar diretamente no Drive por disciplina específica
-  // O endpoint filtra estritamente pela pasta da disciplina no Google Drive
+  // FONTE ÚNICA: Buscar diretamente no Drive por disciplina específica
+  // NÃO usar AC2.MAT porque ele contém materiais de TODAS as disciplinas
   // ============================================================
   let mats = [];
   let driveFetched = false;
@@ -10990,15 +10990,6 @@ async function ac2Materiais(v) {
     }
   } catch (e) {
     console.warn('[ac2Materiais] Falha ao buscar no Drive:', e.message);
-  }
-
-  // ============================================================
-  // FONTE SECUNDÁRIA: Só usar cache local se o Drive não retornou nada
-  // ============================================================
-  if (!mats.length) {
-    let matsLocal = AC2.MAT.get(v.curso + '||' + v.disc) || [];
-    if (!matsLocal.length) matsLocal = AC2.MAT.get(v.curso + '||Geral') || [];
-    mats = matsLocal;
   }
 
   // Separa PDFs de Apostilas
