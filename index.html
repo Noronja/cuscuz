@@ -435,6 +435,16 @@
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ⚠️ Substitua pelos valores do seu projeto Supabase (painel → Settings → API)
+  const SUPABASE_URL = 'SUA_URL_DO_SUPABASE_AQUI';
+  const SUPABASE_ANON_KEY = 'SUA_CHAVE_ANON_DO_SUPABASE_AQUI';
+  window.supabase = (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_URL !== 'SUA_URL_DO_SUPABASE_AQUI')
+    ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+  if (!window.supabase) console.warn('⚠️ [Supabase] Cliente não inicializado — preencha SUPABASE_URL e SUPABASE_ANON_KEY no index.html');
+</script>
 
 <!-- API de Áudio do YouTube para o Lobby -->
 <script async defer src="https://www.youtube.com/iframe_api"></script>
@@ -4018,11 +4028,11 @@ const hsh=s=>{let x=5381;for(const c of s)x=(x*33+c.charCodeAt(0))>>>0;return x.
 function setDot(st){const d=$('cloud-dot');if(d)d.style.background=st==='ok'?'var(--green)':st==='off'?'var(--text-disabled)':'var(--amber)'}
 
 async function loginWithGoogle() {
-  if (typeof supabase === 'undefined') {
-    toast('Cliente Supabase não carregado no navegador', 'error');
+  if (typeof window.supabase === 'undefined' || !window.supabase) {
+    toast('Cliente Supabase não carregado no navegador. Configure SUPABASE_URL e SUPABASE_ANON_KEY no index.html.', 'error');
     return;
   }
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await window.supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin }
   });
@@ -4030,9 +4040,9 @@ async function loginWithGoogle() {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-  if (typeof supabase === 'undefined') return;
+  if (typeof window.supabase === 'undefined' || !window.supabase) return;
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await window.supabase.auth.getSession();
     if (session && session.user) {
       const gUser = session.user;
       const res = await fetch('/api/auth/google', {
