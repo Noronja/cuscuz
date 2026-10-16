@@ -1901,6 +1901,15 @@ mark.exam-highlight {
         <span class="brand-badge">Cuscuz-MED</span>
       </div>
     </div>
+
+    <!-- Campo de pesquisa global: vídeo, PDF, apostila -->
+    <div class="busca-global-wrap" style="flex:1;max-width:460px;margin:0 16px;position:relative">
+      <input type="text" id="busca-global" placeholder="Pesquisar vídeo, PDF, apostila, disciplina…" autocomplete="off" style="width:100%;padding:9px 12px 9px 36px;border-radius:20px;border:1px solid var(--border-default);background:var(--bg-surface);color:var(--text);font-size:13px;outline:none">
+      <i class="ph ph-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:14px;pointer-events:none"></i>
+      <button type="button" id="busca-global-clear" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;display:none" onclick="limparBuscaGlobal()">×</button>
+      <div id="resultado-busca-global" style="position:absolute;top:100%;left:0;right:0;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:12px;box-shadow:var(--shadow-lg);z-index:60;display:none;max-height:420px;overflow-y:auto;margin-top:6px"></div>
+    </div>
+
     <div class="header-actions">
       <span id="cloud-dot" title="Status da nuvem" style="width:8px;height:8px;border-radius:50%;background:var(--text-disabled);display:inline-block;margin-right:4px;cursor:default;box-shadow:0 0 6px currentColor"></span>
       <div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg-surface);padding:3px 10px;border-radius:20px;border:1px solid var(--border-subtle);box-shadow:var(--shadow-xs)">
@@ -10735,6 +10744,105 @@ if (ac2BuscaEl) {
       }).join('');
     if (arvore) {
       arvore.innerHTML = hits.length ? html : '<div style="padding:24px 16px;color:var(--text-muted);font-size:13px;text-align:center"><i class="ph ph-magnifying-glass" style="font-size:24px;display:block;margin:0 auto 8px;color:var(--text-muted)"></i>Nenhuma videoaula encontrada para "' + esc(q) + '".</div>';
+    }
+  });
+}
+
+// ═══ BUSCA GLOBAL UNIFICADA: VÍDEO, PDF, APOSTILA ═══
+const bgInput = $('busca-global');
+const bgResult = $('resultado-busca-global');
+const bgClear = $('busca-global-clear');
+
+function abrirResultadoBuscaGlobal(item) {
+  bgInput.value = '';
+  bgClear.style.display = 'none';
+  bgResult.style.display = 'none';
+  bgResult.innerHTML = '';
+  if (item.tipo === 'video') {
+    ac2Abrir(item.id);
+  } else if (item.tipo === 'material') {
+    window.cuscuzAbrirPdf(item.id);
+  }
+}
+
+function renderResultadoBuscaGlobal(q) {
+  if (!q) {
+    bgResult.style.display = 'none';
+    bgResult.innerHTML = '';
+    bgClear.style.display = 'none';
+    return;
+  }
+  const nq = normAcc(q).trim();
+  const videos = (Array.isArray(AC2.LISTA) ? AC2.LISTA : []).filter(v =>
+    normAcc(v.titulo + ' ' + v.disc + ' ' + v.curso).includes(nq)
+  ).slice(0, 20);
+
+  const materiais = [];
+  if (AC2.MAT) {
+    AC2.MAT.forEach((lista, chave) => {
+      const [curso, disc] = String(chave).split('||');
+      (lista || []).forEach(m => {
+        if (normAcc(m.nome + ' ' + (m.t || '') + ' ' + disc).includes(nq)) {
+          materiais.push({ ...m, curso, disc });
+        }
+      });
+    });
+  }
+
+  const total = videos.length + materiais.length;
+  bgClear.style.display = 'flex';
+
+  if (total === 0) {
+    bgResult.style.display = 'block';
+    bgResult.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center"><i class="ph ph-magnifying-glass" style="font-size:22px;display:block;margin:0 auto 6px;color:var(--text-muted)"></i>Nenhum resultado para "' + esc(q) + '".</div>';
+    return;
+  }
+
+  let html = '<div style="padding:8px 10px;font-size:11.5px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border-muted)">' + total + ' resultado(s)</div>';
+
+  if (videos.length) {
+    html += '<div style="font-size:11px;color:var(--text-secondary);padding:6px 10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Videoaulas</div>';
+    html += videos.map(v => {
+      const feita = DONE.has('drive:' + v.id);
+      return '<div style="padding:8px 10px;border-bottom:1px solid var(--border-muted);cursor:pointer;display:flex;align-items:center;gap:8px" onclick="abrirResultadoBuscaGlobal({tipo:\'video\',id:\'' + esc(v.id) + '\'})" onmouseover="this.style.background=var(--bg-hover)" onmouseout="this.style.background=\'transparent\'" style="background:transparent">' +
+        '<i class="ph ' + (feita ? 'ph-check-circle ok-i' : 'ph-play-circle') + '" style="font-size:14px;color:var(--teal);flex:none"></i>' +
+        '<div style="flex:1"><div style="font-size:13px;color:var(--text);font-weight:500">' + esc(v.titulo) + '</div><div style="font-size:11px;color:var(--text-muted)">' + esc(v.curso) + ' › ' + esc(v.disc) + '</div></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  if (materiais.length) {
+    html += '<div style="font-size:11px;color:var(--text-secondary);padding:6px 10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:4px">PDFs / Apostilas</div>';
+    html += materiais.map(m => {
+      return '<div style="padding:8px 10px;border-bottom:1px solid var(--border-muted);cursor:pointer;display:flex;align-items:center;gap:8px" onclick="abrirResultadoBuscaGlobal({tipo:\'material\',id:\'' + esc(m.id) + '\'})" onmouseover="this.style.background=var(--bg-hover)" onmouseout="this.style.background=\'transparent\'" style="background:transparent">' +
+        '<i class="ph ph-file-pdf" style="font-size:14px;color:var(--rose);flex:none"></i>' +
+        '<div style="flex:1"><div style="font-size:13px;color:var(--text);font-weight:500">' + esc(m.nome || m.t || 'Material') + '</div><div style="font-size:11px;color:var(--text-muted)">' + esc(m.curso || '') + ' › ' + esc(m.disc || 'Geral') + '</div></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  bgResult.innerHTML = html;
+  bgResult.style.display = 'block';
+}
+
+function limparBuscaGlobal() {
+  bgInput.value = '';
+  bgClear.style.display = 'none';
+  bgResult.style.display = 'none';
+  bgResult.innerHTML = '';
+}
+
+if (bgInput) {
+  bgInput.addEventListener('input', e => {
+    renderResultadoBuscaGlobal(e.target.value);
+  });
+  bgInput.addEventListener('focus', e => {
+    if (e.target.value.trim()) bgResult.style.display = 'block';
+  });
+  // Fecha ao clicar fora
+  document.addEventListener('click', e => {
+    if (!bgInput.contains(e.target) && !bgResult.contains(e.target)) {
+      bgResult.style.display = 'none';
     }
   });
 }
