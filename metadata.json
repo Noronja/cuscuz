@@ -1,6 +1,6 @@
 {
-  "name": "Cuscuz-MED — Liquid Glass",
-  "description": "Planejador de estudos médicos, cronograma inteligente, acervo completo de videoaulas, flashcards SRS e simulados com interface Liquid Glass inspirada em visionOS.",
+  "name": "Cuscuz-MED",
+  "description": "Planejador de estudos médicos, cronograma inteligente, acervo completo de videoaulas, flashcards SRS e simulados.",
   "capabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
