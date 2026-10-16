@@ -322,11 +322,12 @@ export function setupAuthRoutes(app) {
 // Alias para compatibilidade com server.js (que importa registerAuthRoutes)
 export const registerAuthRoutes = setupAuthRoutes;
 
-// Middleware de autenticação para rotas /api (exceto /api/auth/*, /api/health e /api/config)
+// Middleware de autenticação para rotas /api (exceto /api/auth/*, /api/health, /api/config e /api/drive/*)
 export function authMiddleware(req, res, next) {
   if (req.path.startsWith('/api/auth/')) return next();
   if (req.path === '/api/health') return next();
   if (req.path === '/api/config') return next();
+  if (req.path.startsWith('/api/drive/')) return next();
   const authHeader = req.headers.authorization || '';
   const token =
     authHeader.startsWith('Bearer ') ? authHeader.slice(7) :
