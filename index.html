@@ -10972,38 +10972,36 @@ async function ac2Materiais(v) {
 
   const defaultMats = [];
 
-  // PRIMEIRO: Buscar diretamente no Drive por disciplina específica
-  // Isso garante que só venham materiais da pasta da disciplina atual
+  // ============================================================
+  // FONTE PRIMÁRIA: Buscar diretamente no Drive por disciplina específica
+  // O endpoint filtra estritamente pela pasta da disciplina no Google Drive
+  // ============================================================
   let mats = [];
   let driveFetched = false;
-  let origem = 'Cache';
 
   try {
-    const res = await fetch('/api/drive/materials?course=' + encodeURIComponent(v.curso) + '&disc=' + encodeURIComponent(v.disc));
+    const res = await fetch('/api/drive/materials?course=' + encodeURIComponent(v.curso) + '&disc=' + encodeURIComponent(v.disc), { cache: 'no-cache' });
     if (res.ok) {
       const data = await res.json();
       if (data.materials && data.materials.length) {
         mats = data.materials;
         driveFetched = true;
-        origem = 'Drive';
-      } else {
-        origem = 'Vazio (Drive)';
       }
     }
   } catch (e) {
-    console.warn('[ac2Materiais] Falha ao buscar materiais no Drive:', e.message);
-    origem = 'Erro Drive';
+    console.warn('[ac2Materiais] Falha ao buscar no Drive:', e.message);
   }
 
-  // SEGUNDO: Se o Drive não retornou nada, tenta o cache local AC2.MAT
+  // ============================================================
+  // FONTE SECUNDÁRIA: Só usar cache local se o Drive não retornou nada
+  // ============================================================
   if (!mats.length) {
-    origem = origem === 'Vazio (Drive)' ? 'Cache (Drive vazio)' : 'Cache';
     let matsLocal = AC2.MAT.get(v.curso + '||' + v.disc) || [];
     if (!matsLocal.length) matsLocal = AC2.MAT.get(v.curso + '||Geral') || [];
     mats = matsLocal;
   }
 
-  // Separa PDFs de Apostilas (arquivos .html/.htm são apostilas para o MedReader)
+  // Separa PDFs de Apostilas
   const pdfs = [];
   const apostilas = [];
   (mats || []).forEach(m => {
@@ -11023,7 +11021,6 @@ async function ac2Materiais(v) {
   const displayPdfs = pdfs.length ? pdfs : defaultMats;
   const displayApos = apostilas.length ? apostilas : defaultMats;
 
-  // Badge total
   const total = pdfs.length + apostilas.length;
   if (badge) badge.textContent = total + (total === 1 ? ' arquivo disponível' : ' arquivos disponíveis') + (driveFetched ? ' (Drive)' : '');
 
@@ -11038,10 +11035,10 @@ async function ac2Materiais(v) {
         '</div>' +
         '<i class="ph ph-download-simple mat-dl" title="Baixar"></i>' +
       '</a>'
-    ).join('') || (driveFetched && total === 0 ? '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhum PDF encontrado na pasta da disciplina no Drive</span>' : '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhum PDF disponível</span>');
+    ).join('') || (driveFetched && total === 0 ? '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhum PDF na pasta da disciplina no Drive</span>' : '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhum PDF disponível</span>');
   }
 
-  // Renderiza Apostilas (lista clicável para abrir no leitor embutido)
+  // Renderiza Apostilas
   if (boxApo) {
     boxApo.innerHTML = displayApos.map(m =>
       '<div class="material-chip" style="cursor:pointer" onclick="apostilaInlineOpen(\'' + esc(m.id) + '\', \'' + esc(m.nome) + '\')" title="Ler ' + esc(m.nome) + '">' +
@@ -11052,7 +11049,7 @@ async function ac2Materiais(v) {
         '</div>' +
         '<i class="ph ph-arrow-right mat-dl" style="color:var(--teal)"></i>' +
       '</div>'
-    ).join('') || (driveFetched && total === 0 ? '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhuma apostila encontrada na pasta da disciplina no Drive</span>' : '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhuma apostila disponível</span>');
+    ).join('') || (driveFetched && total === 0 ? '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhuma apostila na pasta da disciplina no Drive</span>' : '<span style="font-size:13px;color:var(--text-muted);padding:20px;display:block">Nenhuma apostila disponível</span>');
   }
 }
 
