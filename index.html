@@ -29,7 +29,14 @@
       .then(function (r) { return r.json(); })
       .then(function (d) { if (!d.url) throw new Error('ticket'); _tk[k] = { u: d.url, e: Date.now() + 6 * 3600 * 1000 }; return d.url; });
   };
-  window.cuscuzAbrirPdf = function (id) { var w = window.open('about:blank', '_blank'); cuscuzTicket(id, 'p').then(function (u) { if (w) w.location = u; else location.href = u; }).catch(function () { if (w) w.close(); }); };
+  window.cuscuzAbrirPdf = function (id) {
+    cuscuzTicket(id, 'p').then(function (u) {
+      // Abre o PDF na mesma aba para evitar bloqueio de pop-up
+      location.href = u;
+    }).catch(function (err) {
+      toast('⚠️ Não foi possível abrir o arquivo: ' + (err && err.message || err), 'error');
+    });
+  };
   window.cuscuzPauseAll = function () {
     try { document.querySelectorAll('video,audio').forEach(function (v) { try { v.pause(); } catch (e) {} }); } catch (e) {}
     try { document.querySelectorAll('#ac2-player iframe').forEach(function (f) { f.src = 'about:blank'; }); } catch (e) {}
@@ -9818,9 +9825,13 @@ function ac2Init() {
           no.docs.push({ id: m.id, titulo: m.t || String(m.d || 'Material').replace(/\.[^.]+$/, '') });
         }
       }
-      const k = (m.course || 'Geral') + '||' + (String(m.d || '').replace(/\.(mp4|webm|mkv|mov|pdf)$/i, '').trim() || 'Geral');
+      const k = (m.course || 'Geral') + '||' + (String(m.d || '').replace(/\.(mp4|webm|mkv|mov|pdf|html|htm)$/i, '').trim() || 'Geral');
       if (!AC2.MAT.has(k)) AC2.MAT.set(k, []);
       AC2.MAT.get(k).push({ id: m.id, nome: m.t || 'Material' });
+      // Também indexa apenas por curso (para materiais compartilhados entre disciplinas)
+      const k2 = (m.course || 'Geral') + '||Geral';
+      if (!AC2.MAT.has(k2)) AC2.MAT.set(k2, []);
+      AC2.MAT.get(k2).push({ id: m.id, nome: m.t || 'Material' });
     });
     AC2.sig = (data.videos || []).length + '/' + (data.materials || []).length;
     AC2.pronto = true;
@@ -10912,9 +10923,20 @@ function ac2Materiais(v) {
   const boxPdf = $('ac2-materiais-pdf');
   const boxApo = $('ac2-materiais-apostila');
   const badge = $('ac2-mat-badge');
+
+  // Busca materiais por curso||disciplina, depois por curso||Geral, depois por qualquer disciplina do curso
   let mats = AC2.MAT.get(v.curso + '||' + v.disc) || [];
+  if (!mats.length) mats = AC2.MAT.get(v.curso + '||Geral') || [];
+  if (!mats.length) {
+    // Fallback: busca qualquer material do mesmo curso
+    for (const [key, arr] of AC2.MAT.entries()) {
+      if (key.startsWith(v.curso + '||')) {
+        mats = mats.concat(arr);
+      }
+    }
+  }
   let origem = v.disc;
-  if (!mats.length) { mats = AC2.MAT.get(v.curso + '||Geral') || []; origem = 'Geral'; }
+  if (!mats.length) origem = 'Geral';
 
   const defaultMats = [];
 
