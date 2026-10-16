@@ -2424,14 +2424,31 @@ mark.exam-highlight {
                     <i class="ph ph-book-open" style="font-size:18px;color:var(--teal)"></i>
                     <span id="apostila-inline-title" style="font-weight:700;color:var(--text-primary);font-size:14px">Apostila</span>
                   </div>
-                  <button class="apostila-reader-close" onclick="apostilaInlineClose()" style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);background:var(--bg-hover);border:1px solid var(--border-subtle)"><i class="ph ph-x"></i></button>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <button class="apostila-reader-btn" style="padding:6px 10px;font-size:11px" onclick="toggleApostilaInlineToc()"><i class="ph ph-list"></i><span style="margin-left:4px">Sumário</span></button>
+                    <button class="apostila-reader-close" onclick="apostilaInlineClose()" style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);background:var(--bg-hover);border:1px solid var(--border-subtle)"><i class="ph ph-x"></i></button>
+                  </div>
                 </div>
-                <div class="apostila-reader-inline-content" id="apostila-reader-inline-content" style="flex:1;overflow:auto;background:var(--bg-base);min-height:400px">
+                <div class="apostila-reader-inline-content" id="apostila-reader-inline-content" style="flex:1;overflow:hidden;background:var(--bg-base);min-height:400px;position:relative">
                   <div class="apostila-reader-loading" id="apostila-inline-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--text-muted);font-size:14px;padding:40px">
                     <i class="ph ph-book-open" style="font-size:40px;color:var(--teal);animation:pulse 1.5s ease-in-out infinite"></i>
                     <span>Carregando apostila…</span>
                   </div>
                   <iframe class="apostila-reader-frame" id="apostila-inline-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock" style="width:100%;height:100%;border:0;background:var(--bg-base);display:none"></iframe>
+
+                  <!-- Painel lateral de TOC inline -->
+                  <div class="apostila-inline-toc-panel" id="apostila-inline-toc-panel" style="position:absolute;top:0;right:0;width:300px;height:100%;background:var(--bg-surface);border-left:1px solid var(--border-muted);box-shadow:var(--shadow-glass-lg);z-index:10;transform:translateX(100%);transition:transform .3s cubic-bezier(0.16,1,0.3,1);display:flex;flex-direction:column">
+                    <div style="padding:12px 16px;border-bottom:1px solid var(--border-muted);background:var(--bg-base);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+                      <span style="font-weight:700;color:var(--text-primary);font-size:13px">Sumário</span>
+                      <button onclick="toggleApostilaInlineToc()" style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);background:var(--bg-hover);border:1px solid var(--border-subtle)"><i class="ph ph-x"></i></button>
+                    </div>
+                    <div style="padding:8px;border-bottom:1px solid var(--border-muted);position:relative;flex-shrink:0">
+                      <input type="text" id="apostila-inline-toc-search" placeholder="Buscar no sumário…" style="width:100%;padding:8px 32px 8px 10px;border-radius:6px;border:1px solid var(--border-muted);background:var(--bg-elevated);color:var(--text-primary);font-size:12px;outline:none" oninput="filterApostilaInlineToc(this.value)">
+                      <i class="ph ph-magnifying-glass" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:12px;pointer-events:none"></i>
+                    </div>
+                    <div class="apostila-inline-toc-tree" id="apostila-inline-toc-tree" style="flex:1;overflow-y:auto;padding:8px"></div>
+                  </div>
+                  <div class="apostila-inline-toc-backdrop" id="apostila-inline-toc-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.3);z-index:9;display:none" onclick="toggleApostilaInlineToc()"></div>
                 </div>
               </div>
             </div>
@@ -3150,6 +3167,7 @@ let apostilaState = {
   theme: 'dark', // 'dark' | 'light' | 'sepia'
   font: 'system', // 'system' | 'serif' | 'mono'
   toc: [],
+  inlineToc: [], // TOC do leitor inline
   history: [], // para navegação anterior/próximo
   historyIndex: -1
 };
@@ -3277,6 +3295,8 @@ function apostilaInlineOpen(fileId, fileName) {
         // Aplica tema e fonte do medreader
         applyApostilaTheme();
         applyApostilaFont();
+        // Extrai e renderiza o sumário (TOC)
+        extractApostilaInlineToc(frame);
       };
     })
     .catch(err => {
@@ -3290,6 +3310,114 @@ function apostilaInlineClose() {
   const frame = $('apostila-inline-frame');
   container.style.display = 'none';
   frame.src = 'about:blank';
+  apostilaInlineCloseToc();
+}
+
+// ═══ TOC INLINE (Sumário) ═══
+function toggleApostilaInlineToc() {
+  const panel = $('apostila-inline-toc-panel');
+  const backdrop = $('apostila-inline-toc-backdrop');
+  const isOpen = !panel.classList.contains('open');
+  panel.classList.toggle('open', isOpen);
+  panel.style.transform = isOpen ? 'translateX(0)' : 'translateX(100%)';
+  backdrop.style.display = isOpen ? 'block' : 'none';
+}
+
+function apostilaInlineCloseToc() {
+  const panel = $('apostila-inline-toc-panel');
+  const backdrop = $('apostila-inline-toc-backdrop');
+  panel.classList.remove('open');
+  panel.style.transform = 'translateX(100%)';
+  backdrop.style.display = 'none';
+}
+
+function extractApostilaInlineToc(frame) {
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const toc = [];
+    let parents = [];
+    
+    headings.forEach((h, idx) => {
+      const level = parseInt(h.tagName[1]);
+      const id = `inline-heading-${idx}`;
+      h.id = id;
+      h.setAttribute('data-inline-heading', 'true');
+      
+      const item = {
+        id,
+        text: h.textContent.trim(),
+        level,
+        element: h
+      };
+      
+      while (parents.length >= level) {
+        parents.pop();
+      }
+      if (parents.length > 0) {
+        const parent = parents[parents.length - 1];
+        parent.children = parent.children || [];
+        parent.children.push(item);
+      } else {
+        toc.push(item);
+      }
+      parents.push(item);
+    });
+    
+    apostilaState.inlineToc = toc;
+    renderApostilaInlineToc();
+  } catch (err) {
+    console.warn('[Apostila Inline] Falha ao extrair TOC:', err);
+  }
+}
+
+function renderApostilaInlineToc() {
+  const container = $('apostila-inline-toc-tree');
+  if (!container) return;
+  
+  const toc = apostilaState.inlineToc || [];
+  
+  function renderItems(items, depth = 0) {
+    let html = '';
+    items.forEach(item => {
+      const hasChildren = item.children && item.children.length > 0;
+      const indent = depth * 14;
+      html += `
+        <div style="padding:${4 + depth * 2}px 8px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:${13 - depth * 0.5}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" data-heading-id="${item.id}" onclick="scrollToApostilaInlineHeading('${item.id}')">
+          ${hasChildren ? `<span style="font-size:10px;color:var(--text-muted);flex:none">${item.children.some(c => c._open !== false) ? '▾' : '▸'}</span>` : '<span style="width:12px;flex:none"></span>'}
+          <i class="ph ph-${item.level <= 2 ? 'heading-' + item.level : 'text-t'}" style="font-size:${12 - depth}px;color:var(--text-secondary);flex:none"></i>
+          <span style="flex:1">${esc(item.text)}</span>
+        </div>
+        ${hasChildren ? `<div style="margin-left:${indent + 16}px;display:${item.children.some(c => c._open !== false) ? 'block' : 'none'}">${renderItems(item.children, depth + 1)}</div>` : ''}
+      `;
+    });
+    return html;
+  }
+  
+  container.innerHTML = renderItems(toc) || '<div style="padding:16px;color:var(--text-muted);font-size:12px;text-align:center">Sem sumário detectado</div>';
+}
+
+function scrollToApostilaInlineHeading(headingId) {
+  const frame = $('apostila-inline-frame');
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    const el = doc.getElementById(headingId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      apostilaInlineCloseToc();
+    }
+  } catch (err) {
+    console.warn('[Apostila Inline] Falha ao rolar para heading:', err);
+  }
+}
+
+function filterApostilaInlineToc(query) {
+  const items = $$('#apostila-inline-toc-tree > div');
+  const q = query.toLowerCase().trim();
+  items.forEach(item => {
+    const text = item.textContent.toLowerCase();
+    item.style.display = !q || text.includes(q) ? 'flex' : 'none';
+  });
 }
 
 function extractApostilaToc(frame) {
