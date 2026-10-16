@@ -16,7 +16,7 @@ import { registerPlanner } from './src/planner-routes.js';
 import { registerJarvis } from './src/jarvis.js';
 import { registerAula } from './src/aula.js';
 import { registerApostilaReader } from './src/apostila-reader.js';
-import { registerAuthRoutes, authMiddleware, getUserFilePath, getUserDataDir, validateSession } from './src/auth-multiuser.js';
+import { registerAuthRoutes, authMiddleware, getUserFilePath, getUserDataDir, validateSession, updateUserProfile } from './src/auth-multiuser.js';
 import { varrerExtras, juntar as juntarExtras, lerExtra, STATUS as EXTRA_STATUS, EXTRA_IDS } from './src/extra-drive.js';
 import { resetCatalogo } from './src/planner-engine.js';
 import { temConta, emailConta, erroConta, driveFetch, authHeaders, cleanDriveId } from './src/drive-auth.js';
@@ -665,16 +665,13 @@ app.post('/api/auth/update-profile', async (req, res) => {
     const username = await validateSession(token);
     if (!username) return res.status(401).json({ success: false, error: 'Sessão expirada' });
 
-    const user = usersDb.get(username);
-    if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
-
     const { displayName } = req.body;
     if (!displayName || !displayName.trim()) {
       return res.status(400).json({ success: false, error: 'Nome inválido' });
     }
 
-    user.displayName = displayName.trim();
-    await saveUser(user);
+    const user = await updateUserProfile(username, displayName);
+    if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
 
     res.json({ success: true, displayName: user.displayName, message: 'Nome atualizado com sucesso' });
   } catch (e) {

@@ -343,6 +343,15 @@ export function authMiddleware(req, res, next) {
     .catch(() => res.status(401).json({ success: false, error: 'Erro de autenticação' }));
 }
 
+// Atualiza nome de exibição do usuário
+export async function updateUserProfile(username, displayName) {
+  const user = usersDb.get(username);
+  if (!user) return null;
+  user.displayName = displayName.trim();
+  await saveUser(user);
+  return user;
+}
+
 // Retorna o diretório de dados de um usuário específico
 export function getUserDataDir(username) {
   const safe = String(username || '').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'user';
