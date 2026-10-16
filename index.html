@@ -10753,13 +10753,23 @@ const bgInput = $('busca-global');
 const bgResult = $('resultado-busca-global');
 const bgClear = $('busca-global-clear');
 
-function abrirResultadoBuscaGlobal(item) {
+async function abrirResultadoBuscaGlobal(item) {
   bgInput.value = '';
   bgClear.style.display = 'none';
   bgResult.style.display = 'none';
   bgResult.innerHTML = '';
+
+  // Sempre navega para o acervo (Aulas Teóricas) primeiro
+  go('view-acervo');
+
   if (item.tipo === 'video') {
-    ac2Abrir(item.id);
+    // Aguarda o acervo inicializar (ac2Init é assíncrono) antes de abrir a aula
+    try {
+      if (typeof ac2Init === 'function') await ac2Init();
+    } catch (e) {
+      // ac2Init pode já ter sido executado anteriormente
+    }
+    if (typeof ac2Abrir === 'function') ac2Abrir(item.id);
   } else if (item.tipo === 'material') {
     window.cuscuzAbrirPdf(item.id);
   }
