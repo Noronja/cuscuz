@@ -597,6 +597,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);bo
 .avatar-status-dot{position:absolute;bottom:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:var(--green);border:2px solid var(--bg-base);box-shadow:0 0 6px rgba(52,211,153,0.6)}
 .sidebar-user-meta{display:flex;flex-direction:column;min-width:0;line-height:1.25}
 .sidebar-user-name{font-size:13px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-edit-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:4px;border-radius:6px;transition:all .2s;flex-shrink:0;margin-left:auto}
+.sidebar-edit-btn:hover{color:var(--teal);background:var(--bg-hover)}
 .sidebar-user-role{font-size:10.5px;color:var(--teal);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sidebar-toggle-btn{width:28px;height:28px;border-radius:var(--radius-sm);background:var(--bg-elevated);border:1px solid var(--border-subtle);color:var(--text-secondary);display:inline-flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;transition:all .2s ease}
 .sidebar-toggle-btn:hover{background:var(--bg-hover);color:var(--teal);border-color:var(--teal-border);transform:scale(1.08)}
@@ -1952,7 +1954,8 @@ mark.exam-highlight {
           <span class="avatar-status-dot" title="Online"></span>
         </div>
         <div class="sidebar-user-meta">
-          <div class="sidebar-user-name">Alex Lima</div>
+          <div class="sidebar-user-name" id="sidebar-user-name">Alex Lima</div>
+          <button class="sidebar-edit-btn" onclick="openEditProfile()" title="Editar perfil"><i class="ph ph-pencil"></i></button>
           <div class="sidebar-user-role">Medicina · Graduação</div>
         </div>
       </div>
@@ -4342,6 +4345,15 @@ async function doLogin(){const u=cleanStr($('login-user').value.trim()),p=$('log
     localStorage.setItem('cuscuz_token',d.token);
   }catch(e){err.textContent='Servidor indisponível. Tente de novo em instantes.';err.style.display='block';return}
   SYNC_USER=u;localStorage.setItem('medplan_logged','1');localStorage.setItem('medplan_user',u);
+  // Carrega o nome de exibição do servidor
+  try{
+    const r=await fetch('/api/auth/me',{headers:{'Authorization':'Bearer '+d.token}});
+    const ud=await r.json();
+    if(ud.success&&ud.user&&ud.user.displayName){
+      $('sidebar-user-name').textContent = ud.user.displayName;
+      localStorage.setItem('medplan_display_name', ud.user.displayName);
+    }
+  }catch(_){}
   err.style.display='none';startApp();
   try{loadDriveFolder(DRIVE_ROOT_ID,'Cursos',false);loadQuestionsBankFromAPI(true);if(typeof fetchRadarMedico==='function')fetchRadarMedico()}catch(_){}}
 function showSignupForm(){
@@ -4373,9 +4385,37 @@ async function doSignup(){
     localStorage.setItem('cuscuz_token',res.token);
   }catch(e){err.textContent='Servidor indisponível. Tente de novo em instantes.';err.style.display='block';return}
   SYNC_USER=u;localStorage.setItem('medplan_logged','1');localStorage.setItem('medplan_user',u);
+  // Carrega o nome de exibição do servidor
+  try{
+    const r=await fetch('/api/auth/me',{headers:{'Authorization':'Bearer '+d.token}});
+    const ud=await r.json();
+    if(ud.success&&ud.user&&ud.user.displayName){
+      $('sidebar-user-name').textContent = ud.user.displayName;
+      localStorage.setItem('medplan_display_name', ud.user.displayName);
+    }
+  }catch(_){}
   err.style.display='none';startApp();
   try{loadDriveFolder(DRIVE_ROOT_ID,'Cursos',false);loadQuestionsBankFromAPI(true);if(typeof fetchRadarMedico==='function')fetchRadarMedico()}catch(_){}}
 function logout(){if(confirm('Sair? Os dados continuam salvos neste dispositivo.')){localStorage.removeItem('medplan_logged');localStorage.removeItem('cuscuz_token');location.reload()}}
+
+function openEditProfile(){
+  const currentName = $('sidebar-user-name')?.textContent || '';
+  const name = prompt('Digite seu novo nome de exibição:', currentName);
+  if(!name || !name.trim()) return;
+  const token = localStorage.getItem('cuscuz_token');
+  fetch('/api/auth/update-profile',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({displayName:name.trim()})})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.success){
+        $('sidebar-user-name').textContent = d.displayName;
+        localStorage.setItem('medplan_display_name', d.displayName);
+        toast('✅ Nome atualizado com sucesso!','success');
+      } else {
+        toast('❌ '+ (d.error||'Erro ao atualizar'),'error');
+      }
+    })
+    .catch(()=>toast('❌ Erro ao atualizar nome','error'));
+}
 function payload(){return{db:DB,done:[...DONE],fav:[...FAV],quiz:QUIZS,last:lsGet('acv_last',null),days:lsGet('acv_days',[]),sims:SIMS,decks:DECKS,wrong:[...WRONG],resumos:RESUMOS,fc:FCS,fcsrs:FCSRS,plv2:lsGet('planner-v2-plan',null)}}
 function pushCloud(){if(!CLOUD_ON||!SYNC_USER)return;setDot('sync');
  FBDB.ref('users/'+safeUser(SYNC_USER)+'/state').set(payload()).then(()=>setDot('ok')).catch(()=>setDot('off'))}
@@ -4390,6 +4430,12 @@ function startApp(){
  catalog();refreshAll();setDot(CLOUD_ON?'ok':'off');
  loadDriveFolder(DRIVE_ROOT_ID, 'Cursos', false);
  loadAcervoData();    // Catálogo curado (acervo-manifest.json)
+
+  // Carrega nome de exibição salvo localmente
+  const savedName = localStorage.getItem('medplan_display_name');
+  if(savedName && $('sidebar-user-name')){
+    $('sidebar-user-name').textContent = savedName;
+  }
   if(CLOUD_ON&&SYNC_USER){FBDB.ref('users/'+safeUser(SYNC_USER)+'/state').once('value').then(s=>{const cl=s.val();if(!cl)return;
    const cloudXp=cl.db&&cl.db.xp,changed=cloudXp!==DB.xp||(cl.done||[]).length!==DONE.size;
    if(changed&&confirm('Dados encontrados na nuvem para "'+SYNC_USER+'".\nOK = restaurar da nuvem · Cancelar = manter local e sobrescrever nuvem')){
