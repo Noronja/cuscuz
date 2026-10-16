@@ -318,3 +318,35 @@ export function setupAuthRoutes(app) {
     });
   });
 }
+
+// Alias para compatibilidade com server.js (que importa registerAuthRoutes)
+export const registerAuthRoutes = setupAuthRoutes;
+
+// Middleware de autenticação para rotas /api (exceto /api/auth/*)
+export function authMiddleware(req, res, next) {
+  if (req.path.startsWith('/api/auth/')) return next();
+  const authHeader = req.headers.authorization || '';
+  const token =
+    authHeader.startsWith('Bearer ') ? authHeader.slice(7) :
+    req.query?.token || req.body?.token;
+  validateSession(token)
+    .then(username => {
+      if (!username) return res.status(401).json({ success: false, error: 'Não autenticado' });
+      const user = usersDb.get(username);
+      if (!user) return res.status(401).json({ success: false, error: 'Usuário não encontrado' });
+      req.user = { username: user.username, displayName: user.displayName, role: user.role };
+      next();
+    })
+    .catch(() => res.status(401).json({ success: false, error: 'Erro de autenticação' }));
+}
+
+// Retorna o diretório de dados de um usuário específico
+export function getUserDataDir(username) {
+  const safe = String(username || '').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'user';
+  return path.join(DATA_DIR, 'users', safe);
+}
+
+// Retorna o caminho completo para um arquivo dentro do diretório do usuário
+export function getUserFilePath(username, filename) {
+  return path.join(getUserDataDir(username), filename);
+}
