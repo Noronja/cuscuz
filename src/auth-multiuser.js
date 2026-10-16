@@ -263,6 +263,35 @@ export function setupAuthRoutes(app) {
     }
   });
 
+  app.post('/api/auth/google', async (req, res) => {
+    try {
+      const { email, name, providerId } = req.body;
+      if (!email) return res.status(400).json({ success: false, error: 'E-mail do Google não fornecido' });
+
+      const baseName = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      let username = baseName + '_g';
+      let user = usersDb.get(username);
+
+      if (!user) {
+        user = {
+          username,
+          displayName: name || baseName,
+          passwordHash: 'GOOGLE_AUTH',
+          salt: 'GOOGLE_AUTH',
+          role: 'user',
+          settings: { email, providerId }
+        };
+        await saveUser(user);
+      }
+
+      const token = await createSession(username);
+      res.json({ success: true, token, user: { username, displayName: user.displayName } });
+    } catch (e) {
+      console.error('Erro no login com Google:', e);
+      res.status(500).json({ success: false, error: 'Erro interno ao autenticar com Google' });
+    }
+  });
+
   app.post('/api/auth/logout', async (req, res) => {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.body?.token || req.query?.token);

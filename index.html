@@ -1776,6 +1776,9 @@ mark.exam-highlight {
         </div>
         <div id="login-error" style="color:var(--rose);font-size:12px;margin-bottom:14px;display:none;background:var(--rose-dim);padding:8px 12px;border-radius:8px;border:1px solid var(--rose-border)">Usuário ou senha incorretos</div>
         <button onclick="doLogin()" class="btn-primary glass-shimmer" style="width:100%;padding:12px;border-radius:var(--radius-md);font-size:14px;font-weight:700">Acessar Plataforma</button>
+        <button type="button" onclick="loginWithGoogle()" style="width:100%;margin-top:10px;background:#fff;color:#333;border:1px solid var(--border-default);padding:11px;border-radius:var(--radius-md);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.13 0-5.78-2.11-6.73-4.96H1.14v3.15C3.15 21.32 7.23 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.14C.41 8.09 0 9.77 0 11.5s.41 3.41 1.14 4.89l4.13-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.23 0 3.15 2.68 1.14 6.61l4.13 3.15c.95-2.85 3.6-4.96 6.73-4.96z"/></svg> Entrar com Google
+        </button>
         <div style="font-size:12px;color:var(--text-muted);margin-top:14px;line-height:1.5">
           Não tem conta? <button type="button" onclick="showSignupForm()" style="background:none;border:none;color:var(--teal);font-weight:700;padding:0;margin:0">Criar conta grátis</button>
         </div>
@@ -4013,6 +4016,47 @@ let FBDB=null,CLOUD_ON=false;
 const safeUser=s=>String(s||'').toLowerCase().replace(/[^a-z0-9_-]/g,'')||'user';
 const hsh=s=>{let x=5381;for(const c of s)x=(x*33+c.charCodeAt(0))>>>0;return x.toString(36)};
 function setDot(st){const d=$('cloud-dot');if(d)d.style.background=st==='ok'?'var(--green)':st==='off'?'var(--text-disabled)':'var(--amber)'}
+
+async function loginWithGoogle() {
+  if (typeof supabase === 'undefined') {
+    toast('Cliente Supabase não carregado no navegador', 'error');
+    return;
+  }
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin }
+  });
+  if (error) toast('Erro ao autenticar com Google: ' + error.message, 'error');
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  if (typeof supabase === 'undefined') return;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session && session.user) {
+      const gUser = session.user;
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: gUser.email,
+          name: gUser.user_metadata?.full_name || gUser.email,
+          providerId: gUser.id
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.token) {
+        localStorage.setItem('cuscuz_token', data.token);
+        SYNC_USER = data.user.username;
+        localStorage.setItem('medplan_logged', '1');
+        localStorage.setItem('medplan_user', data.user.username);
+        window.location.href = window.location.pathname;
+      }
+    }
+  } catch (e) {
+    console.error('Erro ao processar retorno do Google:', e);
+  }
+});
 
 async function doLogin(){const u=cleanStr($('login-user').value.trim()),p=$('login-pass').value;
   const err=$('login-error');
