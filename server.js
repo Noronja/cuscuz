@@ -817,6 +817,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Configuração pública para o frontend (não expõe segredos do servidor, apenas chaves anônimas do Supabase)
+app.get('/api/config', (req, res) => {
+  res.json({
+    supabaseUrl: process.env.SUPABASE_URL || '',
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ''
+  });
+});
+
 // ══════════════════════════════════════════════════════════════════
 // RADAR MÉDICO: ATUALIZAÇÕES E EDITAIS (Estratégia MED + Gemini AI)
 // ══════════════════════════════════════════════════════════════════

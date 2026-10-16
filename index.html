@@ -437,13 +437,26 @@
 <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // ⚠️ Substitua pelos valores do seu projeto Supabase (painel → Settings → API)
-  const SUPABASE_URL = 'SUA_URL_DO_SUPABASE_AQUI';
-  const SUPABASE_ANON_KEY = 'SUA_CHAVE_ANON_DO_SUPABASE_AQUI';
-  window.supabase = (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_URL !== 'SUA_URL_DO_SUPABASE_AQUI')
-    ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-    : null;
-  if (!window.supabase) console.warn('⚠️ [Supabase] Cliente não inicializado — preencha SUPABASE_URL e SUPABASE_ANON_KEY no index.html');
+  // Inicializa o Supabase client no navegador buscando as chaves do backend (Railway)
+  // As chaves NÃO ficam hardcoded aqui — vêm das Variables do Railway via /api/config
+  let supabaseReady = Promise.resolve();
+  window.supabase = null;
+
+  supabaseReady = (async () => {
+    try {
+      const res = await fetch('/api/config');
+      if (!res.ok) throw new Error('Falha ao carregar config');
+      const cfg = await res.json();
+      if (cfg.supabaseUrl && cfg.supabaseAnonKey && typeof supabase !== 'undefined') {
+        window.supabase = supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+        console.log('✅ [Supabase] Cliente inicializado via /api/config');
+      } else {
+        console.warn('⚠️ [Supabase] URL ou chave anônima não disponíveis no /api/config');
+      }
+    } catch (e) {
+      console.warn('⚠️ [Supabase] Erro ao inicializar cliente:', e.message);
+    }
+  })();
 </script>
 
 <!-- API de Áudio do YouTube para o Lobby -->
@@ -4028,8 +4041,9 @@ const hsh=s=>{let x=5381;for(const c of s)x=(x*33+c.charCodeAt(0))>>>0;return x.
 function setDot(st){const d=$('cloud-dot');if(d)d.style.background=st==='ok'?'var(--green)':st==='off'?'var(--text-disabled)':'var(--amber)'}
 
 async function loginWithGoogle() {
-  if (typeof window.supabase === 'undefined' || !window.supabase) {
-    toast('Cliente Supabase não carregado no navegador. Configure SUPABASE_URL e SUPABASE_ANON_KEY no index.html.', 'error');
+  await supabaseReady;
+  if (!window.supabase) {
+    toast('Cliente Supabase não carregado. Verifique as variáveis do Railway (SUPABASE_URL, SUPABASE_ANON_KEY).', 'error');
     return;
   }
   const { data, error } = await window.supabase.auth.signInWithOAuth({
@@ -4040,7 +4054,8 @@ async function loginWithGoogle() {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-  if (typeof window.supabase === 'undefined' || !window.supabase) return;
+  await supabaseReady;
+  if (!window.supabase) return;
   try {
     const { data: { session } } = await window.supabase.auth.getSession();
     if (session && session.user) {
