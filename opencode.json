@@ -1,0 +1,91 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "name": "cuscuz-med",
+  "description": "Configuração OpenCode para o projeto Cuscuz-MED",
+  "agents": [
+    {
+      "name": "dev-server",
+      "description": "Inicia o servidor de desenvolvimento do Cuscuz-MED",
+      "tools": ["shell"],
+      "instructions": "Você é um agente especializado em iniciar e gerenciar o servidor de desenvolvimento do Cuscuz-MED. Quando solicitado, você deve iniciar o servidor usando 'npm run dev' e monitorar sua execução.",
+      "permissions": ["shell:execute"]
+    },
+    {
+      "name": "dependency-manager",
+      "description": "Gerencia dependências do projeto Cuscuz-MED",
+      "tools": ["shell"],
+      "instructions": "Você é um agente especializado em gerenciar dependências do projeto Cuscuz-MED. Você pode instalar, atualizar e diagnosticar problemas com dependências usando npm.",
+      "permissions": ["shell:execute"]
+    },
+    {
+      "name": "deploy-assistant",
+      "description": "Auxilia no deploy do Cuscuz-MED para plataformas como Railway.app",
+      "tools": ["shell", "read", "write"],
+      "instructions": "Você é um agente especializado em auxiliar no deploy do Cuscuz-MED para plataformas de hospedagem como Railway.app. Você conhece o processo descrito em DEPLOY.md e pode ajudar a configurar variáveis de ambiente, entender o processo de build e start, e executar comandos relacionados ao deploy.",
+      "permissions": ["shell:execute", "file:read", "file:write"]
+    },
+    {
+      "name": "question-bank-manager",
+      "description": "Gerencia o banco de questões do Cuscuz-MED",
+      "tools": ["shell", "read", "write"],
+      "instructions": "Você é um agente especializado em gerenciar o banco de questões do Cuscuz-MED. Você entende os scripts em /scripts, sabe como o banco é baixado do Hardworq e pode ajudar com operações relacionadas ao banco de questões.",
+      "permissions": ["shell:execute", "file:read", "file:write"]
+    },
+    {
+      "name": "github-assistant",
+      "description": "Gerencia operações com GitHub via servidor MCP",
+      "tools": ["mcp"],
+      "instructions": "Você é um agente especializado em interagir com o GitHub usando a ferramenta MCP do GitHub. Você pode consultar repositórios, gerenciar issues, pull requests, commits e muito mais diretamente da API do GitHub.",
+      "permissions": ["mcp:access"]
+    }
+  ],
+  "commands": [
+    {
+      "name": "dev",
+      "description": "Inicia o servidor de desenvolvimento",
+      "agent": "dev-server",
+      "instructions": "Inicie o servidor de desenvolvimento do Cuscuz-MED usando 'npm run dev'"
+    },
+    {
+      "name": "install",
+      "description": "Instala as dependências do projeto",
+      "agent": "dependency-manager",
+      "instructions": "Instale as dependências do projeto usando 'npm install'"
+    },
+    {
+      "name": "deploy:railway",
+      "description": "Auxilia no deploy para o Railway.app",
+      "agent": "deploy-assistant",
+      "instructions": "Siga o guia de deploy em DEPLOY.md para auxiliar no deploy do Cuscuz-MED para o Railway.app"
+    },
+    {
+      "name": "bank:update",
+      "description": "Atualiza o banco de questões do Hardworq",
+      "agent": "question-bank-manager",
+      "instructions": "Execute o script de atualização do banco de questões: 'node scripts/baixar-banco.mjs'"
+    },
+    {
+      "name": "github:status",
+      "description": "Verifica o status e informações do repositório GitHub via MCP",
+      "agent": "github-assistant",
+      "instructions": "Consulte o status do repositório, issues recentes ou informações do GitHub usando o servidor MCP do GitHub."
+    }
+  ],
+  "permissions": {
+    "shell": {
+      "execute": true
+    },
+    "file": {
+      "read": true,
+      "write": true
+    }
+  },
+  "mcp": {
+    "servers": {
+      "github": {
+        "type": "http",
+        "url": "https://mcp.github.com"
+      }
+    }
+  }
+}

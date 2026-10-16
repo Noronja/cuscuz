@@ -1,11 +1,30 @@
 -- ============================================================
--- Supabase Schema para Chatbot Persistente (Conversations)
+-- Supabase Schema para Multi-Usuários e Conversas no Cuscuz-MED
 -- ============================================================
 
--- Criação da tabela de conversas
+-- 1. Criação da tabela de usuários (caso prefira gerenciar usuários no Supabase)
+create table if not exists public.users (
+  id uuid default gen_random_uuid() primary key,
+  username text unique not null,
+  name text,
+  password_hash text not null,
+  salt text not null,
+  role text default 'user',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 2. Criação da tabela de sessões para multi-usuários
+create table if not exists public.sessions (
+  token text primary key,
+  username text not null,
+  created_at bigint not null,
+  expires_at bigint not null
+);
+
+-- 3. Criação da tabela de conversas
 create table if not exists public.conversations (
   id text primary key,
-  user_id uuid references auth.users(id) on delete cascade,
+  username text not null,
   title text default 'Nova Conversa',
   messages jsonb not null default '[]'::jsonb,
   metadata jsonb default '{}'::jsonb,
@@ -14,25 +33,17 @@ create table if not exists public.conversations (
 );
 
 -- Índices para busca rápida
-create index if not exists idx_conversations_user_id on public.conversations(user_id);
+create index if not exists idx_users_username on public.users(username);
+create index if not exists idx_sessions_token on public.sessions(token);
+create index if not exists idx_conversations_username on public.conversations(username);
 create index if not exists idx_conversations_updated_at on public.conversations(updated_at desc);
 
 -- Habilitar RLS (Row Level Security)
+alter table public.users enable row level security;
+alter table public.sessions enable row level security;
 alter table public.conversations enable row level security;
 
--- Políticas de acesso permissivas para chave anon/service_role ou usuários autenticados
-create policy "Permitir leitura para todos ou anon"
-  on public.conversations for select
-  using (true);
-
-create policy "Permitir inserção e atualização para todos ou anon"
-  on public.conversations for insert
-  with check (true);
-
-create policy "Permitir update para todos ou anon"
-  on public.conversations for update
-  using (true);
-
-create policy "Permitir deleção para todos ou anon"
-  on public.conversations for delete
-  using (true);
+-- Políticas de acesso permissivas para chave anon/service_role
+create policy "Permitir acesso total a users" on public.users for all using (true) with check (true);
+create policy "Permitir acesso total a sessions" on public.sessions for all using (true) with check (true);
+create policy "Permitir acesso total a conversations" on public.conversations for all using (true) with check (true);
