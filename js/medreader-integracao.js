@@ -124,8 +124,8 @@ function medreaderCloseOverlay() {
 }
 
 /**
- * Carrega os materiais (PDFs + Apostilas) de uma aula específica no MedReader.
- * Filtra por aulaId (AC2.atualId) para exibir apenas arquivos da aula atual.
+ * Carrega os materiais (PDFs + Apostilas) de uma macroárea/disciplina no MedReader.
+ * Apostilas são organizadas por macroárea (Pediatria, Cirurgia, etc.), não por aula individual.
  * @param {object} aula - { id, curso, disc, titulo, materiais?: Array }
  */
 function medreaderCarregarMateriaisDaAula(aula) {
@@ -157,10 +157,9 @@ function medreaderCarregarMateriaisDaAula(aula) {
     const entry = {
       id: m.id,
       nome: nome.endsWith('.pdf') || nome.endsWith('.html') || nome.endsWith('.htm') ? nome : nome + '.pdf',
-      sub: 'Material da aula: ' + aula.titulo,
+      sub: 'Material da macro�rea: ' + (aula.curso || aula.titulo),
       url: m.url || '',
       isHtml: isApostila,
-      aulaId: aula.id,
     };
     if (isApostila) apostilas.push(entry);
     else pdfs.push(entry);
@@ -205,7 +204,7 @@ function medreaderCarregarMateriaisDaAula(aula) {
   // Atualiza contador
   const total = pdfs.length + apostilas.length;
   if (badge) {
-    badge.textContent = total + (total === 1 ? ' arquivo disponível' : ' arquivos disponíveis') + ' (aula)';
+    badge.textContent = total + (total === 1 ? ' arquivo disponível' : ' arquivos disponíveis') + ' (macroárea)';
   }
 }
 
@@ -256,7 +255,7 @@ async function medreaderApostilaInlineOpen(fileId, fileName) {
 async function medreaderBuscarMateriaisDaAula(aulaId, curso, disc) {
   try {
     const res = await fetch(
-      `/api/drive/materials?course=${encodeURIComponent(curso || '')}&disc=${encodeURIComponent(disc || '')}&aula=${encodeURIComponent(aulaId)}`,
+      `/api/drive/materials?course=${encodeURIComponent(curso || '')}&disc=${encodeURIComponent(disc || '')}`,
       { cache: 'no-cache' }
     );
     if (res.ok) {
@@ -269,8 +268,8 @@ async function medreaderBuscarMateriaisDaAula(aulaId, curso, disc) {
     console.warn('[MedReader] Falha ao buscar materiais no backend:', e.message);
   }
 
-  // Fallback: retorna vazio (o backend deve filtrar por aula).
-  // Se o backend não filtrar, o frontend não tem como saber quais materiais pertencem à aula.
+  // Fallback: retorna vazio. Apostilas são organizadas por macroárea/disciplina (curso+disc),
+  // não por aula individual, então não há filtro por aulaId necessário.
   return [];
 }
 

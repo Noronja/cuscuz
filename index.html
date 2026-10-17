@@ -10980,7 +10980,7 @@ async function ac2Materiais(v) {
   let driveFetched = false;
 
   try {
-    const res = await fetch('/api/drive/materials?course=' + encodeURIComponent(v.curso) + '&disc=' + encodeURIComponent(v.disc) + '&aula=' + encodeURIComponent(v.id), { cache: 'no-cache' });
+    const res = await fetch('/api/drive/materials?course=' + encodeURIComponent(v.curso) + '&disc=' + encodeURIComponent(v.disc), { cache: 'no-cache' });
     if (res.ok) {
       const data = await res.json();
       if (data.materials && data.materials.length) {
