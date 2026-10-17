@@ -1,3 +1,23 @@
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { driveFetch, cleanDriveId } from './src/drive-auth.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Em hospedagens (Render, Railway...) a porta vem do ambiente; 3000 é o padrão local
+const PORT = parseInt(process.env.PORT, 10) || 3000;
+const HOST = '0.0.0.0';
+
+// Drive API configuration
+const DRIVE_OK = !!process.env.GOOGLE_DRIVE_API_KEY;
+const DRIVE_ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '';
+
 // Busca materiais (PDFs e apostilas HTML) no Drive navegando na estrutura:
 // curso > disciplina > aula > subpasta "Apostila"
 // Suporta fallback: se aulaId for um arquivo dentro de subpasta (ex: Vídeo aula),
