@@ -10,6 +10,14 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Servir arquivos estáticos (index.html, css, js, etc.)
+app.use(express.static(path.join(__dirname), { index: 'index.html' }));
+
+// Fallback para SPA: rotas não-API devolvem o index.html
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Em hospedagens (Render, Railway...) a porta vem do ambiente; 3000 é o padrão local
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 const HOST = '0.0.0.0';
