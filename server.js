@@ -187,13 +187,17 @@ app.get('/api/drive/materials', async (req, res) => {
         }
 
         if (!targetAulaPasta) {
-          return res.json({ materials: [], hint: 'Aula não encontrada na disciplina', course, disc, aula });
+          // Fallback final: aulaId é um arquivo do Drive mas não conseguimos navegar
+          // até a pasta da aula via API. Retornamos materiais de TODAS as aulas da
+          // disciplina para que o usuário pelo menos veja as apostilas disponíveis.
+          targetAulaPasta = null; // sinaliza para usar todas as aulas abaixo
         }
       }
     }
 
     if (!targetAulaPasta) {
-      // Se não especificou aula, retornar materiais de todas as aulas (comportamento anterior)
+      // Retornar materiais de todas as aulas da disciplina (fallback quando
+      // não conseguimos identificar a aula específica pelo ID do arquivo)
       const materials = [];
       for (const aulaPasta of aulaPastas) {
         const aulaFolderId = aulaPasta.shortcutDetails?.targetId || aulaPasta.id;
@@ -202,7 +206,7 @@ app.get('/api/drive/materials', async (req, res) => {
         materials.push(...mats);
       }
       const uniq = materials.filter((m, idx, self) => idx === self.findIndex(m2 => m2.id === m.id));
-      return res.json({ materials: uniq, total: uniq.length, course, disc, aula: null, source: 'drive-recursive' });
+      return res.json({ materials: uniq, total: uniq.length, course, disc, aula: null, source: 'drive-all-aulas' });
     }
 
     // 5. Processar a pasta da aula encontrada
