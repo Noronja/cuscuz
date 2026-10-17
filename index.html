@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
 <meta name="theme-color" content="#080c14">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/css/medreader.css">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -10973,14 +10973,14 @@ async function ac2Materiais(v) {
   const defaultMats = [];
 
   // ============================================================
-  // FONTE ÚNICA: Buscar diretamente no Drive por disciplina específica
-  // NÃO usar AC2.MAT porque ele contém materiais de TODAS as disciplinas
+  // FONTE PRIMÁRIA: Buscar diretamente no Drive por disciplina específica
+  // O endpoint filtra estritamente pela pasta da disciplina no Google Drive
   // ============================================================
   let mats = [];
   let driveFetched = false;
 
   try {
-    const res = await fetch('/api/drive/materials?course=' + encodeURIComponent(v.curso) + '&disc=' + encodeURIComponent(v.disc), { cache: 'no-cache' });
+    const res = await fetch('/api/drive/materials?course=' + encodeURIComponent(v.curso) + '&disc=' + encodeURIComponent(v.disc) + '&aula=' + encodeURIComponent(v.id), { cache: 'no-cache' });
     if (res.ok) {
       const data = await res.json();
       if (data.materials && data.materials.length) {
@@ -10990,6 +10990,37 @@ async function ac2Materiais(v) {
     }
   } catch (e) {
     console.warn('[ac2Materiais] Falha ao buscar no Drive:', e.message);
+  }
+
+  // Filtro local de segurança: garante que somente materiais desta aula sejam exibidos
+  if (mats.length) {
+    mats = mats.filter(m => {
+      const mAula = m.aulaId || m.aula || m.aula_id;
+      return mAula == null || mAula === v.id || mAula === String(v.id);
+    });
+  }
+
+  // ============================================================
+  // FONTE SECUNDÁRIA: Se o Drive não retornou nada, usa o cache local AC2.MAT
+  // mas filtrado estritamente por disciplina (não pega de outras disciplinas)
+  // ============================================================
+  if (!mats.length) {
+    // Tenta chave exata: curso||disciplina
+    let matsLocal = AC2.MAT.get(v.curso + '||' + v.disc) || [];
+    // Se não achar, tenta variações de nome da disciplina
+    if (!matsLocal.length) {
+      const discNorm = normAcc(v.disc).replace(/[^a-z0-9]/g, '');
+      for (const [key, arr] of AC2.MAT.entries()) {
+        if (key.startsWith(v.curso + '||')) {
+          const keyDisc = key.split('||')[1];
+          const keyNorm = normAcc(keyDisc).replace(/[^a-z0-9]/g, '');
+          if (keyNorm === discNorm || keyNorm.includes(discNorm) || discNorm.includes(keyNorm)) {
+            matsLocal = matsLocal.concat(arr);
+          }
+        }
+      }
+    }
+    mats = matsLocal;
   }
 
   // Separa PDFs de Apostilas
@@ -11426,5 +11457,9 @@ function enterDriveCourse(id, name) {
 <script src="/planner-v2.js"></script>
 <script src="/jarvis.js"></script>
 <script src="/aula-dia.js"></script>
+<script defer type="module" src="/js/medreader-core.js"></script>
+<script defer type="module" src="/js/medreader-flashcards.js"></script>
+<script defer type="module" src="/js/medreader-export.js"></script>
+<script defer src="/js/medreader-integracao.js"></script>
 </body>
 </html>

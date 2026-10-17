@@ -549,6 +549,7 @@ app.get('/api/drive/list', async (req, res) => {
 app.get('/api/drive/materials', async (req, res) => {
   const course = (req.query.course || '').trim();
   const disc = (req.query.disc || '').trim();
+  const aula = (req.query.aula || '').trim();
   if (!course || !disc) return res.status(400).json({ error: 'course e disc são obrigatórios', materials: [] });
   if (!DRIVE_OK) return res.status(503).json({ error: 'GOOGLE_DRIVE_API_KEY ausente', materials: [] });
 
@@ -603,14 +604,19 @@ app.get('/api/drive/materials', async (req, res) => {
       return nNorm.includes(discNorm) || discNorm.includes(nNome.replace(/\.(pdf|html?|htm|doc|docx)$/i, '')) || limpaTnome(f.name) === limpaTnome(disc);
     });
 
-    // 3. Se encontrou a pasta da disciplina, lista os arquivos dentro dela
-    // Se não encontrou, retorna vazio (não faz busca ampla para evitar carregar tudo)
-    if (!discPasta) {
-      return res.json({ materials: [], hint: `Pasta da disciplina "${disc}" não encontrada dentro do curso "${course}"`, total: 0, fromDiscFolder: false });
-    }
+    // 3. Lista arquivos da pasta da disciplina (se existir subpasta)
+    let targetFiles = [];
+    let fromDiscFolder = false;
 
-    const discFolderId = discPasta.shortcutDetails?.targetId || discPasta.id;
-    const targetFiles = await listFolder(discFolderId);
+    if (discPasta) {
+      const discFolderId = discPasta.shortcutDetails?.targetId || discPasta.id;
+      targetFiles = await listFolder(discFolderId);
+      fromDiscFolder = true;
+    } else {
+      // Se não encontrou subpasta da disciplina, busca arquivos diretamente na pasta do curso
+      // que contenham o nome da disciplina no título do arquivo
+      targetFiles = cursoFiles;
+    }
 
     const materials = [];
     const pdfExt = /\.(pdf|doc|docx)$/i;
@@ -630,6 +636,13 @@ app.get('/api/drive/materials', async (req, res) => {
       const isPdf = !nomeNorm.match(htmlExt) && (pdfExt.test(nome) || /pdf|document|presentation/i.test(effectiveMime));
       const isHtml = htmlExt.test(nome) || /html/i.test(effectiveMime);
 
+      // Se não veio de subpasta de disciplina, filtrar por nome do arquivo contendo a disciplina
+      if (!fromDiscFolder) {
+        const discClean = discNorm.replace(/\.(pdf|html?|htm|doc|docx)$/i, '');
+        const nomeMatch = nomeNorm.includes(discNorm) || nomeNorm.includes(discClean) || discNorm.includes(nomeNorm.replace(/\.(pdf|html?|htm|doc|docx)$/i, ''));
+        if (!nomeMatch) continue;
+      }
+
       if (isPdf || isHtml) {
         materials.push({
           id: effectiveId,
@@ -641,6 +654,7 @@ app.get('/api/drive/materials', async (req, res) => {
           isHtml,
           curso,
           disc,
+          aulaId: aula || null,
           webViewLink: f.webViewLink || `https://drive.google.com/file/d/${effectiveId}/preview`
         });
       }
@@ -648,7 +662,7 @@ app.get('/api/drive/materials', async (req, res) => {
 
     // Remove duplicados por id
     const uniq = materials.filter((m, idx, self) => idx === self.findIndex(m2 => m2.id === m.id));
-    return res.json({ materials: uniq, total: uniq.length, course, disc, fromDiscFolder: true });
+    return res.json({ materials: uniq, total: uniq.length, course, disc, aula, fromDiscFolder });
   } catch (err) {
     console.error('[Drive Materials]', err.message);
     return res.status(500).json({ error: err.message, materials: [] });
