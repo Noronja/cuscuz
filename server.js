@@ -216,3 +216,8 @@ app.get('/api/drive/materials', async (req, res) => {
     return res.status(500).json({ error: err.message, materials: [] });
   }
 });
+
+// Iniciar o servidor
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Cuscuz-MED server running on http://${HOST}:${PORT}`);
+});
