@@ -1,5 +1,7 @@
 // Busca materiais (PDFs e apostilas HTML) no Drive navegando na estrutura:
-// curso > disciplina > aula > subpasta "Apostila" (ou arquivos soltos na aula)
+// curso > disciplina > aula > subpasta "Apostila"
+// Suporta fallback: se aulaId for um arquivo dentro de subpasta (ex: Vídeo aula),
+// sobe para a pasta pai da aula e procura a subpasta "Apostila" lá.
 app.get('/api/drive/materials', async (req, res) => {
   const course = (req.query.course || '').trim();
   const disc = (req.query.disc || '').trim();
@@ -22,7 +24,7 @@ app.get('/api/drive/materials', async (req, res) => {
       let pageToken = '';
       do {
         const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
-        const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,shortcutDetails,webViewLink)');
+        const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,shortcutDetails,webViewLink,parents)');
         const pageParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
         const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&orderBy=folder,name_natural&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true${pageParam}`;
         const r = await driveFetch(url, { signal: AbortSignal.timeout(10000) });
@@ -32,6 +34,14 @@ app.get('/api/drive/materials', async (req, res) => {
         pageToken = data.nextPageToken || '';
       } while (pageToken);
       return files;
+    }
+
+    // Helper para obter metadata de um arquivo/pasta (inclui parents)
+    async function getFileMeta(fileId) {
+      const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,shortcutDetails,webViewLink,parents&supportsAllDrives=true&includeItemsFromAllDrives=true`;
+      const r = await driveFetch(url, { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) return null;
+      return r.json();
     }
 
     // Helper para verificar se um nome é pasta "Apostila"
@@ -56,6 +66,48 @@ app.get('/api/drive/materials', async (req, res) => {
       const isHtml = !isFolder && (htmlExt.test(nome) || /html/i.test(effectiveMime));
 
       return { nome, nomeNorm, isShortcut, effectiveId, effectiveMime, isFolder, isPdf, isHtml };
+    }
+
+    // Processa uma pasta de aula: procura subpasta "Apostila" ou arquivos soltos
+    async function processarPastaAula(aulaFolderId, aulaNome) {
+      const aulaFiles = await listFolder(aulaFolderId);
+      const apostilaPasta = aulaFiles.find(f => (f.mimeType === 'application/vnd.google-apps.folder' || f.isFolder) && isApostilaFolder(f.name));
+
+      let arquivosParaProcessar = [];
+
+      if (apostilaPasta) {
+        const apostilaFolderId = apostilaPasta.shortcutDetails?.targetId || apostilaPasta.id;
+        const apostilaFiles = await listFolder(apostilaFolderId);
+        arquivosParaProcessar = apostilaFiles;
+      } else {
+        arquivosParaProcessar = aulaFiles.filter(f => {
+          const { isFolder, isPdf, isHtml } = classifyFile(f);
+          return !isFolder && (isPdf || isHtml);
+        });
+      }
+
+      const resultados = [];
+      for (const f of arquivosParaProcessar) {
+        const { nome, nomeNorm, isShortcut, effectiveId, effectiveMime, isFolder, isPdf, isHtml } = classifyFile(f);
+        if (isFolder) continue;
+        if (!isPdf && !isHtml) continue;
+
+        resultados.push({
+          id: effectiveId,
+          nome: nome.replace(/\.(pdf|html?|htm|doc|docx)$/i, '').trim(),
+          rawName: nome,
+          mimeType: effectiveMime,
+          isFolder: false,
+          isPdf,
+          isHtml,
+          curso,
+          disc,
+          aulaId: aulaFolderId,
+          aulaNome,
+          webViewLink: f.webViewLink || `https://drive.google.com/file/d/${effectiveId}/preview`
+        });
+      }
+      return resultados;
     }
 
     // 1. Encontrar a pasta do curso na raiz do Drive
@@ -89,74 +141,76 @@ app.get('/api/drive/materials', async (req, res) => {
     const discFiles = await listFolder(discFolderId);
     const aulaPastas = discFiles.filter(f => f.mimeType === 'application/vnd.google-apps.folder' || f.isFolder);
 
-    // Se um aula específica foi solicitada, filtrar apenas essa
-    let targetAulaPastas = aulaPastas;
+    // 4. Determinar qual pasta de aula usar
+    let targetAulaPasta = null;
+
     if (aula) {
+      // 4a. Tentar encontrar a aula por nome direto
       const aulaNorm = norm(aula);
-      targetAulaPastas = aulaPastas.filter(f => {
+      const encontradaPorNome = aulaPastas.find(f => {
         const nome = String(f.name || '').toLowerCase();
         const nNorm = norm(nome);
         return nNorm.includes(aulaNorm) || aulaNorm.includes(nNorm) || limpaTnome(f.name) === limpaTnome(aula);
       });
-      if (targetAulaPastas.length === 0) {
-        return res.json({ materials: [], hint: 'Aula não encontrada na disciplina', course, disc, aula });
-      }
-    }
 
-    const materials = [];
-    const pdfExt = /\.(pdf|doc|docx)$/i;
-    const htmlExt = /\.(html?|htm)$/i;
-
-    // 4. Para cada aula, procurar subpasta "Apostila" ou arquivos soltos
-    for (const aulaPasta of targetAulaPastas) {
-      const aulaFolderId = aulaPasta.shortcutDetails?.targetId || aulaPasta.id;
-      const aulaNome = aulaPasta.name || 'Aula sem nome';
-
-      // 4a. Procurar subpasta "Apostila" dentro da aula
-      const aulaFiles = await listFolder(aulaFolderId);
-      const apostilaPasta = aulaFiles.find(f => (f.mimeType === 'application/vnd.google-apps.folder' || f.isFolder) && isApostilaFolder(f.name));
-
-      let arquivosParaProcessar = [];
-
-      if (apostilaPasta) {
-        // Entrou na subpasta "Apostila"
-        const apostilaFolderId = apostilaPasta.shortcutDetails?.targetId || apostilaPasta.id;
-        const apostilaFiles = await listFolder(apostilaFolderId);
-        arquivosParaProcessar = apostilaFiles;
+      if (encontradaPorNome) {
+        targetAulaPasta = encontradaPorNome;
       } else {
-        // Sem subpasta "Apostila", pega arquivos PDF/HTML diretamente na pasta da aula
-        arquivosParaProcessar = aulaFiles.filter(f => {
-          const { isFolder, isPdf, isHtml } = classifyFile(f);
-          return !isFolder && (isPdf || isHtml);
-        });
-      }
+        // 4b. Fallback: o aulaId pode ser um arquivo dentro de uma subpasta da aula
+        // (ex: usuário está na subpasta "Vídeo aula", clicou em um vídeo)
+        // Tentar obter metadata do arquivo para descobrir o parent
+        const meta = await getFileMeta(aula);
+        if (meta && meta.parents && meta.parents.length > 0) {
+          const parentId = meta.parents[0];
+          // Verificar se esse parent é uma das aulas da disciplina
+          const paiEhAula = aulaPastas.find(f => {
+            const fid = f.shortcutDetails?.targetId || f.id;
+            return fid === parentId;
+          });
+          if (paiEhAula) {
+            targetAulaPasta = paiEhAula;
+          } else {
+            // O parent pode ser uma subpasta dentro da aula (ex: "Vídeo aula")
+            // Precisamos subir mais um nível: verificar se o parent do parent é uma aula
+            const metaPai = await getFileMeta(parentId);
+            if (metaPai && metaPai.parents && metaPai.parents.length > 0) {
+              const avôId = metaPai.parents[0];
+              const avoEhAula = aulaPastas.find(f => {
+                const fid = f.shortcutDetails?.targetId || f.id;
+                return fid === avôId;
+              });
+              if (avoEhAula) {
+                targetAulaPasta = avoEhAula;
+              }
+            }
+          }
+        }
 
-      // 5. Classificar e adicionar materiais encontrados
-      for (const f of arquivosParaProcessar) {
-        const { nome, nomeNorm, isShortcut, effectiveId, effectiveMime, isFolder, isPdf, isHtml } = classifyFile(f);
-        if (isFolder) continue;
-        if (!isPdf && !isHtml) continue;
-
-        materials.push({
-          id: effectiveId,
-          nome: nome.replace(/\.(pdf|html?|htm|doc|docx)$/i, '').trim(),
-          rawName: nome,
-          mimeType: effectiveMime,
-          isFolder: false,
-          isPdf,
-          isHtml,
-          curso,
-          disc,
-          aulaId: aulaPasta.id,
-          aulaNome,
-          webViewLink: f.webViewLink || `https://drive.google.com/file/d/${effectiveId}/preview`
-        });
+        if (!targetAulaPasta) {
+          return res.json({ materials: [], hint: 'Aula não encontrada na disciplina', course, disc, aula });
+        }
       }
     }
 
-    // Remove duplicados por id
-    const uniq = materials.filter((m, idx, self) => idx === self.findIndex(m2 => m2.id === m.id));
-    return res.json({ materials: uniq, total: uniq.length, course, disc, aula, source: 'drive-recursive' });
+    if (!targetAulaPasta) {
+      // Se não especificou aula, retornar materiais de todas as aulas (comportamento anterior)
+      const materials = [];
+      for (const aulaPasta of aulaPastas) {
+        const aulaFolderId = aulaPasta.shortcutDetails?.targetId || aulaPasta.id;
+        const aulaNome = aulaPasta.name || 'Aula sem nome';
+        const mats = await processarPastaAula(aulaFolderId, aulaNome);
+        materials.push(...mats);
+      }
+      const uniq = materials.filter((m, idx, self) => idx === self.findIndex(m2 => m2.id === m.id));
+      return res.json({ materials: uniq, total: uniq.length, course, disc, aula: null, source: 'drive-recursive' });
+    }
+
+    // 5. Processar a pasta da aula encontrada
+    const aulaFolderId = targetAulaPasta.shortcutDetails?.targetId || targetAulaPasta.id;
+    const aulaNome = targetAulaPasta.name || 'Aula sem nome';
+    const materials = await processarPastaAula(aulaFolderId, aulaNome);
+
+    return res.json({ materials, total: materials.length, course, disc, aula: aula, source: 'drive-recursive' });
   } catch (err) {
     console.error('[Drive Materials]', err.message);
     return res.status(500).json({ error: err.message, materials: [] });
