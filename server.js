@@ -18,6 +18,11 @@ const HOST = '0.0.0.0';
 const DRIVE_OK = !!process.env.GOOGLE_DRIVE_API_KEY;
 const DRIVE_ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '';
 
+// Healthcheck endpoint para o Railway
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', drive: DRIVE_OK ? 'configured' : 'missing_key', timestamp: new Date().toISOString() });
+});
+
 // Busca materiais (PDFs e apostilas HTML) no Drive navegando na estrutura:
 // curso > disciplina > aula > subpasta "Apostila"
 // Suporta fallback: se aulaId for um arquivo dentro de subpasta (ex: Vídeo aula),
@@ -47,7 +52,7 @@ app.get('/api/drive/materials', async (req, res) => {
         const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,shortcutDetails,webViewLink,parents)');
         const pageParam = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '';
         const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&orderBy=folder,name_natural&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true${pageParam}`;
-        const r = await driveFetch(url, { signal: AbortSignal.timeout(10000) });
+        const r = await driveFetch(url, { signal: AbortSignal.timeout(15000) });
         if (!r.ok) break;
         const data = await r.json();
         if (data.files) files.push(...data.files);
@@ -59,7 +64,7 @@ app.get('/api/drive/materials', async (req, res) => {
     // Helper para obter metadata de um arquivo/pasta (inclui parents)
     async function getFileMeta(fileId) {
       const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,shortcutDetails,webViewLink,parents&supportsAllDrives=true&includeItemsFromAllDrives=true`;
-      const r = await driveFetch(url, { signal: AbortSignal.timeout(10000) });
+      const r = await driveFetch(url, { signal: AbortSignal.timeout(15000) });
       if (!r.ok) return null;
       return r.json();
     }
@@ -178,39 +183,41 @@ app.get('/api/drive/materials', async (req, res) => {
       } else {
         // 4b. Fallback: o aulaId pode ser um arquivo dentro de uma subpasta da aula
         // (ex: usuário está na subpasta "Vídeo aula", clicou em um vídeo)
-        // Tentar obter metadata do arquivo para descobrir o parent
-        const meta = await getFileMeta(aula);
-        if (meta && meta.parents && meta.parents.length > 0) {
-          const parentId = meta.parents[0];
-          // Verificar se esse parent é uma das aulas da disciplina
-          const paiEhAula = aulaPastas.find(f => {
-            const fid = f.shortcutDetails?.targetId || f.id;
-            return fid === parentId;
-          });
-          if (paiEhAula) {
-            targetAulaPasta = paiEhAula;
-          } else {
-            // O parent pode ser uma subpasta dentro da aula (ex: "Vídeo aula")
-            // Precisamos subir mais um nível: verificar se o parent do parent é uma aula
-            const metaPai = await getFileMeta(parentId);
-            if (metaPai && metaPai.parents && metaPai.parents.length > 0) {
-              const avôId = metaPai.parents[0];
-              const avoEhAula = aulaPastas.find(f => {
-                const fid = f.shortcutDetails?.targetId || f.id;
-                return fid === avôId;
-              });
-              if (avoEhAula) {
-                targetAulaPasta = avoEhAula;
+        try {
+          const meta = await getFileMeta(aula);
+          if (meta && meta.parents && meta.parents.length > 0) {
+            const parentId = meta.parents[0];
+            // Verificar se esse parent é uma das aulas da disciplina
+            const paiEhAula = aulaPastas.find(f => {
+              const fid = f.shortcutDetails?.targetId || f.id;
+              return fid === parentId;
+            });
+            if (paiEhAula) {
+              targetAulaPasta = paiEhAula;
+            } else {
+              // O parent pode ser uma subpasta dentro da aula (ex: "Vídeo aula")
+              // Precisamos subir mais um nível: verificar se o parent do parent é uma aula
+              const metaPai = await getFileMeta(parentId);
+              if (metaPai && metaPai.parents && metaPai.parents.length > 0) {
+                const avôId = metaPai.parents[0];
+                const avoEhAula = aulaPastas.find(f => {
+                  const fid = f.shortcutDetails?.targetId || f.id;
+                  return fid === avôId;
+                });
+                if (avoEhAula) {
+                  targetAulaPasta = avoEhAula;
+                }
               }
             }
           }
+        } catch (e) {
+          console.warn('[Drive Materials] Falha ao obter meta do arquivo aula:', e.message);
         }
 
         if (!targetAulaPasta) {
-          // Fallback final: aulaId é um arquivo do Drive mas não conseguimos navegar
-          // até a pasta da aula via API. Retornamos materiais de TODAS as aulas da
-          // disciplina para que o usuário pelo menos veja as apostilas disponíveis.
-          targetAulaPasta = null; // sinaliza para usar todas as aulas abaixo
+          // Fallback final: não conseguimos identificar a aula específica,
+          // sinaliza para usar todas as aulas abaixo
+          targetAulaPasta = null;
         }
       }
     }
