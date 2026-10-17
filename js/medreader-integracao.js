@@ -157,9 +157,10 @@ function medreaderCarregarMateriaisDaAula(aula) {
     const entry = {
       id: m.id,
       nome: nome.endsWith('.pdf') || nome.endsWith('.html') || nome.endsWith('.htm') ? nome : nome + '.pdf',
-      sub: 'Material da macro�rea: ' + (aula.curso || aula.titulo),
+      sub: 'Material da aula: ' + (m.aulaNome || aula.titulo),
       url: m.url || '',
       isHtml: isApostila,
+      aulaId: m.aulaId || aula.id,
     };
     if (isApostila) apostilas.push(entry);
     else pdfs.push(entry);
@@ -191,7 +192,7 @@ function medreaderCarregarMateriaisDaAula(aula) {
           <span class="pdf-icon" style="background:rgba(99,102,241,.14);color:#6366f1"><i class="ph ph-book-open"></i></span>
           <div class="mat-info">
             <span class="mat-title">${escapeHtml(m.nome)}</span>
-            <span class="mat-sub">Apostila - ${escapeHtml(aula.titulo)}</span>
+            <span class="mat-sub">Apostila - ${escapeHtml(m.aulaNome || aula.titulo)}</span>
           </div>
           <i class="ph ph-arrow-right mat-dl" style="color:var(--teal)"></i>
         </div>`

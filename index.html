@@ -10980,7 +10980,7 @@ async function ac2Materiais(v) {
   let driveFetched = false;
 
   try {
-    const res = await fetch('/api/drive/materials?course=' + encodeURIComponent(v.curso) + '&disc=' + encodeURIComponent(v.disc), { cache: 'no-cache' });
+    const res = await fetch('/api/drive/materials?course=' + encodeURIComponent(v.curso) + '&disc=' + encodeURIComponent(v.disc) + '&aula=' + encodeURIComponent(v.id), { cache: 'no-cache' });
     if (res.ok) {
       const data = await res.json();
       if (data.materials && data.materials.length) {
@@ -10992,12 +10992,8 @@ async function ac2Materiais(v) {
     console.warn('[ac2Materiais] Falha ao buscar no Drive:', e.message);
   }
 
-  // Filtro local de segurança: garante que somente materiais desta aula sejam exibidos
-  if (mats.length) {
-    mats = mats.filter(m => {
-      const mAula = m.aulaId || m.aula || m.aula_id;
-      return mAula == null || mAula === v.id || mAula === String(v.id);
-    });
+    // Apostilas s�o organizadas por macro�rea/disciplina (curso+disc), n�o por aula individual.
+    // Nenhum filtro adicional por aulaId necess�rio.
   }
 
   // ============================================================
@@ -11032,7 +11028,7 @@ async function ac2Materiais(v) {
     const entry = {
       id: m.id,
       nome: nome.endsWith('.pdf') || nome.endsWith('.html') || nome.endsWith('.htm') ? nome : nome + '.pdf',
-      sub: 'PDF Oficial · ' + v.curso,
+      sub: 'Material da aula: ' + (m.aulaNome || v.titulo),
       url: '',
       isHtml: m.isHtml || isApostila
     };
@@ -11044,7 +11040,7 @@ async function ac2Materiais(v) {
   const displayApos = apostilas.length ? apostilas : defaultMats;
 
   const total = pdfs.length + apostilas.length;
-  if (badge) badge.textContent = total + (total === 1 ? ' arquivo disponível' : ' arquivos disponíveis') + (driveFetched ? ' (Drive)' : '');
+  if (badge) badge.textContent = total + (total === 1 ? ' arquivo disponível' : ' arquivos disponíveis') + ' (macroárea)');
 
   // Renderiza PDFs
   if (boxPdf) {
@@ -11067,7 +11063,7 @@ async function ac2Materiais(v) {
         '<span class="pdf-icon" style="background:rgba(99,102,241,.14);color:#6366f1"><i class="ph ph-book-open"></i></span>' +
         '<div class="mat-info">' +
           '<span class="mat-title">' + esc(m.nome) + '</span>' +
-          '<span class="mat-sub">Apostila · ' + esc(v.curso) + '</span>' +
+          '<span class="mat-sub">Apostila · ' + esc(m.aulaNome || v.titulo) + '</span>' +
         '</div>' +
         '<i class="ph ph-arrow-right mat-dl" style="color:var(--teal)"></i>' +
       '</div>'
